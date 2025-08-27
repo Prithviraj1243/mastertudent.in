@@ -7,13 +7,13 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+// Stripe is optional - only initialize if key is provided
+let stripe: Stripe | null = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-07-30.basil",
+  });
 }
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
 
 // Configure multer for file uploads
 const upload = multer({
@@ -64,6 +64,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { plan } = req.body; // 'monthly' or 'yearly'
 
     try {
+      // Check if Stripe is configured
+      if (!stripe) {
+        return res.status(503).json({ 
+          error: "Payment processing is currently unavailable. Stripe integration is not configured." 
+        });
+      }
+
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });

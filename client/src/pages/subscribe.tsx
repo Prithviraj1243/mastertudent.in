@@ -9,10 +9,10 @@ import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/header";
 import { CheckCircle, Crown } from "lucide-react";
 
-if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
-}
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+// Stripe is optional - only initialize if key is provided
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY 
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+  : Promise.resolve(null);
 
 const SubscribeForm = ({ plan }: { plan: string }) => {
   const stripe = useStripe();
@@ -74,6 +74,14 @@ export default function Subscribe() {
     try {
       const response = await apiRequest("POST", "/api/create-subscription", { plan });
       const data = await response.json();
+      if (response.status === 503) {
+        toast({
+          title: "Payment Unavailable",
+          description: "Payment processing is currently not configured. Please contact support.",
+          variant: "destructive",
+        });
+        return;
+      }
       setClientSecret(data.clientSecret);
     } catch (error: any) {
       toast({
