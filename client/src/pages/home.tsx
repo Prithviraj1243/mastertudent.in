@@ -68,31 +68,31 @@ export default function Home() {
                 
                 <div className="flex flex-wrap gap-4">
                   <Button 
-                    className="bg-gradient-to-r from-slate-800 to-slate-700 text-white hover:from-slate-700 hover:to-slate-600 hover-trading-card text-lg px-8 py-4 font-bold shadow-2xl border border-slate-500/50"
+                    className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
                     asChild
                   >
                     <Link href="/catalog" data-testid="button-browse-all">
-                      <BookOpen className="mr-2 h-5 w-5 text-white" />
-                      <span className="text-white font-extrabold text-shadow-lg">📈 Browse Notes</span>
+                      <BookOpen className="mr-2 h-5 w-5 text-white animate-glow-pulse" />
+                      <span className="text-white font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">📈 Browse Notes</span>
                     </Link>
                   </Button>
                   {((user as any)?.role === 'topper' || (user as any)?.role === 'admin') && (
                     <Button 
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 hover-trading-card text-lg px-8 py-4 font-bold border border-purple-500/30"
+                      className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold border-2 border-emerald-400/50 hover:border-cyan-400"
                       asChild
                     >
                       <Link href="/upload" data-testid="button-upload">
-                        <TrendingUp className="mr-2 h-5 w-5" />
+                        <TrendingUp className="mr-2 h-5 w-5 text-white animate-glow-pulse" />
                         💰 Start Trading
                       </Link>
                     </Button>
                   )}
                   <Button 
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 hover-trading-card text-lg px-8 py-4 font-bold border border-yellow-500/30"
+                    className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 text-white hover:from-orange-500 hover:via-red-500 hover:to-pink-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold border-2 border-orange-400/50 hover:border-pink-400"
                     asChild
                   >
                     <Link href="/coin-dashboard" data-testid="button-portfolio">
-                      <Star className="mr-2 h-5 w-5" />
+                      <Star className="mr-2 h-5 w-5 text-white animate-glow-pulse" />
                       💎 View Portfolio
                     </Link>
                   </Button>
@@ -115,31 +115,31 @@ export default function Home() {
 
           {/* Trading Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-trading-card border border-blue-500/30 hover-trading-card group animate-slide-in-right">
+            <Card className="bg-trading-card border-2 border-pink-500/50 hover-trading-card group animate-slide-in-right animate-interactive-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-3 animate-glow-pulse">
+                  <div className="bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-2xl p-3 animate-glow-pulse">
                     <BookOpen className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-green-400 text-sm font-bold animate-value-up">+15.2%</div>
+                  <div className="text-cyan-400 text-sm font-bold animate-value-up">+15.2%</div>
                 </div>
-                <div className="text-2xl font-bold text-white mb-1 animate-number-counter">10,847</div>
-                <div className="text-slate-300 font-medium">Active Assets</div>
-                <div className="text-xs text-slate-400 mt-1">📈 Market Volume</div>
+                <div className="text-2xl font-bold text-cyan-300 mb-1 animate-number-counter">10,847</div>
+                <div className="text-pink-200 font-medium">Active Assets</div>
+                <div className="text-xs text-purple-300 mt-1">📈 Market Volume</div>
               </CardContent>
             </Card>
             
-            <Card className="bg-trading-card border border-green-500/30 hover-trading-card group animate-slide-in-right" style={{animationDelay: '0.1s'}}>
+            <Card className="bg-trading-card border-2 border-emerald-500/50 hover-trading-card group animate-slide-in-right animate-interactive-hover" style={{animationDelay: '0.1s'}}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-3 animate-glow-pulse">
+                  <div className="bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 rounded-2xl p-3 animate-glow-pulse">
                     <Users className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-green-400 text-sm font-bold animate-value-up">+8.9%</div>
+                  <div className="text-yellow-400 text-sm font-bold animate-value-up">+8.9%</div>
                 </div>
-                <div className="text-2xl font-bold text-white mb-1 animate-number-counter">5,234</div>
-                <div className="text-slate-300 font-medium">Active Traders</div>
-                <div className="text-xs text-slate-400 mt-1">💼 Online Now</div>
+                <div className="text-2xl font-bold text-emerald-300 mb-1 animate-number-counter">5,234</div>
+                <div className="text-teal-200 font-medium">Active Traders</div>
+                <div className="text-xs text-cyan-300 mt-1">💼 Online Now</div>
               </CardContent>
             </Card>
             
