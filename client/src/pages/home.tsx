@@ -68,12 +68,12 @@ export default function Home() {
                 
                 <div className="flex flex-wrap gap-4">
                   <Button 
-                    className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 hover-trading-card text-lg px-8 py-4 font-bold shadow-2xl border border-blue-500/30"
+                    className="bg-gradient-to-r from-slate-800 to-slate-700 text-white hover:from-slate-700 hover:to-slate-600 hover-trading-card text-lg px-8 py-4 font-bold shadow-2xl border border-slate-500/50"
                     asChild
                   >
                     <Link href="/catalog" data-testid="button-browse-all">
                       <BookOpen className="mr-2 h-5 w-5 text-white" />
-                      <span className="text-white font-bold drop-shadow-lg">📈 Browse Notes</span>
+                      <span className="text-white font-extrabold text-shadow-lg">📈 Browse Notes</span>
                     </Link>
                   </Button>
                   {((user as any)?.role === 'topper' || (user as any)?.role === 'admin') && (
