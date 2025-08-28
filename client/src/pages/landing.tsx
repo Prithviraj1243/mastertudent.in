@@ -6,29 +6,31 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-trading-dark border-b border-pink-500/30 sticky top-0 z-50 backdrop-blur-md">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-600/20 via-purple-600/20 to-cyan-600/20 animate-trading-pulse"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <GraduationCap className="text-primary-foreground text-sm" />
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-xl animate-glow-pulse">
+                <GraduationCap className="text-white text-lg" />
               </div>
-              <span className="text-xl font-bold text-foreground">MasterStudent</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-white via-pink-200 to-cyan-200 bg-clip-text text-transparent">MasterStudent</span>
             </div>
             
             <div className="flex items-center space-x-4">
               <Button 
-                variant="outline" 
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 border-2 border-emerald-400/50 hover:border-teal-400 animate-interactive-hover" 
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-login"
               >
-                Sign In
+                🔐 Sign In
               </Button>
               <Button 
+                className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 border-2 border-pink-400/50 hover:border-yellow-400 animate-interactive-hover"
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-get-started"
               >
-                Get Started
+                🚀 Get Started
               </Button>
             </div>
           </div>
@@ -36,8 +38,8 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 gradient-hero overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-orange-500/10"></div>
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-trading-dark overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-cyan-500/20 animate-morphingGlow"></div>
         <div className="relative max-w-7xl mx-auto text-center">
           <div className="animate-fade-in">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
@@ -52,22 +54,21 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
             <Button 
               size="lg" 
-              className="button-glow bg-white text-blue-600 hover:bg-white/90 hover-scale"
+              className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-trading-card animate-interactive-hover border-2 border-pink-400/50 hover:border-yellow-400"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-browse-notes"
             >
-              <BookOpen className="mr-2 h-5 w-5" />
-              Browse Notes
+              <BookOpen className="mr-2 h-5 w-5 animate-glow-pulse" />
+              📈 Browse Notes
             </Button>
             <Button 
-              variant="outline" 
               size="lg"
-              className="border-white text-white hover:bg-white hover:text-blue-600 hover-scale"
+              className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-trading-card animate-interactive-hover border-2 border-emerald-400/50 hover:border-cyan-400"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-become-topper"
             >
-              <TrendingUp className="mr-2 h-5 w-5" />
-              Become a Topper
+              <TrendingUp className="mr-2 h-5 w-5 animate-glow-pulse" />
+              💰 Become a Topper
             </Button>
           </div>
           
@@ -75,17 +76,17 @@ export default function Landing() {
           
           {/* Stats Preview */}
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="glass-effect rounded-lg p-6 hover-lift">
-              <div className="text-3xl font-bold text-white mb-2">10,000+</div>
-              <div className="text-white/80">Quality Notes</div>
+            <div className="bg-trading-card border-2 border-pink-500/50 rounded-lg p-6 hover-trading-card animate-interactive-hover">
+              <div className="text-3xl font-bold text-cyan-300 mb-2 animate-number-counter">10,000+</div>
+              <div className="text-pink-200">Quality Notes</div>
             </div>
-            <div className="glass-effect rounded-lg p-6 hover-lift" style={{animationDelay: '0.1s'}}>
-              <div className="text-3xl font-bold text-white mb-2">5,000+</div>
-              <div className="text-white/80">Active Students</div>
+            <div className="bg-trading-card border-2 border-emerald-500/50 rounded-lg p-6 hover-trading-card animate-interactive-hover" style={{animationDelay: '0.1s'}}>
+              <div className="text-3xl font-bold text-emerald-300 mb-2 animate-number-counter">5,000+</div>
+              <div className="text-teal-200">Active Students</div>
             </div>
-            <div className="glass-effect rounded-lg p-6 hover-lift" style={{animationDelay: '0.2s'}}>
-              <div className="text-3xl font-bold text-white mb-2">500+</div>
-              <div className="text-white/80">Top Contributors</div>
+            <div className="bg-trading-card border-2 border-orange-500/50 rounded-lg p-6 hover-trading-card animate-interactive-hover" style={{animationDelay: '0.2s'}}>
+              <div className="text-3xl font-bold text-orange-300 mb-2 animate-number-counter">500+</div>
+              <div className="text-yellow-200">Top Contributors</div>
             </div>
           </div>
         </div>
