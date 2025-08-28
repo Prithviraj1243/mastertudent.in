@@ -32,14 +32,21 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-trading-dark relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-cyan-900/20 animate-trading-pulse"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-float-subtle"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-subtle" style={{animationDelay: '2s'}}></div>
+      </div>
+      
       <Header />
-      <div className="flex">
+      <div className="relative z-10 flex">
         <Sidebar />
-        <main className="flex-1 p-6 animate-fade-in">
-          {/* Welcome Section */}
+        <main className="flex-1 p-6 animate-slide-in-right">
+          {/* Trading Hub Hero Section */}
           <div className="mb-8">
-            <div className="bg-gradient-rainbow rounded-2xl p-8 text-white relative overflow-hidden animate-fade-in">
+            <div className="bg-trading-card rounded-3xl p-8 border border-slate-600/30 relative overflow-hidden hover-glow-intense">
               {/* Animated background elements */}
               <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute top-4 left-4 w-20 h-20 bg-white/10 rounded-full animate-float"></div>
@@ -48,111 +55,127 @@ export default function Home() {
               </div>
               
               <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-white/20 p-3 rounded-full animate-glow">
-                    <Award className="h-8 w-8 text-white" />
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl animate-glow-pulse">
+                    <Award className="h-10 w-10 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-4xl font-bold text-glow animate-bounce-in">
-                      Welcome back, {user?.firstName || 'Amazing Student'}! 🎉
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent animate-scale-in">
+                      Welcome to TradePulse Hub, {(user as any)?.firstName || 'Trader'}! ⚡
                     </h1>
-                    <p className="text-white/90 text-lg">
-                      Your learning journey continues here
+                    <p className="text-slate-300 text-lg font-medium">
+                      Your learning exchange is live • Portfolio active
                     </p>
                   </div>
                 </div>
                 
-                <p className="text-white/90 mb-6 text-lg leading-relaxed">
-                  🚀 Ready to excel in your studies? Join thousands of students using our premium study materials to achieve academic success!
+                <p className="text-slate-300 mb-8 text-lg leading-relaxed">
+                  🎯 Welcome to the ultimate education trading platform. Buy, sell, and exchange knowledge with real-time coin rewards. 
+                  Join thousands of student traders earning while they learn!
                 </p>
                 
                 <div className="flex flex-wrap gap-4">
                   <Button 
-                    className="bg-white text-purple-600 hover:bg-white/90 hover-scale text-lg px-8 py-3 font-semibold shadow-2xl"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 hover-trading-card text-lg px-8 py-4 font-bold shadow-2xl border border-blue-500/30"
                     asChild
                   >
                     <Link href="/catalog" data-testid="button-browse-all">
                       <BookOpen className="mr-2 h-5 w-5" />
-                      🎯 Explore Notes
+                      📈 Open Market
                     </Link>
                   </Button>
-                  {(user?.role === 'topper' || user?.role === 'admin') && (
+                  {((user as any)?.role === 'topper' || (user as any)?.role === 'admin') && (
                     <Button 
-                      className="bg-white/20 border-2 border-white text-white hover:bg-white hover:text-purple-600 hover-scale text-lg px-8 py-3 font-semibold"
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 hover-trading-card text-lg px-8 py-4 font-bold border border-purple-500/30"
                       asChild
                     >
                       <Link href="/upload" data-testid="button-upload">
                         <TrendingUp className="mr-2 h-5 w-5" />
-                        ⭐ Share Knowledge
+                        💰 Start Trading
                       </Link>
                     </Button>
                   )}
                   <Button 
-                    className="bg-yellow-400 text-purple-800 hover:bg-yellow-300 hover-scale text-lg px-8 py-3 font-semibold shadow-2xl"
+                    className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 hover-trading-card text-lg px-8 py-4 font-bold border border-yellow-500/30"
                     asChild
                   >
-                    <Link href="/subscribe" data-testid="button-subscribe">
+                    <Link href="/coin-dashboard" data-testid="button-portfolio">
                       <Star className="mr-2 h-5 w-5" />
-                      🏆 Go Premium
+                      💎 View Portfolio
                     </Link>
                   </Button>
                 </div>
               </div>
               
-              {/* Achievement badge */}
-              <div className="absolute top-4 right-4 bg-white/20 rounded-full p-4 animate-pulse-slow">
+              {/* Live Trading Badge */}
+              <div className="absolute top-4 right-4 bg-trading-card rounded-2xl p-4 border border-green-500/30 animate-glow-pulse">
                 <div className="text-center">
-                  <Award className="h-8 w-8 mx-auto text-yellow-300 mb-1" />
-                  <div className="text-xs font-bold">Study Streak</div>
-                  <div className="text-lg font-bold">7 Days! 🔥</div>
+                  <div className="flex items-center justify-center mb-2">
+                    <div className="w-3 h-3 bg-green-400 rounded-full animate-ping mr-2"></div>
+                    <span className="text-xs font-bold text-green-300">LIVE TRADING</span>
+                  </div>
+                  <div className="text-sm font-bold text-green-400 animate-value-up">+24.5%</div>
+                  <div className="text-xs text-slate-400">Portfolio Growth</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Quick Stats */}
+          {/* Trading Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-primary text-white hover-lift border-0 shadow-2xl animate-fade-in">
-              <CardContent className="p-6 text-center">
-                <div className="bg-white/20 rounded-full p-3 w-fit mx-auto mb-3 animate-glow">
-                  <BookOpen className="h-8 w-8 text-white" />
+            <Card className="bg-trading-card border border-blue-500/30 hover-trading-card group animate-slide-in-right">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-3 animate-glow-pulse">
+                    <BookOpen className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-green-400 text-sm font-bold animate-value-up">+15.2%</div>
                 </div>
-                <div className="text-3xl font-bold mb-1">📚 10,000+</div>
-                <div className="text-white/90 font-medium">Study Notes Available</div>
-                <div className="text-xs text-white/70 mt-1">Updated Daily</div>
+                <div className="text-2xl font-bold text-white mb-1 animate-number-counter">10,847</div>
+                <div className="text-slate-300 font-medium">Active Assets</div>
+                <div className="text-xs text-slate-400 mt-1">📈 Market Volume</div>
               </CardContent>
             </Card>
             
-            <Card className="bg-gradient-success text-white hover-lift border-0 shadow-2xl animate-fade-in" style={{animationDelay: '0.1s'}}>
-              <CardContent className="p-6 text-center">
-                <div className="bg-white/20 rounded-full p-3 w-fit mx-auto mb-3 animate-glow">
-                  <Users className="h-8 w-8 text-white" />
+            <Card className="bg-trading-card border border-green-500/30 hover-trading-card group animate-slide-in-right" style={{animationDelay: '0.1s'}}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-3 animate-glow-pulse">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-green-400 text-sm font-bold animate-value-up">+8.9%</div>
                 </div>
-                <div className="text-3xl font-bold mb-1">👥 5,000+</div>
-                <div className="text-white/90 font-medium">Active Learners</div>
-                <div className="text-xs text-white/70 mt-1">Growing Community</div>
+                <div className="text-2xl font-bold text-white mb-1 animate-number-counter">5,234</div>
+                <div className="text-slate-300 font-medium">Active Traders</div>
+                <div className="text-xs text-slate-400 mt-1">💼 Online Now</div>
               </CardContent>
             </Card>
             
-            <Card className="bg-gradient-info text-white hover-lift border-0 shadow-2xl animate-fade-in" style={{animationDelay: '0.2s'}}>
-              <CardContent className="p-6 text-center">
-                <div className="bg-white/20 rounded-full p-3 w-fit mx-auto mb-3 animate-glow">
-                  <Download className="h-8 w-8 text-white" />
+            <Card className="bg-trading-card border border-purple-500/30 hover-trading-card group animate-slide-in-right" style={{animationDelay: '0.2s'}}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-3 animate-glow-pulse">
+                    <Download className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-green-400 text-sm font-bold animate-value-up">+32.1%</div>
                 </div>
-                <div className="text-3xl font-bold mb-1">📥 50,000+</div>
-                <div className="text-white/90 font-medium">Total Downloads</div>
-                <div className="text-xs text-white/70 mt-1">This Month</div>
+                <div className="text-2xl font-bold text-white mb-1 animate-number-counter">52,941</div>
+                <div className="text-slate-300 font-medium">Total Trades</div>
+                <div className="text-xs text-slate-400 mt-1">📊 This Month</div>
               </CardContent>
             </Card>
             
-            <Card className="bg-gradient-secondary text-white hover-lift border-0 shadow-2xl animate-fade-in" style={{animationDelay: '0.3s'}}>
-              <CardContent className="p-6 text-center">
-                <div className="bg-white/20 rounded-full p-3 w-fit mx-auto mb-3 animate-glow">
-                  <Star className="h-8 w-8 text-white" />
+            <Card className="bg-trading-card border border-yellow-500/30 hover-trading-card group animate-slide-in-right" style={{animationDelay: '0.3s'}}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl p-3 animate-glow-pulse">
+                    <Star className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-green-400 text-sm font-bold animate-value-up">+5.7%</div>
                 </div>
-                <div className="text-3xl font-bold mb-1">⭐ 4.8</div>
-                <div className="text-white/90 font-medium">Average Rating</div>
-                <div className="text-xs text-white/70 mt-1">From 2000+ Reviews</div>
+                <div className="text-2xl font-bold text-white mb-1 animate-number-counter">4.9</div>
+                <div className="text-slate-300 font-medium">Market Rating</div>
+                <div className="text-xs text-slate-400 mt-1">⭐ Platform Score</div>
               </CardContent>
             </Card>
           </div>
@@ -249,26 +272,42 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Achievement Section for Students */}
-          {user?.role === 'student' && (
+          {/* Trading Performance for Students */}
+          {((user as any)?.role === 'student' || true) && (
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-6">Your Progress</h2>
-              <Card className="card-enhanced">
+              <h2 className="text-2xl font-bold text-white mb-6">📊 Your Trading Performance</h2>
+              <Card className="bg-trading-card border border-slate-600/30 hover-glow-intense">
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Study Streak</h3>
-                      <p className="text-muted-foreground">Keep learning every day to maintain your streak!</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 w-fit mx-auto mb-3 animate-glow-pulse">
+                        <TrendingUp className="h-8 w-8 text-white" />
+                      </div>
+                      <div className="text-2xl font-bold text-green-400 animate-number-counter">5</div>
+                      <div className="text-slate-300 font-medium">Day Streak</div>
+                      <div className="text-xs text-slate-400">Trading Active</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-primary">5</div>
-                      <div className="text-sm text-muted-foreground">Days</div>
+                      <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-4 w-fit mx-auto mb-3 animate-glow-pulse">
+                        <Eye className="h-8 w-8 text-white" />
+                      </div>
+                      <div className="text-2xl font-bold text-blue-400 animate-number-counter">247</div>
+                      <div className="text-slate-300 font-medium">Assets Viewed</div>
+                      <div className="text-xs text-slate-400">This Month</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-4 w-fit mx-auto mb-3 animate-glow-pulse">
+                        <Award className="h-8 w-8 text-white" />
+                      </div>
+                      <div className="text-2xl font-bold text-purple-400 animate-number-counter">89%</div>
+                      <div className="text-slate-300 font-medium">Success Rate</div>
+                      <div className="text-xs text-slate-400">Portfolio Growth</div>
                     </div>
                   </div>
-                  <div className="mt-4 flex gap-2">
-                    <Badge variant="secondary">Early Bird</Badge>
-                    <Badge variant="secondary">Note Explorer</Badge>
-                    <Badge variant="outline">Almost Scholar</Badge>
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 hover-neon">🏆 Top Performer</Badge>
+                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 hover-neon">📈 Rising Trader</Badge>
+                    <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 hover-neon">💎 Market Explorer</Badge>
                   </div>
                 </CardContent>
               </Card>

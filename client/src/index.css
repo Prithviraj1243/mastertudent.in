@@ -120,38 +120,51 @@
 }
 
 @layer utilities {
-  /* Enhanced Background Styles */
-  .bg-gradient-primary {
-    background: linear-gradient(135deg, hsl(245, 100%, 60%) 0%, hsl(270, 100%, 65%) 100%);
+  /* TradePulse Hub Style Backgrounds */
+  .bg-trading-dark {
+    background: linear-gradient(135deg, #0a0b1a 0%, #1a1b2e 25%, #16213e 50%, #0f172a 100%);
   }
   
-  .bg-gradient-secondary {
-    background: linear-gradient(135deg, hsl(30, 100%, 60%) 0%, hsl(45, 100%, 65%) 100%);
+  .bg-trading-card {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(100, 116, 139, 0.2);
   }
   
-  .bg-gradient-success {
-    background: linear-gradient(135deg, hsl(142, 85%, 50%) 0%, hsl(160, 100%, 50%) 100%);
+  .bg-pulse-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+    background-size: 400% 400%;
+    animation: pulseGradient 4s ease-in-out infinite;
   }
   
-  .bg-gradient-info {
-    background: linear-gradient(135deg, hsl(200, 100%, 55%) 0%, hsl(180, 100%, 60%) 100%);
+  .bg-pulse-success {
+    background: linear-gradient(135deg, #10b981 0%, #34d399 50%, #6ee7b7 100%);
+    background-size: 400% 400%;
+    animation: pulseGradient 3s ease-in-out infinite;
   }
   
-  .bg-gradient-rainbow {
-    background: linear-gradient(45deg, 
-      hsl(0, 100%, 70%) 0%,
-      hsl(60, 100%, 70%) 16.666%,
-      hsl(120, 100%, 70%) 33.333%,
-      hsl(180, 100%, 70%) 50%,
-      hsl(240, 100%, 70%) 66.666%,
-      hsl(300, 100%, 70%) 83.333%,
-      hsl(360, 100%, 70%) 100%);
+  .bg-pulse-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 50%, #fca5a5 100%);
+    background-size: 400% 400%;
+    animation: pulseGradient 3s ease-in-out infinite;
+  }
+  
+  .bg-trading-gradient {
+    background: linear-gradient(45deg, #0f172a, #1e293b, #334155, #475569);
+    background-size: 400% 400%;
+    animation: tradingFlow 8s ease-in-out infinite;
+  }
+  
+  .bg-neon-glow {
+    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
   
   .bg-glass {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   /* Subject-specific colors */
@@ -195,55 +208,107 @@
     color: hsl(180, 100%, 25%);
   }
   
-  /* Enhanced Animations */
-  .animate-fade-in {
-    animation: fadeIn 0.6s ease-out;
+  /* TradePulse Hub Style Animations */
+  .animate-trading-pulse {
+    animation: tradingPulse 2s ease-in-out infinite;
   }
   
-  .animate-slide-up {
-    animation: slideUp 0.7s ease-out;
+  .animate-value-up {
+    animation: valueUp 0.6s ease-out;
+    color: #10b981;
   }
   
-  .animate-bounce-in {
-    animation: bounceIn 0.8s ease-out;
+  .animate-value-down {
+    animation: valueDown 0.6s ease-out;
+    color: #ef4444;
   }
   
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
   }
   
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  .animate-glow-pulse {
+    animation: glowPulse 3s ease-in-out infinite;
   }
   
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite alternate;
+  .animate-chart-line {
+    animation: chartLine 2s ease-out;
   }
   
-  .animate-rainbow {
-    animation: rainbow 3s linear infinite;
+  .animate-float-subtle {
+    animation: floatSubtle 4s ease-in-out infinite;
   }
   
-  /* Interactive Effects */
-  .hover-lift {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .animate-slide-in-right {
+    animation: slideInRight 0.5s ease-out;
   }
   
-  .hover-lift:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.08);
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
   }
   
-  .hover-scale {
-    transition: transform 0.2s ease-in-out;
+  .animate-number-counter {
+    animation: numberCounter 1.5s ease-out;
   }
   
-  .hover-scale:hover {
-    transform: scale(1.05);
+  /* TradePulse Interactive Effects */
+  .hover-trading-card {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
   }
   
-  .hover-glow:hover {
-    box-shadow: 0 0 20px rgba(245, 100, 60, 0.6), 0 0 40px rgba(245, 100, 60, 0.4);
+  .hover-trading-card:hover {
+    transform: translateY(-12px) scale(1.03);
+    box-shadow: 
+      0 25px 50px rgba(59, 130, 246, 0.15),
+      0 12px 25px rgba(0, 0, 0, 0.1),
+      0 0 30px rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  
+  .hover-glow-intense {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .hover-glow-intense::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .hover-glow-intense:hover::before {
+    left: 100%;
+  }
+  
+  .hover-glow-intense:hover {
+    box-shadow: 
+      0 0 30px rgba(59, 130, 246, 0.4),
+      0 0 60px rgba(59, 130, 246, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-4px);
+  }
+  
+  .hover-neon {
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+  }
+  
+  .hover-neon:hover {
+    border-color: #3b82f6;
+    box-shadow: 
+      0 0 20px rgba(59, 130, 246, 0.5),
+      0 0 40px rgba(59, 130, 246, 0.3),
+      0 0 60px rgba(59, 130, 246, 0.1);
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
   }
   
   /* Card Enhancements */
@@ -394,6 +459,80 @@
 @keyframes rainbow {
   0% { filter: hue-rotate(0deg); }
   100% { filter: hue-rotate(360deg); }
+}
+
+/* TradePulse Hub Keyframes */
+@keyframes tradingPulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes valueUp {
+  0% { transform: translateY(10px); opacity: 0; }
+  50% { transform: translateY(-5px) scale(1.1); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes valueDown {
+  0% { transform: translateY(-10px); opacity: 0; }
+  50% { transform: translateY(5px) scale(1.1); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { 
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.8), 0 0 45px rgba(59, 130, 246, 0.4);
+  }
+}
+
+@keyframes chartLine {
+  0% { stroke-dasharray: 0 1000; }
+  100% { stroke-dasharray: 1000 0; }
+}
+
+@keyframes floatSubtle {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-5px) rotate(0.5deg); }
+  50% { transform: translateY(-8px) rotate(0deg); }
+  75% { transform: translateY(-3px) rotate(-0.5deg); }
+}
+
+@keyframes slideInRight {
+  0% { transform: translateX(50px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes numberCounter {
+  0% { opacity: 0; transform: scale(0.5); }
+  50% { transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulseGradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes tradingFlow {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 100% 25%; }
+  50% { background-position: 0% 75%; }
+  75% { background-position: 50% 100%; }
+  100% { background-position: 0% 50%; }
 }
 
 .note-card {
