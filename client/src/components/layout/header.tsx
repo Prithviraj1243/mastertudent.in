@@ -26,31 +26,34 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50" data-testid="app-header">
+    <header className="bg-gradient-primary border-b-2 border-purple-200 sticky top-0 z-50 shadow-lg" data-testid="app-header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-18">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
-            <Link href="/" className="flex items-center space-x-2" data-testid="link-home">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <GraduationCap className="text-primary-foreground text-sm" />
+            <Link href="/" className="flex items-center space-x-3 hover-scale" data-testid="link-home">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg animate-glow">
+                <GraduationCap className="text-purple-600 text-lg" />
               </div>
-              <span className="text-xl font-bold text-foreground">MasterStudent</span>
+              <div>
+                <span className="text-2xl font-bold text-white">MasterStudent</span>
+                <div className="text-xs text-white/80">🎓 Learn • Excel • Succeed</div>
+              </div>
             </Link>
             
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-6">
-              <Link href="/catalog" className="text-foreground hover:text-primary transition-colors" data-testid="link-catalog">
-                Browse Notes
+            <nav className="hidden md:flex space-x-2 ml-8">
+              <Link href="/catalog" className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all hover-scale font-medium" data-testid="link-catalog">
+                📚 Browse Notes
               </Link>
               {(user.role === 'topper' || user.role === 'admin') && (
-                <Link href="/upload" className="text-foreground hover:text-primary transition-colors" data-testid="link-upload">
-                  Upload Notes
+                <Link href="/upload" className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all hover-scale font-medium" data-testid="link-upload">
+                  ⭐ Upload Notes
                 </Link>
               )}
               {user.role === 'topper' && (
-                <Link href="/analytics" className="text-foreground hover:text-primary transition-colors" data-testid="link-analytics">
-                  Analytics
+                <Link href="/analytics" className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all hover-scale font-medium" data-testid="link-analytics">
+                  📊 Analytics
                 </Link>
               )}
             </nav>
