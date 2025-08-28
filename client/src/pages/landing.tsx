@@ -71,10 +71,7 @@ export default function Landing() {
             </Button>
           </div>
           
-          {/* Floating Elements */}
-          <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full animate-bounce-in glass-effect"></div>
-          <div className="absolute top-20 right-20 w-16 h-16 bg-white/10 rounded-full animate-bounce-in glass-effect" style={{animationDelay: '0.2s'}}></div>
-          <div className="absolute bottom-20 left-20 w-12 h-12 bg-white/10 rounded-full animate-bounce-in glass-effect" style={{animationDelay: '0.4s'}}></div>
+          {/* Floating Elements - Removed */}
           
           {/* Stats Preview */}
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
