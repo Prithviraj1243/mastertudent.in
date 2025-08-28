@@ -1,0 +1,131 @@
+Core Features
+1. User Roles
+Student (User):
+
+Register/login (email/Social auth/OTP).
+
+Upload notes/homework (with tags: Subject, Grade, Topic).
+
+Browse/download notes.
+
+Participate in discussion forums by categories (Latest News, Revolutionary Ideas, Assignments).
+
+Earn coins (10 views = 1 coin) for each uploaded resource.
+
+Exchange coins to download others’ notes; top‐up/purchase coins if needed.
+
+Limited to 1 free download per login (optionally configurable).
+
+Admin:
+
+Send broadcast messages/notifications to all students (suggestions, calls for ideas, updates).
+
+Moderate posts, approve/reject uploads, manage users.
+
+Adjust coin values, payout thresholds, and download pricing.
+
+Access analytics and reports (most active users, top notes, etc.).
+
+2. Discussion Forum (Multigenre)
+Category-based Boards: Separate threads for Latest News, Revolutionary Ideas, Assignment Discussions, General, etc.
+
+Students can post, comment, reply, upvote, and follow threads.
+
+Admins moderate and can pin/feature/lock threads.
+
+3. Notes/Homework Marketplace
+Upload Flow: Student attaches files (PDF/Docs), fills out subject/topic, sets type (Topper’s Notes/Homework).
+
+Each upload receives a view counter.
+
+Reward System: For every 10 unique views, uploader earns 1 coin.
+
+Coin Economy:
+
+10 coins = 1 note download (no charge).
+
+If less than 10 coins, option to pay (₹49 for notes, ₹38 for homework).
+
+Per-login Limit:
+
+1 free download per login session/account.
+
+After that, downloads require coins or payment.
+
+Secure Storage:
+
+File downloads are watermarked/account-tracked.
+
+4. Payment Gateway
+Integrate Razorpay, Paytm, or Stripe to let users purchase coins directly if needed.
+
+5. Notifications & Broadcasts
+In-app notifications for rewards, comments, downloads, admin messages.
+
+Admin panel to push announcements to all users or targeted groups.
+
+System Workflow (How It Works)
+Student registers/logins.
+
+Uploads notes/homework (starts at 0 coins).
+
+Gains coins on views.
+
+Wants to download another note:
+
+If ≥10 coins, spends coins.
+
+If <10 coins, can pay per download (₹49/₹38).
+
+Only 1 free download per login session allowed.
+
+Participates in forums: gives/receives help, earns reputation/badges (optional).
+
+Admin manages content, rewards, users, and sends broadcast messages.
+
+Data Models (Example, for Replit Developer)
+User: id, name, email, phone, password, coins, uploads_count, downloads_count, role, is_active, last_login
+
+Note: id, uploader_id, title, subject, type, file_url, view_count, coin_rewarded, download_price, created_at, status
+
+DiscussionThread: id, category, title, creator_id, created_at, status
+
+DiscussionPost/Comment: id, thread_id, user_id, body, parent_id, created_at
+
+AdminMessage: id, message, target_group, sent_at
+
+Transaction: id, user_id, type (upload/download/payment), note_id, coins, amount, status, created_at
+
+Refined Features for Best Platform
+Modern, mobile-first UI: Use React.js or Vue.js for smooth, app-like experience.
+
+Clean Dashboard:
+
+Upload/manage notes, see coins & downloads.
+
+Discussion forum sidebar with trending threads.
+
+Rewards & Leaderboard: Top contributors highlighted.
+
+Easy moderation: Report abuse, admin ban/approve/suspend.
+
+Security:
+
+Downloads only to registered/logged-in users.
+
+Per-download watermark (user info) for tracking.
+
+Analytics: Students see their uploads, earnings, admin sees platform-wide stats.
+
+Sample Replit Command (Draft Specification)
+Here’s what to tell your Replit developer or paste as your project description:
+
+Build a web app for students to upload and download notes/homework, earn coins (10 views=1 coin), and redeem coins for downloads (10 coins=1 download).
+Paid downloads cost ₹49 (notes) or ₹38 (homework) if user has fewer than 10 coins.
+Per login, allow 1 free download.
+Add a Discussion Forum with categories: Latest News, Revolutionary Ideas, Assignment Discussions—students post/comment/upvote, admin moderates.
+Admin can message all users, adjust coins/pricing, and oversee all content/uploads.
+Files must be watermarked on download.
+Stack: React (frontend), Node.js/Express/MongoDB (backend), Razorpay/Paytm for payments.
+Include role-based access, analytics, notifications.
+Prioritize mobile usability and file security.
