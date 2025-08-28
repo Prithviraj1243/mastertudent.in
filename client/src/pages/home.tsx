@@ -32,10 +32,10 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
+    <div className="min-h-screen bg-trading-dark relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-600/20 via-purple-600/20 to-cyan-600/20 animate-trading-pulse"></div>
       </div>
       
       <Header />

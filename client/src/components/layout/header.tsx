@@ -38,44 +38,45 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-slate-800/95 border-b border-slate-700/50 sticky top-0 z-50 backdrop-blur-md" data-testid="app-header">
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10"></div>
+    <header className="bg-trading-dark border-b border-pink-500/30 sticky top-0 z-50 backdrop-blur-md" data-testid="app-header">
+      <div className="absolute inset-0 bg-gradient-to-r from-pink-600/20 via-purple-600/20 to-cyan-600/20 animate-trading-pulse"></div>
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
             <Link href="/" className="flex items-center space-x-3 hover-trading-card group animate-interactive-hover" data-testid="link-home">
-              <div className="relative w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg border border-blue-300/30">
-                <div className="relative flex items-center justify-center">
-                  🎓
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg transform group-hover:scale-110 transition-transform duration-300">
-                    A+
+              <div className="relative w-14 h-14 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl border-2 border-pink-400/50">
+                <div className="relative">
+                  <div className="text-2xl transform group-hover:scale-110 transition-transform duration-300">📚</div>
+                  <div className="absolute -top-2 -right-2 w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg animate-bounce">
+                    ⭐
                   </div>
+                  <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full animate-ping"></div>
                 </div>
               </div>
               <div>
-                <span className="text-2xl font-bold text-white">
+                <span className="text-2xl font-bold bg-gradient-to-r from-white via-pink-200 to-cyan-200 bg-clip-text text-transparent">
                   MasterStudent
                 </span>
-                <div className="text-xs text-blue-200 font-medium tracking-wide">
-                  🏆 Study Smart, Score High!
+                <div className="text-xs text-pink-200/80 font-medium tracking-wide">
+                  ⚡ Learn • Share • Excel
                 </div>
               </div>
             </Link>
             
             {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-1 ml-8">
-              <Link href="/catalog" className="px-4 py-2 text-slate-300 hover:text-white hover:bg-blue-600/20 rounded-xl transition-all font-medium border border-transparent hover:border-blue-400/50" data-testid="link-catalog">
-                📚 Study Notes
+              <Link href="/catalog" className="px-4 py-2 text-pink-200 hover:text-white hover:bg-gradient-to-r from-pink-600/30 to-purple-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-pink-400/50 animate-interactive-hover" data-testid="link-catalog">
+                📚 Market
               </Link>
-              <Link href="/forum" className="px-4 py-2 text-slate-300 hover:text-white hover:bg-indigo-600/20 rounded-xl transition-all font-medium border border-transparent hover:border-indigo-400/50" data-testid="link-forum">
-                💬 Discussion
+              <Link href="/forum" className="px-4 py-2 text-purple-200 hover:text-white hover:bg-gradient-to-r from-purple-600/30 to-indigo-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-purple-400/50 animate-interactive-hover" data-testid="link-forum">
+                💬 Hub
               </Link>
-              <Link href="/leaderboard" className="px-4 py-2 text-slate-300 hover:text-white hover:bg-purple-600/20 rounded-xl transition-all font-medium border border-transparent hover:border-purple-400/50" data-testid="link-leaderboard">
-                🏆 Leaderboard
+              <Link href="/leaderboard" className="px-4 py-2 text-yellow-200 hover:text-white hover:bg-gradient-to-r from-yellow-600/30 to-orange-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-yellow-400/50 animate-interactive-hover" data-testid="link-leaderboard">
+                🏆 Ranks
               </Link>
-              <Link href="/coin-dashboard" className="px-4 py-2 text-slate-300 hover:text-white hover:bg-green-600/20 rounded-xl transition-all font-medium border border-transparent hover:border-green-400/50" data-testid="link-coin-dashboard">
-                💰 Rewards
+              <Link href="/coin-dashboard" className="px-4 py-2 text-emerald-200 hover:text-white hover:bg-gradient-to-r from-emerald-600/30 to-teal-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-emerald-400/50 animate-interactive-hover" data-testid="link-coin-dashboard">
+                💰 Portfolio
               </Link>
               {(user.role === 'topper' || user.role === 'admin') && (
                 <Link href="/upload" className="px-4 py-2 text-slate-200 hover:text-white hover:bg-gradient-to-r from-indigo-600/20 to-blue-600/20 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-indigo-500/30" data-testid="link-upload">
