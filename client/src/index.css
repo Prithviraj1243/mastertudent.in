@@ -120,17 +120,17 @@
 }
 
 @layer utilities {
-  /* Vibrant Modern Theme Backgrounds */
+  /* Vibrant Light Theme Backgrounds */
   .bg-trading-dark {
-    background: linear-gradient(135deg, #1a0033 0%, #330066 25%, #4d0080 50%, #6600cc 100%);
+    background: linear-gradient(135deg, #fef3ff 0%, #f3e8ff 25%, #e9d5ff 50%, #d8b4fe 100%);
     animation: backgroundShift 8s ease-in-out infinite;
   }
   
   .bg-trading-card {
-    background: linear-gradient(145deg, rgba(26, 0, 51, 0.95) 0%, rgba(77, 0, 128, 0.9) 100%);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(252, 231, 243, 0.9) 100%);
     backdrop-filter: blur(25px);
-    border: 2px solid rgba(255, 0, 255, 0.3);
-    box-shadow: 0 8px 32px rgba(255, 0, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(236, 72, 153, 0.3);
+    box-shadow: 0 8px 32px rgba(236, 72, 153, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   }
   
   .bg-pulse-primary {
