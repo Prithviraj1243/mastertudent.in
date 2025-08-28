@@ -6,27 +6,27 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-trading-dark border-b border-pink-500/30 sticky top-0 z-50 backdrop-blur-md">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-600/20 via-purple-600/20 to-cyan-600/20 animate-trading-pulse"></div>
+      <header className="bg-gradient-to-r from-yellow-100 via-pink-100 to-purple-100 border-b border-orange-300/50 sticky top-0 z-50 backdrop-blur-md">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-300/30 via-pink-300/30 to-purple-300/30 animate-trading-pulse"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-xl animate-glow-pulse">
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400 rounded-xl flex items-center justify-center shadow-xl animate-glow-pulse">
                 <GraduationCap className="text-white text-lg" />
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-white via-pink-200 to-cyan-200 bg-clip-text text-transparent">MasterStudent</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">MasterStudent</span>
             </div>
             
             <div className="flex items-center space-x-4">
               <Button 
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 border-2 border-emerald-400/50 hover:border-teal-400 animate-interactive-hover" 
+                className="bg-gradient-to-r from-green-400 to-emerald-400 text-white hover:from-green-300 hover:to-emerald-300 border-2 border-green-300/50 hover:border-emerald-300 animate-interactive-hover shadow-lg" 
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-login"
               >
                 🔐 Sign In
               </Button>
               <Button 
-                className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 border-2 border-pink-400/50 hover:border-yellow-400 animate-interactive-hover"
+                className="bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 text-white hover:from-orange-300 hover:via-pink-300 hover:to-purple-300 border-2 border-orange-300/50 hover:border-yellow-300 animate-interactive-hover shadow-lg"
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-get-started"
               >
@@ -38,15 +38,15 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-trading-dark overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-cyan-500/20 animate-morphingGlow"></div>
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-yellow-50 via-orange-50 to-pink-50 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-200/30 via-pink-200/30 to-purple-200/30 animate-morphingGlow"></div>
         <div className="relative max-w-7xl mx-auto text-center">
           <div className="animate-fade-in">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              <span className="text-white">Master Your Studies with</span>
-              <span className="block text-white hero-gradient-text animate-pulse-slow"> Top Student Notes</span>
+              <span className="text-gray-800">Master Your Studies with</span>
+              <span className="block bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 bg-clip-text text-transparent animate-pulse-slow"> Top Student Notes</span>
             </h1>
-            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto animate-slide-up">
+            <p className="text-xl text-gray-700 mb-8 max-w-3xl mx-auto animate-slide-up">
               Access premium study notes from top performers, upload your own materials to earn, 
               and join a community of academic excellence.
             </p>
@@ -54,7 +54,7 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-trading-card animate-interactive-hover border-2 border-pink-400/50 hover:border-yellow-400"
+              className="bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 text-white hover:from-orange-300 hover:via-pink-300 hover:to-purple-300 hover-trading-card animate-interactive-hover border-2 border-orange-300/50 hover:border-yellow-300 shadow-xl"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-browse-notes"
             >
@@ -63,7 +63,7 @@ export default function Landing() {
             </Button>
             <Button 
               size="lg"
-              className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-trading-card animate-interactive-hover border-2 border-emerald-400/50 hover:border-cyan-400"
+              className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 text-white hover:from-green-300 hover:via-emerald-300 hover:to-teal-300 hover-trading-card animate-interactive-hover border-2 border-green-300/50 hover:border-teal-300 shadow-xl"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-become-topper"
             >
@@ -76,17 +76,17 @@ export default function Landing() {
           
           {/* Stats Preview */}
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="bg-trading-card border-2 border-pink-500/50 rounded-lg p-6 hover-trading-card animate-interactive-hover">
-              <div className="text-3xl font-bold text-cyan-300 mb-2 animate-number-counter">10,000+</div>
-              <div className="text-pink-200">Quality Notes</div>
+            <div className="bg-white/80 border-2 border-orange-200 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl">
+              <div className="text-3xl font-bold text-orange-600 mb-2 animate-number-counter">10,000+</div>
+              <div className="text-orange-700 font-medium">Quality Notes</div>
             </div>
-            <div className="bg-trading-card border-2 border-emerald-500/50 rounded-lg p-6 hover-trading-card animate-interactive-hover" style={{animationDelay: '0.1s'}}>
-              <div className="text-3xl font-bold text-emerald-300 mb-2 animate-number-counter">5,000+</div>
-              <div className="text-teal-200">Active Students</div>
+            <div className="bg-white/80 border-2 border-green-200 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.1s'}}>
+              <div className="text-3xl font-bold text-green-600 mb-2 animate-number-counter">5,000+</div>
+              <div className="text-green-700 font-medium">Active Students</div>
             </div>
-            <div className="bg-trading-card border-2 border-orange-500/50 rounded-lg p-6 hover-trading-card animate-interactive-hover" style={{animationDelay: '0.2s'}}>
-              <div className="text-3xl font-bold text-orange-300 mb-2 animate-number-counter">500+</div>
-              <div className="text-yellow-200">Top Contributors</div>
+            <div className="bg-white/80 border-2 border-purple-200 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.2s'}}>
+              <div className="text-3xl font-bold text-purple-600 mb-2 animate-number-counter">500+</div>
+              <div className="text-purple-700 font-medium">Top Contributors</div>
             </div>
           </div>
         </div>

@@ -38,22 +38,22 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-trading-dark border-b border-pink-500/30 sticky top-0 z-50 backdrop-blur-md" data-testid="app-header">
-      <div className="absolute inset-0 bg-gradient-to-r from-pink-600/20 via-purple-600/20 to-cyan-600/20 animate-trading-pulse"></div>
+    <header className="bg-gradient-to-r from-yellow-100 via-pink-100 to-purple-100 border-b border-orange-300/50 sticky top-0 z-50 backdrop-blur-md" data-testid="app-header">
+      <div className="absolute inset-0 bg-gradient-to-r from-orange-300/30 via-pink-300/30 to-purple-300/30 animate-trading-pulse"></div>
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
             <Link href="/" className="flex items-center space-x-3 hover-trading-card group animate-interactive-hover" data-testid="link-home">
-              <div className="relative w-12 h-12 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl animate-glow-pulse">
+              <div className="relative w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400 rounded-2xl flex items-center justify-center shadow-2xl animate-glow-pulse">
                 <GraduationCap className="text-white text-xl group-hover:scale-110 transition-transform duration-300" />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping"></div>
               </div>
               <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-white via-pink-200 to-cyan-200 bg-clip-text text-transparent">
+                <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
                   MasterStudent
                 </span>
-                <div className="text-xs text-pink-200/80 font-medium tracking-wide animate-colorPulse">
+                <div className="text-xs text-gray-600 font-medium tracking-wide animate-colorPulse">
                   ⚡ TRADE • LEARN • EARN
                 </div>
               </div>
@@ -61,16 +61,16 @@ export default function Header() {
             
             {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-1 ml-8">
-              <Link href="/catalog" className="px-4 py-2 text-pink-200 hover:text-white hover:bg-gradient-to-r from-pink-600/30 to-purple-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-pink-400/50 animate-interactive-hover" data-testid="link-catalog">
+              <Link href="/catalog" className="px-4 py-2 text-orange-600 hover:text-white hover:bg-gradient-to-r from-orange-400/80 to-pink-400/80 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-orange-400 animate-interactive-hover shadow-lg" data-testid="link-catalog">
                 📚 Market
               </Link>
-              <Link href="/forum" className="px-4 py-2 text-purple-200 hover:text-white hover:bg-gradient-to-r from-purple-600/30 to-indigo-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-purple-400/50 animate-interactive-hover" data-testid="link-forum">
+              <Link href="/forum" className="px-4 py-2 text-purple-600 hover:text-white hover:bg-gradient-to-r from-purple-400/80 to-indigo-400/80 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-purple-400 animate-interactive-hover shadow-lg" data-testid="link-forum">
                 💬 Hub
               </Link>
-              <Link href="/leaderboard" className="px-4 py-2 text-yellow-200 hover:text-white hover:bg-gradient-to-r from-yellow-600/30 to-orange-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-yellow-400/50 animate-interactive-hover" data-testid="link-leaderboard">
+              <Link href="/leaderboard" className="px-4 py-2 text-yellow-600 hover:text-white hover:bg-gradient-to-r from-yellow-400/80 to-orange-400/80 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-yellow-400 animate-interactive-hover shadow-lg" data-testid="link-leaderboard">
                 🏆 Ranks
               </Link>
-              <Link href="/coin-dashboard" className="px-4 py-2 text-emerald-200 hover:text-white hover:bg-gradient-to-r from-emerald-600/30 to-teal-600/30 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-emerald-400/50 animate-interactive-hover" data-testid="link-coin-dashboard">
+              <Link href="/coin-dashboard" className="px-4 py-2 text-emerald-600 hover:text-white hover:bg-gradient-to-r from-emerald-400/80 to-teal-400/80 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-emerald-400 animate-interactive-hover shadow-lg" data-testid="link-coin-dashboard">
                 💰 Portfolio
               </Link>
               {(user.role === 'topper' || user.role === 'admin') && (
