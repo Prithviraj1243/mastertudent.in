@@ -36,8 +36,6 @@ export default function Home() {
       {/* Animated Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-cyan-900/20 animate-trading-pulse"></div>
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-float-subtle"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-subtle" style={{animationDelay: '2s'}}></div>
       </div>
       
       <Header />
@@ -81,7 +79,7 @@ export default function Home() {
                   >
                     <Link href="/catalog" data-testid="button-browse-all">
                       <BookOpen className="mr-2 h-5 w-5" />
-                      📈 Open Market
+                      <span className="text-white font-bold">📈 Browse Notes</span>
                     </Link>
                   </Button>
                   {((user as any)?.role === 'topper' || (user as any)?.role === 'admin') && (
