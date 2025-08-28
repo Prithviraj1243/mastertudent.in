@@ -72,8 +72,8 @@ export default function Home() {
                     asChild
                   >
                     <Link href="/catalog" data-testid="button-browse-all">
-                      <BookOpen className="mr-2 h-5 w-5" />
-                      <span className="text-white font-bold">📈 Browse Notes</span>
+                      <BookOpen className="mr-2 h-5 w-5 text-white" />
+                      <span className="text-white font-bold drop-shadow-lg">📈 Browse Notes</span>
                     </Link>
                   </Button>
                   {((user as any)?.role === 'topper' || (user as any)?.role === 'admin') && (
