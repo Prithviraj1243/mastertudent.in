@@ -45,12 +45,6 @@ export default function Home() {
           {/* Trading Hub Hero Section */}
           <div className="mb-8">
             <div className="bg-trading-card rounded-3xl p-8 border border-slate-600/30 relative overflow-hidden hover-glow-intense">
-              {/* Animated background elements */}
-              <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute top-4 left-4 w-20 h-20 bg-white/10 rounded-full animate-float"></div>
-                <div className="absolute bottom-8 right-8 w-16 h-16 bg-white/10 rounded-full animate-float" style={{animationDelay: '2s'}}></div>
-                <div className="absolute top-1/2 left-1/3 w-12 h-12 bg-white/10 rounded-full animate-float" style={{animationDelay: '4s'}}></div>
-              </div>
               
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6">
