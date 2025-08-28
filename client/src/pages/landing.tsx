@@ -6,35 +6,32 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-gradient-to-r from-yellow-100 via-pink-100 to-purple-100 border-b border-orange-300/50 sticky top-0 z-50 backdrop-blur-md">
-        <div className="absolute inset-0 bg-gradient-to-r from-orange-300/30 via-pink-300/30 to-purple-300/30 animate-trading-pulse"></div>
+      <header className="bg-slate-800/95 border-b border-slate-700/50 sticky top-0 z-50 backdrop-blur-md">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="relative w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400 rounded-2xl flex items-center justify-center shadow-xl animate-glow-pulse border-2 border-white/20">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-orange-300 rounded-lg blur-sm opacity-75"></div>
-                  <div className="relative bg-white rounded-lg p-1 transform hover:rotate-12 transition-transform duration-300">
-                    <div className="text-sm font-black bg-gradient-to-br from-orange-500 to-pink-500 bg-clip-text text-transparent">
-                      MS
-                    </div>
+              <div className="relative w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg border border-blue-300/30">
+                <div className="relative flex items-center justify-center">
+                  🎓
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                    A+
                   </div>
                 </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full animate-ping"></div>
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">MasterStudent</span>
+              <span className="text-2xl font-bold text-white">MasterStudent</span>
             </div>
             
             <div className="flex items-center space-x-4">
               <Button 
-                className="bg-gradient-to-r from-green-400 to-emerald-400 text-white hover:from-green-300 hover:to-emerald-300 border-2 border-green-300/50 hover:border-emerald-300 animate-interactive-hover shadow-lg" 
+                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-400 hover:to-emerald-500 shadow-lg border border-green-400/30" 
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-login"
               >
                 🔐 Sign In
               </Button>
               <Button 
-                className="bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 text-white hover:from-orange-300 hover:via-pink-300 hover:to-purple-300 border-2 border-orange-300/50 hover:border-yellow-300 animate-interactive-hover shadow-lg"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-lg border border-blue-400/30"
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-get-started"
               >
@@ -46,15 +43,15 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-yellow-50 via-orange-50 to-pink-50 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-200/30 via-pink-200/30 to-purple-200/30 animate-morphingGlow"></div>
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-indigo-600/20 to-purple-600/20"></div>
         <div className="relative max-w-7xl mx-auto text-center">
           <div className="animate-fade-in">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              <span className="text-gray-800">Master Your Studies with</span>
-              <span className="block bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 bg-clip-text text-transparent animate-pulse-slow"> Top Student Notes</span>
+              <span className="text-white">Master Your Studies with</span>
+              <span className="block bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent"> Top Student Notes</span>
             </h1>
-            <p className="text-xl text-gray-700 mb-8 max-w-3xl mx-auto animate-slide-up">
+            <p className="text-xl text-slate-200 mb-8 max-w-3xl mx-auto animate-slide-up">
               Access premium study notes from top performers, upload your own materials to earn, 
               and join a community of academic excellence.
             </p>
@@ -62,7 +59,7 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 text-white hover:from-orange-300 hover:via-pink-300 hover:to-purple-300 hover-trading-card animate-interactive-hover border-2 border-orange-300/50 hover:border-yellow-300 shadow-xl"
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 hover-trading-card text-lg px-8 py-4 font-bold shadow-xl border border-blue-400/30"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-browse-notes"
             >
@@ -71,7 +68,7 @@ export default function Landing() {
             </Button>
             <Button 
               size="lg"
-              className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 text-white hover:from-green-300 hover:via-emerald-300 hover:to-teal-300 hover-trading-card animate-interactive-hover border-2 border-green-300/50 hover:border-teal-300 shadow-xl"
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 hover-trading-card text-lg px-8 py-4 font-bold shadow-xl border border-indigo-400/30"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-become-topper"
             >
@@ -84,17 +81,17 @@ export default function Landing() {
           
           {/* Stats Preview */}
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="bg-white/80 border-2 border-orange-200 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl">
-              <div className="text-3xl font-bold text-orange-600 mb-2 animate-number-counter">10,000+</div>
-              <div className="text-orange-700 font-medium">Quality Notes</div>
+            <div className="bg-white/10 backdrop-blur-lg border border-blue-500/30 rounded-xl p-6 hover-trading-card shadow-xl">
+              <div className="text-3xl font-bold text-blue-400 mb-2 animate-number-counter">10,000+</div>
+              <div className="text-blue-200 font-medium">Quality Notes</div>
             </div>
-            <div className="bg-white/80 border-2 border-green-200 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.1s'}}>
-              <div className="text-3xl font-bold text-green-600 mb-2 animate-number-counter">5,000+</div>
-              <div className="text-green-700 font-medium">Active Students</div>
+            <div className="bg-white/10 backdrop-blur-lg border border-indigo-500/30 rounded-xl p-6 hover-trading-card shadow-xl" style={{animationDelay: '0.1s'}}>
+              <div className="text-3xl font-bold text-indigo-400 mb-2 animate-number-counter">5,000+</div>
+              <div className="text-indigo-200 font-medium">Active Students</div>
             </div>
-            <div className="bg-white/80 border-2 border-purple-200 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.2s'}}>
-              <div className="text-3xl font-bold text-purple-600 mb-2 animate-number-counter">500+</div>
-              <div className="text-purple-700 font-medium">Top Contributors</div>
+            <div className="bg-white/10 backdrop-blur-lg border border-purple-500/30 rounded-xl p-6 hover-trading-card shadow-xl" style={{animationDelay: '0.2s'}}>
+              <div className="text-3xl font-bold text-purple-400 mb-2 animate-number-counter">500+</div>
+              <div className="text-purple-200 font-medium">Top Contributors</div>
             </div>
           </div>
         </div>
