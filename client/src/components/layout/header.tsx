@@ -23,7 +23,14 @@ export default function Header() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Fetch coin balance
-  const { data: coinBalance } = useQuery({
+  const { data: coinBalance } = useQuery<{
+    coinBalance: number;
+    freeDownloadsLeft: number;
+    totalEarned: number;
+    totalSpent: number;
+    reputation: number;
+    streak: number;
+  }>({
     queryKey: ['/api/coins/balance'],
     enabled: isAuthenticated,
     refetchInterval: 30000, // Refetch every 30 seconds
