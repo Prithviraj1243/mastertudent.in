@@ -45,16 +45,24 @@ export default function Header() {
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
             <Link href="/" className="flex items-center space-x-3 hover-trading-card group animate-interactive-hover" data-testid="link-home">
-              <div className="relative w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400 rounded-2xl flex items-center justify-center shadow-2xl animate-glow-pulse">
-                <GraduationCap className="text-white text-xl group-hover:scale-110 transition-transform duration-300" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping"></div>
+              <div className="relative w-14 h-14 bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400 rounded-3xl flex items-center justify-center shadow-2xl animate-glow-pulse border-2 border-white/20">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-orange-300 rounded-lg blur-sm opacity-75"></div>
+                  <div className="relative bg-white rounded-lg p-1.5 transform group-hover:rotate-12 transition-transform duration-300">
+                    <div className="text-lg font-black bg-gradient-to-br from-orange-500 to-pink-500 bg-clip-text text-transparent">
+                      MS
+                    </div>
+                  </div>
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full animate-ping"></div>
+                <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full animate-pulse"></div>
               </div>
               <div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
                   MasterStudent
                 </span>
-                <div className="text-xs text-gray-600 font-medium tracking-wide animate-colorPulse">
-                  ⚡ TRADE • LEARN • EARN
+                <div className="text-xs text-gray-600 font-medium tracking-wide">
+                  🚀 LEARN • EARN • EXCEL
                 </div>
               </div>
             </Link>

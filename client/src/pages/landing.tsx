@@ -11,8 +11,16 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400 rounded-xl flex items-center justify-center shadow-xl animate-glow-pulse">
-                <GraduationCap className="text-white text-lg" />
+              <div className="relative w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400 rounded-2xl flex items-center justify-center shadow-xl animate-glow-pulse border-2 border-white/20">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-orange-300 rounded-lg blur-sm opacity-75"></div>
+                  <div className="relative bg-white rounded-lg p-1 transform hover:rotate-12 transition-transform duration-300">
+                    <div className="text-sm font-black bg-gradient-to-br from-orange-500 to-pink-500 bg-clip-text text-transparent">
+                      MS
+                    </div>
+                  </div>
+                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full animate-ping"></div>
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">MasterStudent</span>
             </div>
