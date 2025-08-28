@@ -32,6 +32,10 @@ export const noteStatusEnum = pgEnum('note_status', ['draft', 'submitted', 'appr
 export const reviewStatusEnum = pgEnum('review_status', ['open', 'changes_requested', 'approved', 'rejected']);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'inactive', 'cancelled', 'past_due']);
 export const payoutStatusEnum = pgEnum('payout_status', ['pending', 'approved', 'paid']);
+export const noteTypeEnum = pgEnum('note_type', ['notes', 'homework']);
+export const transactionTypeEnum = pgEnum('transaction_type', ['coin_earned', 'coin_spent', 'coin_purchased', 'download_free', 'download_paid']);
+export const forumCategoryEnum = pgEnum('forum_category', ['latest_news', 'revolutionary_ideas', 'assignment_discussions', 'general', 'help_support']);
+export const broadcastTargetEnum = pgEnum('broadcast_target', ['all_users', 'students', 'toppers', 'reviewers']);
 
 // User storage table (required for Replit Auth)
 export const users = pgTable("users", {
@@ -45,6 +49,13 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true).notNull(),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
+  coinBalance: integer("coin_balance").default(100).notNull(), // Starting bonus
+  freeDownloadsLeft: integer("free_downloads_left").default(3).notNull(), // Free downloads per day
+  lastFreeDownloadReset: timestamp("last_free_download_reset").defaultNow(),
+  reputation: integer("reputation").default(0).notNull(),
+  streak: integer("streak").default(0).notNull(), // Login streak
+  totalEarned: integer("total_earned").default(0).notNull(),
+  totalSpent: integer("total_spent").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -72,6 +83,7 @@ export const notes = pgTable("notes", {
   description: text("description"),
   attachments: text("attachments").array(),
   status: noteStatusEnum("status").default('draft').notNull(),
+  type: noteTypeEnum("type").default('notes').notNull(),
   version: integer("version").default(1),
   slug: varchar("slug").unique(),
   topperId: varchar("topper_id").references(() => users.id).notNull(),
@@ -79,6 +91,14 @@ export const notes = pgTable("notes", {
   publishedAt: timestamp("published_at"),
   featured: boolean("featured").default(false),
   downloadsCount: integer("downloads_count").default(0),
+  viewsCount: integer("views_count").default(0),
+  likesCount: integer("likes_count").default(0),
+  price: integer("price").default(5).notNull(), // Coins required to download
+  isPremium: boolean("is_premium").default(false),
+  tags: text("tags").array(),
+  difficulty: varchar("difficulty"), // beginner, intermediate, advanced
+  estimatedTime: integer("estimated_time"), // minutes to complete
+  thumbnailUrl: varchar("thumbnail_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -122,12 +142,12 @@ export const subscriptions = pgTable("subscriptions", {
 export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  type: varchar("type").notNull(), // 'charge', 'refund', 'payout'
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency").default('INR'),
-  gateway: varchar("gateway"),
-  gatewayRef: varchar("gateway_ref"),
-  status: varchar("status").notNull(),
+  type: transactionTypeEnum("type").notNull(),
+  amount: integer("amount").notNull(), // Coins amount
+  coinChange: integer("coin_change").notNull(), // +/- coins
+  noteId: varchar("note_id").references(() => notes.id), // For download transactions
+  description: text("description"),
+  metadata: jsonb("metadata"), // Additional data
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -174,6 +194,136 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Views tracking (for coin earning)
+export const noteViews = pgTable("note_views", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  noteId: varchar("note_id").references(() => notes.id).notNull(),
+  viewerId: varchar("viewer_id").references(() => users.id).notNull(),
+  coinsEarned: integer("coins_earned").default(0),
+  viewedAt: timestamp("viewed_at").defaultNow(),
+});
+
+// Likes
+export const noteLikes = pgTable("note_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  noteId: varchar("note_id").references(() => notes.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Forum categories
+export const forumCategories = pgTable("forum_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  icon: varchar("icon"),
+  color: varchar("color"),
+  category: forumCategoryEnum("category").notNull(),
+  postsCount: integer("posts_count").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Forum posts
+export const forumPosts = pgTable("forum_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  content: text("content").notNull(),
+  authorId: varchar("author_id").references(() => users.id).notNull(),
+  categoryId: varchar("category_id").references(() => forumCategories.id).notNull(),
+  isPinned: boolean("is_pinned").default(false),
+  isLocked: boolean("is_locked").default(false),
+  viewsCount: integer("views_count").default(0),
+  repliesCount: integer("replies_count").default(0),
+  lastReplyAt: timestamp("last_reply_at"),
+  lastReplyById: varchar("last_reply_by_id").references(() => users.id),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Forum replies
+export const forumReplies = pgTable("forum_replies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  content: text("content").notNull(),
+  authorId: varchar("author_id").references(() => users.id).notNull(),
+  postId: varchar("post_id").references(() => forumPosts.id).notNull(),
+  parentReplyId: varchar("parent_reply_id").references(() => forumReplies.id), // For nested replies
+  likesCount: integer("likes_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Forum reply likes
+export const forumReplyLikes = pgTable("forum_reply_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  replyId: varchar("reply_id").references(() => forumReplies.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Coin packages for purchase
+export const coinPackages = pgTable("coin_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  coins: integer("coins").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").default('INR'),
+  isActive: boolean("is_active").default(true),
+  bonus: integer("bonus").default(0), // Bonus coins
+  isPopular: boolean("is_popular").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Broadcasts (admin announcements)
+export const broadcasts = pgTable("broadcasts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  target: broadcastTargetEnum("target").notNull(),
+  senderId: varchar("sender_id").references(() => users.id).notNull(),
+  isActive: boolean("is_active").default(true),
+  sentAt: timestamp("sent_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User achievements
+export const userAchievements = pgTable("user_achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: varchar("type").notNull(), // first_upload, 100_views, etc.
+  title: varchar("title").notNull(),
+  description: text("description"),
+  badgeIcon: varchar("badge_icon"),
+  badgeColor: varchar("badge_color"),
+  coinsRewarded: integer("coins_rewarded").default(0),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+});
+
+// Daily challenges
+export const dailyChallenges = pgTable("daily_challenges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  type: varchar("type").notNull(), // upload_note, get_views, etc.
+  target: integer("target").notNull(), // Target number
+  reward: integer("reward").notNull(), // Coins reward
+  isActive: boolean("is_active").default(true),
+  validUntil: timestamp("valid_until").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User challenge progress
+export const userChallengeProgress = pgTable("user_challenge_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  challengeId: varchar("challenge_id").references(() => dailyChallenges.id).notNull(),
+  progress: integer("progress").default(0),
+  completed: boolean("completed").default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   topperProfile: one(topperProfiles, {
@@ -191,6 +341,14 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   followsAsTopper: many(follows, { relationName: "topperFollows" }),
   downloads: many(downloads),
   notifications: many(notifications),
+  noteViews: many(noteViews),
+  noteLikes: many(noteLikes),
+  forumPosts: many(forumPosts),
+  forumReplies: many(forumReplies),
+  forumReplyLikes: many(forumReplyLikes),
+  broadcasts: many(broadcasts),
+  achievements: many(userAchievements),
+  challengeProgress: many(userChallengeProgress),
 }));
 
 export const topperProfilesRelations = relations(topperProfiles, ({ one }) => ({
@@ -214,6 +372,9 @@ export const notesRelations = relations(notes, ({ one, many }) => ({
   reviewTasks: many(reviewTasks),
   feedback: many(feedback),
   downloads: many(downloads),
+  views: many(noteViews),
+  likes: many(noteLikes),
+  transactions: many(transactions),
 }));
 
 export const reviewTasksRelations = relations(reviewTasks, ({ one }) => ({
@@ -290,6 +451,105 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }));
 
+export const noteViewsRelations = relations(noteViews, ({ one }) => ({
+  note: one(notes, {
+    fields: [noteViews.noteId],
+    references: [notes.id],
+  }),
+  viewer: one(users, {
+    fields: [noteViews.viewerId],
+    references: [users.id],
+  }),
+}));
+
+export const noteLikesRelations = relations(noteLikes, ({ one }) => ({
+  note: one(notes, {
+    fields: [noteLikes.noteId],
+    references: [notes.id],
+  }),
+  user: one(users, {
+    fields: [noteLikes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const forumCategoriesRelations = relations(forumCategories, ({ many }) => ({
+  posts: many(forumPosts),
+}));
+
+export const forumPostsRelations = relations(forumPosts, ({ one, many }) => ({
+  author: one(users, {
+    fields: [forumPosts.authorId],
+    references: [users.id],
+  }),
+  category: one(forumCategories, {
+    fields: [forumPosts.categoryId],
+    references: [forumCategories.id],
+  }),
+  replies: many(forumReplies),
+  lastReplyBy: one(users, {
+    fields: [forumPosts.lastReplyById],
+    references: [users.id],
+  }),
+}));
+
+export const forumRepliesRelations = relations(forumReplies, ({ one, many }) => ({
+  author: one(users, {
+    fields: [forumReplies.authorId],
+    references: [users.id],
+  }),
+  post: one(forumPosts, {
+    fields: [forumReplies.postId],
+    references: [forumPosts.id],
+  }),
+  parentReply: one(forumReplies, {
+    fields: [forumReplies.parentReplyId],
+    references: [forumReplies.id],
+  }),
+  childReplies: many(forumReplies),
+  likes: many(forumReplyLikes),
+}));
+
+export const forumReplyLikesRelations = relations(forumReplyLikes, ({ one }) => ({
+  reply: one(forumReplies, {
+    fields: [forumReplyLikes.replyId],
+    references: [forumReplies.id],
+  }),
+  user: one(users, {
+    fields: [forumReplyLikes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const broadcastsRelations = relations(broadcasts, ({ one }) => ({
+  sender: one(users, {
+    fields: [broadcasts.senderId],
+    references: [users.id],
+  }),
+}));
+
+export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [userAchievements.userId],
+    references: [users.id],
+  }),
+}));
+
+export const dailyChallengesRelations = relations(dailyChallenges, ({ many }) => ({
+  userProgress: many(userChallengeProgress),
+}));
+
+export const userChallengeProgressRelations = relations(userChallengeProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userChallengeProgress.userId],
+    references: [users.id],
+  }),
+  challenge: one(dailyChallenges, {
+    fields: [userChallengeProgress.challengeId],
+    references: [dailyChallenges.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -323,6 +583,59 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   createdAt: true,
 });
 
+export const insertNoteViewSchema = createInsertSchema(noteViews).omit({
+  id: true,
+  viewedAt: true,
+});
+
+export const insertNoteLikeSchema = createInsertSchema(noteLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForumCategorySchema = createInsertSchema(forumCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForumPostSchema = createInsertSchema(forumPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertForumReplySchema = createInsertSchema(forumReplies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoinPackageSchema = createInsertSchema(coinPackages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBroadcastSchema = createInsertSchema(broadcasts).omit({
+  id: true,
+  sentAt: true,
+  createdAt: true,
+});
+
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({
+  id: true,
+  unlockedAt: true,
+});
+
+export const insertDailyChallengeSchema = createInsertSchema(dailyChallenges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserChallengeProgressSchema = createInsertSchema(userChallengeProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -341,3 +654,26 @@ export type Payout = typeof payouts.$inferSelect;
 export type Follow = typeof follows.$inferSelect;
 export type Download = typeof downloads.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+
+// New types
+export type NoteView = typeof noteViews.$inferSelect;
+export type InsertNoteView = z.infer<typeof insertNoteViewSchema>;
+export type NoteLike = typeof noteLikes.$inferSelect;
+export type InsertNoteLike = z.infer<typeof insertNoteLikeSchema>;
+export type ForumCategory = typeof forumCategories.$inferSelect;
+export type InsertForumCategory = z.infer<typeof insertForumCategorySchema>;
+export type ForumPost = typeof forumPosts.$inferSelect;
+export type InsertForumPost = z.infer<typeof insertForumPostSchema>;
+export type ForumReply = typeof forumReplies.$inferSelect;
+export type InsertForumReply = z.infer<typeof insertForumReplySchema>;
+export type ForumReplyLike = typeof forumReplyLikes.$inferSelect;
+export type CoinPackage = typeof coinPackages.$inferSelect;
+export type InsertCoinPackage = z.infer<typeof insertCoinPackageSchema>;
+export type Broadcast = typeof broadcasts.$inferSelect;
+export type InsertBroadcast = z.infer<typeof insertBroadcastSchema>;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+export type DailyChallenge = typeof dailyChallenges.$inferSelect;
+export type InsertDailyChallenge = z.infer<typeof insertDailyChallengeSchema>;
+export type UserChallengeProgress = typeof userChallengeProgress.$inferSelect;
+export type InsertUserChallengeProgress = z.infer<typeof insertUserChallengeProgressSchema>;

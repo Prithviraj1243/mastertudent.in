@@ -13,6 +13,9 @@ import ReviewQueue from "@/pages/review-queue";
 import AdminDashboard from "@/pages/admin-dashboard";
 import NoteDetail from "@/pages/note-detail";
 import Analytics from "@/pages/analytics";
+import Forum from "@/pages/forum";
+import Leaderboard from "@/pages/leaderboard";
+import CoinDashboard from "@/pages/coin-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -27,6 +30,9 @@ function Router() {
           <Route path="/" component={Home} />
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/catalog" component={Catalog} />
+          <Route path="/forum" component={Forum} />
+          <Route path="/leaderboard" component={Leaderboard} />
+          <Route path="/coin-dashboard" component={CoinDashboard} />
           <Route path="/upload" component={Upload} />
           <Route path="/review-queue" component={ReviewQueue} />
           <Route path="/admin" component={AdminDashboard} />

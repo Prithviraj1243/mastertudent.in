@@ -10,6 +10,17 @@ import {
   follows,
   downloads,
   notifications,
+  noteViews,
+  noteLikes,
+  forumCategories,
+  forumPosts,
+  forumReplies,
+  forumReplyLikes,
+  coinPackages,
+  broadcasts,
+  userAchievements,
+  dailyChallenges,
+  userChallengeProgress,
   type User,
   type UpsertUser,
   type TopperProfile,
@@ -27,6 +38,27 @@ import {
   type Follow,
   type Download,
   type Notification,
+  type NoteView,
+  type InsertNoteView,
+  type NoteLike,
+  type InsertNoteLike,
+  type ForumCategory,
+  type InsertForumCategory,
+  type ForumPost,
+  type InsertForumPost,
+  type ForumReply,
+  type InsertForumReply,
+  type ForumReplyLike,
+  type CoinPackage,
+  type InsertCoinPackage,
+  type Broadcast,
+  type InsertBroadcast,
+  type UserAchievement,
+  type InsertUserAchievement,
+  type DailyChallenge,
+  type InsertDailyChallenge,
+  type UserChallengeProgress,
+  type InsertUserChallengeProgress,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, sql, count, avg, sum } from "drizzle-orm";
@@ -99,6 +131,43 @@ export interface IStorage {
     activeSubscriptions: number;
     pendingReviews: number;
   }>;
+
+  // Coin System Operations
+  getNote(id: string): Promise<Note | undefined>;
+  updateUserCoins(userId: string, coinChange: number): Promise<void>;
+  recordTransaction(userId: string, type: string, amount: number, coinChange: number, noteId?: string, description?: string): Promise<Transaction>;
+  recordNoteView(viewerId: string, noteId: string, coinsEarned: number): Promise<NoteView>;
+  hasUserViewedNoteToday(userId: string, noteId: string): Promise<boolean>;
+  incrementNoteViews(noteId: string): Promise<void>;
+  incrementNoteDownloads(noteId: string): Promise<void>;
+  toggleNoteLike(userId: string, noteId: string): Promise<boolean>;
+  getNoteLikesCount(noteId: string): Promise<number>;
+  hasUserDownloaded(userId: string, noteId: string): Promise<boolean>;
+  resetDailyFreeDownloads(userId: string): Promise<void>;
+  useFreeDowload(userId: string): Promise<void>;
+  getCoinPackages(): Promise<CoinPackage[]>;
+  getUserTransactions(userId: string, page: number, limit: number): Promise<Transaction[]>;
+  getLeaderboard(type: string, limit: number): Promise<any[]>;
+  getDailyChallenges(userId: string): Promise<any[]>;
+  completeDailyChallenge(userId: string, challengeId: string): Promise<{ completed: boolean; coinsEarned?: number; progress?: number }>;
+
+  // Forum Operations
+  createForumCategory(category: InsertForumCategory): Promise<ForumCategory>;
+  getForumCategories(): Promise<ForumCategory[]>;
+  createForumPost(post: InsertForumPost): Promise<ForumPost>;
+  getForumPosts(categoryId?: string, page?: number, limit?: number): Promise<{ posts: ForumPost[]; total: number }>;
+  getForumPost(id: string): Promise<ForumPost | undefined>;
+  createForumReply(reply: InsertForumReply): Promise<ForumReply>;
+  getForumReplies(postId: string): Promise<ForumReply[]>;
+  toggleForumReplyLike(userId: string, replyId: string): Promise<boolean>;
+
+  // Broadcast Operations
+  createBroadcast(broadcast: InsertBroadcast): Promise<Broadcast>;
+  getBroadcasts(target?: string): Promise<Broadcast[]>;
+
+  // Achievement Operations
+  createUserAchievement(achievement: InsertUserAchievement): Promise<UserAchievement>;
+  getUserAchievements(userId: string): Promise<UserAchievement[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -479,6 +548,450 @@ export class DatabaseStorage implements IStorage {
       activeSubscriptions: Number(subscriptionStats.activeSubscriptions) || 0,
       pendingReviews: Number(reviewStats.pendingReviews) || 0,
     };
+  }
+
+  // Coin System Implementations
+  async getNote(id: string): Promise<Note | undefined> {
+    const [note] = await db.select().from(notes).where(eq(notes.id, id));
+    return note;
+  }
+
+  async updateUserCoins(userId: string, coinChange: number): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        coinBalance: sql`${users.coinBalance} + ${coinChange}`,
+        totalEarned: coinChange > 0 ? sql`${users.totalEarned} + ${coinChange}` : users.totalEarned,
+        totalSpent: coinChange < 0 ? sql`${users.totalSpent} + ${Math.abs(coinChange)}` : users.totalSpent,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async recordTransaction(userId: string, type: string, amount: number, coinChange: number, noteId?: string, description?: string): Promise<Transaction> {
+    const [transaction] = await db
+      .insert(transactions)
+      .values({
+        userId,
+        type: type as any,
+        amount,
+        coinChange,
+        noteId,
+        description,
+      })
+      .returning();
+    return transaction;
+  }
+
+  async recordNoteView(viewerId: string, noteId: string, coinsEarned: number): Promise<NoteView> {
+    const [view] = await db
+      .insert(noteViews)
+      .values({
+        noteId,
+        viewerId,
+        coinsEarned,
+      })
+      .returning();
+    return view;
+  }
+
+  async hasUserViewedNoteToday(userId: string, noteId: string): Promise<boolean> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const [view] = await db
+      .select()
+      .from(noteViews)
+      .where(
+        and(
+          eq(noteViews.viewerId, userId),
+          eq(noteViews.noteId, noteId),
+          sql`${noteViews.viewedAt} >= ${today}`
+        )
+      );
+    
+    return !!view;
+  }
+
+  async incrementNoteViews(noteId: string): Promise<void> {
+    await db
+      .update(notes)
+      .set({
+        viewsCount: sql`${notes.viewsCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(notes.id, noteId));
+  }
+
+  async incrementNoteDownloads(noteId: string): Promise<void> {
+    await db
+      .update(notes)
+      .set({
+        downloadsCount: sql`${notes.downloadsCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(notes.id, noteId));
+  }
+
+  async toggleNoteLike(userId: string, noteId: string): Promise<boolean> {
+    const [existingLike] = await db
+      .select()
+      .from(noteLikes)
+      .where(and(eq(noteLikes.userId, userId), eq(noteLikes.noteId, noteId)));
+
+    if (existingLike) {
+      // Remove like
+      await db
+        .delete(noteLikes)
+        .where(and(eq(noteLikes.userId, userId), eq(noteLikes.noteId, noteId)));
+      
+      await db
+        .update(notes)
+        .set({
+          likesCount: sql`${notes.likesCount} - 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(notes.id, noteId));
+      
+      return false;
+    } else {
+      // Add like
+      await db.insert(noteLikes).values({ userId, noteId });
+      
+      await db
+        .update(notes)
+        .set({
+          likesCount: sql`${notes.likesCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(notes.id, noteId));
+      
+      return true;
+    }
+  }
+
+  async getNoteLikesCount(noteId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: count(noteLikes.id) })
+      .from(noteLikes)
+      .where(eq(noteLikes.noteId, noteId));
+    return Number(result.count) || 0;
+  }
+
+  async hasUserDownloaded(userId: string, noteId: string): Promise<boolean> {
+    const [download] = await db
+      .select()
+      .from(downloads)
+      .where(and(eq(downloads.studentId, userId), eq(downloads.noteId, noteId)));
+    return !!download;
+  }
+
+  async resetDailyFreeDownloads(userId: string): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user) return;
+
+    const lastReset = user.lastFreeDownloadReset;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!lastReset || new Date(lastReset) < today) {
+      await db
+        .update(users)
+        .set({
+          freeDownloadsLeft: 3,
+          lastFreeDownloadReset: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+    }
+  }
+
+  async useFreeDowload(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        freeDownloadsLeft: sql`${users.freeDownloadsLeft} - 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async getCoinPackages(): Promise<CoinPackage[]> {
+    return await db
+      .select()
+      .from(coinPackages)
+      .where(eq(coinPackages.isActive, true))
+      .orderBy(coinPackages.price);
+  }
+
+  async getUserTransactions(userId: string, page: number, limit: number): Promise<Transaction[]> {
+    const offset = (page - 1) * limit;
+    return await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.userId, userId))
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getLeaderboard(type: string, limit: number): Promise<any[]> {
+    if (type === 'earnings') {
+      return await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          totalEarned: users.totalEarned,
+          reputation: users.reputation,
+        })
+        .from(users)
+        .where(eq(users.isActive, true))
+        .orderBy(desc(users.totalEarned))
+        .limit(limit);
+    } else if (type === 'reputation') {
+      return await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          reputation: users.reputation,
+          totalEarned: users.totalEarned,
+        })
+        .from(users)
+        .where(eq(users.isActive, true))
+        .orderBy(desc(users.reputation))
+        .limit(limit);
+    }
+    return [];
+  }
+
+  async getDailyChallenges(userId: string): Promise<any[]> {
+    const activeChallenges = await db
+      .select()
+      .from(dailyChallenges)
+      .where(
+        and(
+          eq(dailyChallenges.isActive, true),
+          sql`${dailyChallenges.validUntil} > NOW()`
+        )
+      );
+
+    const challengesWithProgress = await Promise.all(
+      activeChallenges.map(async (challenge) => {
+        const [progress] = await db
+          .select()
+          .from(userChallengeProgress)
+          .where(
+            and(
+              eq(userChallengeProgress.userId, userId),
+              eq(userChallengeProgress.challengeId, challenge.id)
+            )
+          );
+
+        return {
+          ...challenge,
+          progress: progress?.progress || 0,
+          completed: progress?.completed || false,
+        };
+      })
+    );
+
+    return challengesWithProgress;
+  }
+
+  async completeDailyChallenge(userId: string, challengeId: string): Promise<{ completed: boolean; coinsEarned?: number; progress?: number }> {
+    const [challenge] = await db
+      .select()
+      .from(dailyChallenges)
+      .where(eq(dailyChallenges.id, challengeId));
+
+    if (!challenge) {
+      throw new Error('Challenge not found');
+    }
+
+    const [progress] = await db
+      .select()
+      .from(userChallengeProgress)
+      .where(
+        and(
+          eq(userChallengeProgress.userId, userId),
+          eq(userChallengeProgress.challengeId, challengeId)
+        )
+      );
+
+    if (progress?.completed) {
+      return { completed: true, coinsEarned: 0 };
+    }
+
+    const currentProgress = progress?.progress || 0;
+    if (currentProgress >= challenge.target) {
+      // Complete the challenge
+      await db
+        .update(userChallengeProgress)
+        .set({
+          completed: true,
+          completedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(userChallengeProgress.userId, userId),
+            eq(userChallengeProgress.challengeId, challengeId)
+          )
+        );
+
+      // Award coins
+      await this.updateUserCoins(userId, challenge.reward);
+      await this.recordTransaction(userId, 'coin_earned', challenge.reward, challenge.reward, undefined, `Challenge completed: ${challenge.title}`);
+
+      return { completed: true, coinsEarned: challenge.reward };
+    }
+
+    return { completed: false, progress: currentProgress };
+  }
+
+  // Forum Operations
+  async createForumCategory(category: InsertForumCategory): Promise<ForumCategory> {
+    const [newCategory] = await db.insert(forumCategories).values(category).returning();
+    return newCategory;
+  }
+
+  async getForumCategories(): Promise<ForumCategory[]> {
+    return await db
+      .select()
+      .from(forumCategories)
+      .where(eq(forumCategories.isActive, true))
+      .orderBy(forumCategories.name);
+  }
+
+  async createForumPost(post: InsertForumPost): Promise<ForumPost> {
+    const [newPost] = await db.insert(forumPosts).values(post).returning();
+    
+    // Increment posts count for category
+    await db
+      .update(forumCategories)
+      .set({
+        postsCount: sql`${forumCategories.postsCount} + 1`,
+      })
+      .where(eq(forumCategories.id, post.categoryId));
+
+    return newPost;
+  }
+
+  async getForumPosts(categoryId?: string, page = 1, limit = 20): Promise<{ posts: ForumPost[]; total: number }> {
+    const offset = (page - 1) * limit;
+    
+    let query = db.select().from(forumPosts);
+    let countQuery = db.select({ count: count(forumPosts.id) }).from(forumPosts);
+
+    if (categoryId) {
+      query = query.where(eq(forumPosts.categoryId, categoryId));
+      countQuery = countQuery.where(eq(forumPosts.categoryId, categoryId));
+    }
+
+    const [posts, [{ count: total }]] = await Promise.all([
+      query.orderBy(desc(forumPosts.isPinned), desc(forumPosts.lastReplyAt), desc(forumPosts.createdAt)).limit(limit).offset(offset),
+      countQuery
+    ]);
+
+    return { posts, total: Number(total) };
+  }
+
+  async getForumPost(id: string): Promise<ForumPost | undefined> {
+    const [post] = await db.select().from(forumPosts).where(eq(forumPosts.id, id));
+    return post;
+  }
+
+  async createForumReply(reply: InsertForumReply): Promise<ForumReply> {
+    const [newReply] = await db.insert(forumReplies).values(reply).returning();
+    
+    // Update post reply count and last reply info
+    await db
+      .update(forumPosts)
+      .set({
+        repliesCount: sql`${forumPosts.repliesCount} + 1`,
+        lastReplyAt: new Date(),
+        lastReplyById: reply.authorId,
+        updatedAt: new Date(),
+      })
+      .where(eq(forumPosts.id, reply.postId));
+
+    return newReply;
+  }
+
+  async getForumReplies(postId: string): Promise<ForumReply[]> {
+    return await db
+      .select()
+      .from(forumReplies)
+      .where(eq(forumReplies.postId, postId))
+      .orderBy(forumReplies.createdAt);
+  }
+
+  async toggleForumReplyLike(userId: string, replyId: string): Promise<boolean> {
+    const [existingLike] = await db
+      .select()
+      .from(forumReplyLikes)
+      .where(and(eq(forumReplyLikes.userId, userId), eq(forumReplyLikes.replyId, replyId)));
+
+    if (existingLike) {
+      await db
+        .delete(forumReplyLikes)
+        .where(and(eq(forumReplyLikes.userId, userId), eq(forumReplyLikes.replyId, replyId)));
+      
+      await db
+        .update(forumReplies)
+        .set({
+          likesCount: sql`${forumReplies.likesCount} - 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(forumReplies.id, replyId));
+      
+      return false;
+    } else {
+      await db.insert(forumReplyLikes).values({ userId, replyId });
+      
+      await db
+        .update(forumReplies)
+        .set({
+          likesCount: sql`${forumReplies.likesCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(forumReplies.id, replyId));
+      
+      return true;
+    }
+  }
+
+  // Broadcast Operations
+  async createBroadcast(broadcast: InsertBroadcast): Promise<Broadcast> {
+    const [newBroadcast] = await db.insert(broadcasts).values(broadcast).returning();
+    return newBroadcast;
+  }
+
+  async getBroadcasts(target?: string): Promise<Broadcast[]> {
+    let query = db.select().from(broadcasts).where(eq(broadcasts.isActive, true));
+    
+    if (target) {
+      query = query.where(or(eq(broadcasts.target, target as any), eq(broadcasts.target, 'all_users')));
+    }
+
+    return await query.orderBy(desc(broadcasts.sentAt));
+  }
+
+  // Achievement Operations
+  async createUserAchievement(achievement: InsertUserAchievement): Promise<UserAchievement> {
+    const [newAchievement] = await db.insert(userAchievements).values(achievement).returning();
+    return newAchievement;
+  }
+
+  async getUserAchievements(userId: string): Promise<UserAchievement[]> {
+    return await db
+      .select()
+      .from(userAchievements)
+      .where(eq(userAchievements.userId, userId))
+      .orderBy(desc(userAchievements.unlockedAt));
   }
 }
 

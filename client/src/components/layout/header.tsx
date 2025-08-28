@@ -8,14 +8,26 @@ import {
   Bell, 
   Search,
   Menu,
-  LogOut
+  LogOut,
+  Coins,
+  Download,
+  TrendingUp,
+  Gift
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Header() {
   const { user, isAuthenticated } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Fetch coin balance
+  const { data: coinBalance } = useQuery({
+    queryKey: ['/api/coins/balance'],
+    enabled: isAuthenticated,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
   if (!isAuthenticated || !user) {
     return null;
@@ -46,6 +58,12 @@ export default function Header() {
               <Link href="/catalog" className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all hover-scale font-medium" data-testid="link-catalog">
                 📚 Browse Notes
               </Link>
+              <Link href="/forum" className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all hover-scale font-medium" data-testid="link-forum">
+                💬 Discussions
+              </Link>
+              <Link href="/leaderboard" className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all hover-scale font-medium" data-testid="link-leaderboard">
+                🏆 Leaderboard
+              </Link>
               {(user.role === 'topper' || user.role === 'admin') && (
                 <Link href="/upload" className="px-4 py-2 text-white hover:bg-white/20 rounded-lg transition-all hover-scale font-medium" data-testid="link-upload">
                   ⭐ Upload Notes
@@ -72,6 +90,41 @@ export default function Header() {
                   data-testid="input-header-search"
                 />
               </div>
+            </div>
+
+            {/* Coin Balance */}
+            <div className="hidden md:flex items-center space-x-4">
+              {/* Main Coin Balance */}
+              <div className="flex items-center space-x-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 px-4 py-2 rounded-xl border border-yellow-300/30 backdrop-blur-sm hover-scale cursor-pointer">
+                <div className="relative">
+                  <Coins className="text-yellow-500 h-5 w-5 animate-pulse" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-ping"></div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-yellow-600 leading-none" data-testid="text-coin-balance">
+                    {coinBalance?.coinBalance?.toLocaleString() || '100'}
+                  </span>
+                  <span className="text-xs text-yellow-500/80 leading-none">coins</span>
+                </div>
+              </div>
+
+              {/* Free Downloads */}
+              <div className="flex items-center space-x-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 px-3 py-2 rounded-lg border border-green-300/30">
+                <Download className="text-green-500 h-4 w-4" />
+                <span className="text-sm font-medium text-green-600" data-testid="text-free-downloads">
+                  {coinBalance?.freeDownloadsLeft ?? '3'} free
+                </span>
+              </div>
+
+              {/* Streak Indicator */}
+              {coinBalance?.streak && coinBalance.streak > 0 && (
+                <div className="flex items-center space-x-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-3 py-2 rounded-lg border border-purple-300/30">
+                  <TrendingUp className="text-purple-500 h-4 w-4" />
+                  <span className="text-sm font-medium text-purple-600" data-testid="text-streak">
+                    {coinBalance.streak} 🔥
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Subscription Status */}
@@ -114,12 +167,45 @@ export default function Header() {
 
                 {/* Mobile Menu Dropdown */}
                 {showMobileMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg py-1 z-50" data-testid="dropdown-user-menu">
+                  <div className="absolute right-0 mt-2 w-60 bg-card border border-border rounded-md shadow-lg py-1 z-50" data-testid="dropdown-user-menu">
                     <div className="px-4 py-2 border-b border-border">
                       <p className="text-sm font-medium text-foreground">
                         {user.firstName} {user.lastName}
                       </p>
                       <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+
+                    {/* Mobile Coin Stats */}
+                    <div className="px-4 py-3 border-b border-border space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Coins className="text-yellow-500 h-4 w-4" />
+                          <span className="text-sm font-medium">Coins</span>
+                        </div>
+                        <span className="text-sm font-bold text-yellow-600" data-testid="mobile-coin-balance">
+                          {coinBalance?.coinBalance?.toLocaleString() || '100'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Download className="text-green-500 h-4 w-4" />
+                          <span className="text-sm font-medium">Free Downloads</span>
+                        </div>
+                        <span className="text-sm font-medium text-green-600" data-testid="mobile-free-downloads">
+                          {coinBalance?.freeDownloadsLeft ?? '3'}
+                        </span>
+                      </div>
+                      {coinBalance?.streak && coinBalance.streak > 0 && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <TrendingUp className="text-purple-500 h-4 w-4" />
+                            <span className="text-sm font-medium">Streak</span>
+                          </div>
+                          <span className="text-sm font-medium text-purple-600" data-testid="mobile-streak">
+                            {coinBalance.streak} 🔥
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Mobile Navigation Links */}
@@ -130,7 +216,31 @@ export default function Header() {
                         onClick={() => setShowMobileMenu(false)}
                         data-testid="mobile-link-catalog"
                       >
-                        Browse Notes
+                        📚 Browse Notes
+                      </Link>
+                      <Link 
+                        href="/forum" 
+                        className="block px-4 py-2 text-sm text-foreground hover:bg-accent"
+                        onClick={() => setShowMobileMenu(false)}
+                        data-testid="mobile-link-forum"
+                      >
+                        💬 Discussions
+                      </Link>
+                      <Link 
+                        href="/leaderboard" 
+                        className="block px-4 py-2 text-sm text-foreground hover:bg-accent"
+                        onClick={() => setShowMobileMenu(false)}
+                        data-testid="mobile-link-leaderboard"
+                      >
+                        🏆 Leaderboard
+                      </Link>
+                      <Link 
+                        href="/coin-dashboard" 
+                        className="block px-4 py-2 text-sm text-foreground hover:bg-accent"
+                        onClick={() => setShowMobileMenu(false)}
+                        data-testid="mobile-link-coins"
+                      >
+                        🪙 Coin Dashboard
                       </Link>
                       {(user.role === 'topper' || user.role === 'admin') && (
                         <Link 

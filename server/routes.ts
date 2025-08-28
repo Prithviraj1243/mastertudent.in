@@ -11,7 +11,7 @@ import fs from "fs";
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-07-30.basil",
+    apiVersion: "2025-08-27.basil",
   });
 }
 
@@ -421,6 +421,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error unfollowing topper:", error);
       res.status(500).json({ message: "Failed to unfollow topper" });
+    }
+  });
+
+  // Coin System Routes
+
+  // Get user's coin balance and stats
+  app.get('/api/coins/balance', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        coinBalance: user.coinBalance,
+        freeDownloadsLeft: user.freeDownloadsLeft,
+        totalEarned: user.totalEarned,
+        totalSpent: user.totalSpent,
+        reputation: user.reputation,
+        streak: user.streak
+      });
+    } catch (error) {
+      console.error("Error fetching coin balance:", error);
+      res.status(500).json({ message: "Failed to fetch coin balance" });
+    }
+  });
+
+  // Track note view and award coins
+  app.post('/api/notes/:noteId/view', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { noteId } = req.params;
+    
+    try {
+      const note = await storage.getNote(noteId);
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      // Don't award coins for viewing own notes
+      if (note.topperId === userId) {
+        await storage.incrementNoteViews(noteId);
+        return res.json({ coinsEarned: 0, message: "View recorded" });
+      }
+
+      // Check if user already viewed this note today
+      const hasViewedToday = await storage.hasUserViewedNoteToday(userId, noteId);
+      
+      let coinsEarned = 0;
+      if (!hasViewedToday) {
+        // Award 1 coin for first view of the day
+        coinsEarned = 1;
+        await storage.recordNoteView(userId, noteId, coinsEarned);
+        await storage.updateUserCoins(userId, coinsEarned);
+        
+        // Also award coins to the note creator
+        await storage.updateUserCoins(note.topperId, coinsEarned);
+        await storage.recordTransaction(note.topperId, 'coin_earned', coinsEarned, coinsEarned, noteId, 'Earned from note view');
+      }
+
+      await storage.incrementNoteViews(noteId);
+      await storage.recordTransaction(userId, 'coin_earned', coinsEarned, coinsEarned, noteId, 'Earned from viewing note');
+
+      res.json({ coinsEarned, message: coinsEarned > 0 ? "Coins earned!" : "View recorded" });
+    } catch (error) {
+      console.error("Error recording note view:", error);
+      res.status(500).json({ message: "Failed to record view" });
+    }
+  });
+
+  // Like/unlike a note
+  app.post('/api/notes/:noteId/like', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { noteId } = req.params;
+    
+    try {
+      const isLiked = await storage.toggleNoteLike(userId, noteId);
+      const likesCount = await storage.getNoteLikesCount(noteId);
+
+      res.json({ isLiked, likesCount });
+    } catch (error) {
+      console.error("Error toggling note like:", error);
+      res.status(500).json({ message: "Failed to toggle like" });
+    }
+  });
+
+  // Download note (with coin deduction or free download)
+  app.post('/api/notes/:noteId/download', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { noteId } = req.params;
+    
+    try {
+      const user = await storage.getUser(userId);
+      const note = await storage.getNote(noteId);
+      
+      if (!user || !note) {
+        return res.status(404).json({ message: "User or note not found" });
+      }
+
+      // Check if user has already downloaded this note
+      const hasDownloaded = await storage.hasUserDownloaded(userId, noteId);
+      if (hasDownloaded) {
+        return res.json({ message: "Already downloaded", downloaded: true });
+      }
+
+      let usedFreeDownload = false;
+      let coinsSpent = 0;
+
+      // Reset free downloads if it's a new day
+      await storage.resetDailyFreeDownloads(userId);
+
+      // Check if user can use free download
+      if (user.freeDownloadsLeft > 0) {
+        usedFreeDownload = true;
+        await storage.useFreeDowload(userId);
+        await storage.recordTransaction(userId, 'download_free', 0, 0, noteId, 'Free download used');
+      } else if (user.coinBalance >= note.price) {
+        // Use coins to download
+        coinsSpent = note.price;
+        await storage.updateUserCoins(userId, -coinsSpent);
+        await storage.recordTransaction(userId, 'download_paid', coinsSpent, -coinsSpent, noteId, 'Paid download with coins');
+        
+        // Award coins to note creator (50% of price)
+        const creatorEarnings = Math.floor(coinsSpent * 0.5);
+        await storage.updateUserCoins(note.topperId, creatorEarnings);
+        await storage.recordTransaction(note.topperId, 'coin_earned', creatorEarnings, creatorEarnings, noteId, 'Earned from note download');
+      } else {
+        return res.status(400).json({ 
+          message: "Insufficient coins and no free downloads left",
+          required: note.price,
+          current: user.coinBalance
+        });
+      }
+
+      // Record the download
+      await storage.recordDownload(userId, noteId);
+      await storage.incrementNoteDownloads(noteId);
+
+      res.json({ 
+        message: "Download successful",
+        usedFreeDownload,
+        coinsSpent,
+        downloaded: true
+      });
+    } catch (error) {
+      console.error("Error downloading note:", error);
+      res.status(500).json({ message: "Failed to download note" });
+    }
+  });
+
+  // Get coin packages for purchase
+  app.get('/api/coins/packages', async (req, res) => {
+    try {
+      const packages = await storage.getCoinPackages();
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching coin packages:", error);
+      res.status(500).json({ message: "Failed to fetch coin packages" });
+    }
+  });
+
+  // Get transaction history
+  app.get('/api/coins/transactions', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { page = 1, limit = 20 } = req.query;
+    
+    try {
+      const transactions = await storage.getUserTransactions(userId, parseInt(page as string), parseInt(limit as string));
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  // Get leaderboard
+  app.get('/api/leaderboard', async (req, res) => {
+    const { type = 'earnings', limit = 50 } = req.query;
+    
+    try {
+      const leaderboard = await storage.getLeaderboard(type as string, parseInt(limit as string));
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Error fetching leaderboard:", error);
+      res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+  });
+
+  // Get daily challenges
+  app.get('/api/challenges/daily', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    
+    try {
+      const challenges = await storage.getDailyChallenges(userId);
+      res.json(challenges);
+    } catch (error) {
+      console.error("Error fetching daily challenges:", error);
+      res.status(500).json({ message: "Failed to fetch challenges" });
+    }
+  });
+
+  // Complete daily challenge
+  app.post('/api/challenges/:challengeId/complete', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { challengeId } = req.params;
+    
+    try {
+      const result = await storage.completeDailyChallenge(userId, challengeId);
+      if (result.completed) {
+        res.json({ message: "Challenge completed!", coinsEarned: result.coinsEarned });
+      } else {
+        res.json({ message: "Challenge not yet completed", progress: result.progress });
+      }
+    } catch (error) {
+      console.error("Error completing challenge:", error);
+      res.status(500).json({ message: "Failed to complete challenge" });
     }
   });
 
