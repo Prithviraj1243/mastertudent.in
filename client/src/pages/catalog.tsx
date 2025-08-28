@@ -3,9 +3,26 @@ import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, Grid, List } from "lucide-react";
+import { Search, Grid, List, Filter, X } from "lucide-react";
 import NoteCard from "@/components/notes/note-card";
 import { Note } from "@shared/schema";
+
+// Helper function to get subject icons
+const getSubjectIcon = (subject: string) => {
+  const icons: { [key: string]: string } = {
+    'Mathematics': '📐',
+    'Physics': '⚛️',
+    'Chemistry': '🧪',
+    'Biology': '🧬',
+    'Computer Science': '💻',
+    'English': '📚',
+    'History': '📜',
+    'Geography': '🌍',
+    'Economics': '💰',
+    'Political Science': '🏛️'
+  };
+  return icons[subject] || '📖';
+};
 
 export default function Catalog() {
   const [search, setSearch] = useState("");
@@ -74,48 +91,121 @@ export default function Catalog() {
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        {/* Enhanced Search and Filters */}
+        <div className="space-y-4">
+          {/* Main Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
               type="text"
-              placeholder="Search notes by title, topic, or subject..."
+              placeholder="Search for notes, topics, or authors..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="pl-12 py-3 text-lg border-2 hover:border-primary focus:border-primary transition-colors animate-fade-in"
               data-testid="input-search"
             />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Select value={subject} onValueChange={setSubject}>
-              <SelectTrigger className="w-48" data-testid="select-subject">
-                <SelectValue placeholder="All Subjects" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Subjects</SelectItem>
-                {subjects.map((subj) => (
-                  <SelectItem key={subj} value={subj}>
-                    {subj}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={classGrade} onValueChange={setClassGrade}>
-              <SelectTrigger className="w-48" data-testid="select-class">
-                <SelectValue placeholder="All Classes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Classes</SelectItem>
-                {classes.map((cls) => (
-                  <SelectItem key={cls} value={cls}>
-                    {cls}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          {/* Quick Filter Buttons */}
+          <div className="flex flex-wrap gap-2 animate-slide-up">
+            {["Popular", "Recent", "Highly Rated", "Free", "Premium"].map((filter, index) => (
+              <Button
+                key={filter}
+                variant="outline"
+                size="sm"
+                className="hover-scale animate-fade-in"
+                style={{animationDelay: `${index * 0.1}s`}}
+                data-testid={`filter-${filter.toLowerCase()}`}
+              >
+                {filter}
+              </Button>
+            ))}
           </div>
+
+          {/* Detailed Filters */}
+          <div className="flex flex-col lg:flex-row gap-4 animate-slide-up">
+            <div className="flex flex-wrap gap-3 flex-1">
+              <Select value={subject} onValueChange={setSubject}>
+                <SelectTrigger className="w-48 hover:border-primary transition-colors" data-testid="select-subject">
+                  <SelectValue placeholder="All Subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Subjects</SelectItem>
+                  {subjects.map((subj) => (
+                    <SelectItem key={subj} value={subj}>
+                      <div className="flex items-center gap-2">
+                        <span>{getSubjectIcon(subj)}</span>
+                        {subj}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={classGrade} onValueChange={setClassGrade}>
+                <SelectTrigger className="w-48 hover:border-primary transition-colors" data-testid="select-class">
+                  <SelectValue placeholder="All Classes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Classes</SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select defaultValue="recent">
+                <SelectTrigger className="w-48 hover:border-primary transition-colors" data-testid="select-sort">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Most Recent</SelectItem>
+                  <SelectItem value="popular">Most Popular</SelectItem>
+                  <SelectItem value="rating">Highest Rated</SelectItem>
+                  <SelectItem value="downloads">Most Downloaded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearch("");
+                  setSubject("");
+                  setClassGrade("");
+                  setPage(1);
+                }}
+                className="hover-scale"
+                data-testid="button-clear-filters"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Clear All
+              </Button>
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
+          {(search || subject || classGrade) && (
+            <div className="flex items-center gap-2 animate-fade-in">
+              <span className="text-sm text-muted-foreground">Active filters:</span>
+              {search && (
+                <Button variant="secondary" size="sm" onClick={() => setSearch("")}>
+                  Search: "{search}" <X className="ml-1 h-3 w-3" />
+                </Button>
+              )}
+              {subject && (
+                <Button variant="secondary" size="sm" onClick={() => setSubject("")}>
+                  {getSubjectIcon(subject)} {subject} <X className="ml-1 h-3 w-3" />
+                </Button>
+              )}
+              {classGrade && (
+                <Button variant="secondary" size="sm" onClick={() => setClassGrade("")}>
+                  {classGrade} <X className="ml-1 h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

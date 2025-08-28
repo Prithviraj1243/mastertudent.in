@@ -36,19 +36,23 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
-            Master Your Studies with
-            <span className="text-primary"> Top Student Notes</span>
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Access premium study notes from top performers, upload your own materials to earn, 
-            and join a community of academic excellence.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 gradient-hero overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-orange-500/10"></div>
+        <div className="relative max-w-7xl mx-auto text-center">
+          <div className="animate-fade-in">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              <span className="text-white">Master Your Studies with</span>
+              <span className="block text-white hero-gradient-text animate-pulse-slow"> Top Student Notes</span>
+            </h1>
+            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto animate-slide-up">
+              Access premium study notes from top performers, upload your own materials to earn, 
+              and join a community of academic excellence.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
             <Button 
               size="lg" 
+              className="button-glow bg-white text-blue-600 hover:bg-white/90 hover-scale"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-browse-notes"
             >
@@ -58,6 +62,7 @@ export default function Landing() {
             <Button 
               variant="outline" 
               size="lg"
+              className="border-white text-white hover:bg-white hover:text-blue-600 hover-scale"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-become-topper"
             >
@@ -65,13 +70,34 @@ export default function Landing() {
               Become a Topper
             </Button>
           </div>
+          
+          {/* Floating Elements */}
+          <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full animate-bounce-in glass-effect"></div>
+          <div className="absolute top-20 right-20 w-16 h-16 bg-white/10 rounded-full animate-bounce-in glass-effect" style={{animationDelay: '0.2s'}}></div>
+          <div className="absolute bottom-20 left-20 w-12 h-12 bg-white/10 rounded-full animate-bounce-in glass-effect" style={{animationDelay: '0.4s'}}></div>
+          
+          {/* Stats Preview */}
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="glass-effect rounded-lg p-6 hover-lift">
+              <div className="text-3xl font-bold text-white mb-2">10,000+</div>
+              <div className="text-white/80">Quality Notes</div>
+            </div>
+            <div className="glass-effect rounded-lg p-6 hover-lift" style={{animationDelay: '0.1s'}}>
+              <div className="text-3xl font-bold text-white mb-2">5,000+</div>
+              <div className="text-white/80">Active Students</div>
+            </div>
+            <div className="glass-effect rounded-lg p-6 hover-lift" style={{animationDelay: '0.2s'}}>
+              <div className="text-3xl font-bold text-white mb-2">500+</div>
+              <div className="text-white/80">Top Contributors</div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 animate-fade-in">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Why Choose MasterStudent?
             </h2>
@@ -81,10 +107,14 @@ export default function Landing() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center" data-testid="card-feature-quality">
+            <Card className="text-center card-enhanced hover-lift animate-slide-up" data-testid="card-feature-quality">
               <CardHeader>
-                <Star className="h-12 w-12 text-secondary mx-auto mb-4" />
-                <CardTitle>Premium Quality</CardTitle>
+                <div className="relative mb-4">
+                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center hover-scale">
+                    <Star className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <CardTitle className="text-xl font-bold">Premium Quality</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
@@ -93,10 +123,14 @@ export default function Landing() {
               </CardContent>
             </Card>
             
-            <Card className="text-center" data-testid="card-feature-community">
+            <Card className="text-center card-enhanced hover-lift animate-slide-up" data-testid="card-feature-community" style={{animationDelay: '0.2s'}}>
               <CardHeader>
-                <Users className="h-12 w-12 text-secondary mx-auto mb-4" />
-                <CardTitle>Vibrant Community</CardTitle>
+                <div className="relative mb-4">
+                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center hover-scale">
+                    <Users className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <CardTitle className="text-xl font-bold">Vibrant Community</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
@@ -105,10 +139,14 @@ export default function Landing() {
               </CardContent>
             </Card>
             
-            <Card className="text-center" data-testid="card-feature-earnings">
+            <Card className="text-center card-enhanced hover-lift animate-slide-up" data-testid="card-feature-earnings" style={{animationDelay: '0.4s'}}>
               <CardHeader>
-                <TrendingUp className="h-12 w-12 text-secondary mx-auto mb-4" />
-                <CardTitle>Earn from Knowledge</CardTitle>
+                <div className="relative mb-4">
+                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center hover-scale">
+                    <TrendingUp className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                <CardTitle className="text-xl font-bold">Earn from Knowledge</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
