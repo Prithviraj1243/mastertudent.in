@@ -695,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all published notes for sitemap
       const { notes } = await storage.getPublishedNotes({ limit: 1000, offset: 0 });
-      const categories = await storage.getAllEducationalCategories();
+      const categories = await storage.getEducationalCategories();
       
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

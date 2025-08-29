@@ -22,27 +22,43 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route component={Landing} />
+      </Switch>
+    );
+  }
+
+  if (user && !user.onboardingCompleted) {
+    return (
+      <Switch>
+        <Route component={Onboarding} />
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : !user?.onboardingCompleted ? (
-        <Route path="/" component={Onboarding} />
-      ) : (
-        <>
-          <Route path="/" component={Home} />
-          <Route path="/subscribe" component={Subscribe} />
-          <Route path="/catalog" component={Catalog} />
-          <Route path="/forum" component={Forum} />
-          <Route path="/leaderboard" component={Leaderboard} />
-          <Route path="/coin-dashboard" component={CoinDashboard} />
-          <Route path="/upload" component={Upload} />
-          <Route path="/review-queue" component={ReviewQueue} />
-          <Route path="/admin" component={AdminDashboard} />
-          <Route path="/notes/:id" component={NoteDetail} />
-          <Route path="/analytics" component={Analytics} />
-        </>
-      )}
+      <Route path="/" component={Home} />
+      <Route path="/subscribe" component={Subscribe} />
+      <Route path="/catalog" component={Catalog} />
+      <Route path="/forum" component={Forum} />
+      <Route path="/leaderboard" component={Leaderboard} />
+      <Route path="/coin-dashboard" component={CoinDashboard} />
+      <Route path="/upload" component={Upload} />
+      <Route path="/review-queue" component={ReviewQueue} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/notes/:id" component={NoteDetail} />
+      <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>
   );

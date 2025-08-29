@@ -192,8 +192,8 @@ export default function NoteDetail() {
     );
   }
 
-  const note = noteData;
-  const averageRating = note.feedback?.length > 0 
+  const note = noteData as any;
+  const averageRating = note?.feedback?.length > 0 
     ? note.feedback.reduce((sum: number, f: any) => sum + f.rating, 0) / note.feedback.length 
     : 0;
 
