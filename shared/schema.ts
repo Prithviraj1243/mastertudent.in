@@ -37,6 +37,72 @@ export const transactionTypeEnum = pgEnum('transaction_type', ['coin_earned', 'c
 export const forumCategoryEnum = pgEnum('forum_category', ['latest_news', 'revolutionary_ideas', 'assignment_discussions', 'general', 'help_support']);
 export const broadcastTargetEnum = pgEnum('broadcast_target', ['all_users', 'students', 'toppers', 'reviewers']);
 
+// Educational Category Enums
+export const categoryTypeEnum = pgEnum('category_type', ['school', 'competitive_exam', 'professional_exam', 'college', 'certification']);
+export const classLevelEnum = pgEnum('class_level', ['6', '7', '8', '9', '10', '11', '12']);
+export const boardEnum = pgEnum('board', ['CBSE', 'ICSE', 'State_Board', 'IB', 'IGCSE']);
+export const subjectEnum = pgEnum('subject', [
+  'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Hindi', 'Computer_Science',
+  'Economics', 'Accountancy', 'Business_Studies', 'Political_Science', 'History', 'Geography',
+  'Sociology', 'Psychology', 'Philosophy', 'Physical_Education', 'Fine_Arts', 'Music',
+  'Sanskrit', 'French', 'German', 'Spanish', 'Japanese', 'Statistics', 'Home_Science',
+  'Biotechnology', 'Engineering_Graphics', 'Agriculture', 'Environmental_Science'
+]);
+export const examTypeEnum = pgEnum('exam_type', [
+  'JEE_Main', 'JEE_Advanced', 'NEET_UG', 'NEET_PG', 'CUET_UG', 'CUET_PG', 'GATE',
+  'CAT', 'MAT', 'XAT', 'SNAP', 'NMAT', 'CMAT', 'UPSC_CSE', 'UPSC_IES', 'UPSC_CDS',
+  'SSC_CGL', 'SSC_CHSL', 'SSC_CPO', 'SSC_MTS', 'RRB_NTPC', 'RRB_Group_D', 'SBI_PO',
+  'IBPS_PO', 'IBPS_Clerk', 'RBI_Grade_B', 'NABARD', 'LIC_AAO', 'NICL_AO',
+  'State_PSC', 'Teacher_Eligibility', 'NDA', 'CDS', 'AFCAT', 'CAPF',
+  'UGC_NET', 'CSIR_NET', 'ICAR_NET', 'ICAI_CA', 'ICWA_CMA', 'CS_Foundation',
+  'CLAT', 'AILET', 'LSAT', 'Medical_Entrance', 'Engineering_Entrance'
+]);
+export const engineeringBranchEnum = pgEnum('engineering_branch', [
+  'Computer_Science', 'Information_Technology', 'Electronics_Communication', 'Electrical',
+  'Mechanical', 'Civil', 'Chemical', 'Aerospace', 'Biotechnology', 'Automobile',
+  'Industrial', 'Mining', 'Metallurgical', 'Textile', 'Food_Technology',
+  'Environmental', 'Marine', 'Petroleum', 'Agricultural', 'Biomedical',
+  'Robotics', 'AI_ML', 'Data_Science', 'Cyber_Security'
+]);
+export const medicalBranchEnum = pgEnum('medical_branch', [
+  'MBBS_General', 'Anatomy', 'Physiology', 'Biochemistry', 'Pathology', 'Pharmacology',
+  'Microbiology', 'Forensic_Medicine', 'Community_Medicine', 'Internal_Medicine',
+  'Surgery', 'Obstetrics_Gynecology', 'Pediatrics', 'Orthopedics', 'Ophthalmology',
+  'ENT', 'Dermatology', 'Psychiatry', 'Radiology', 'Anesthesiology',
+  'Emergency_Medicine', 'Cardiology', 'Neurology', 'Gastroenterology', 'Pulmonology',
+  'Nephrology', 'Endocrinology', 'Oncology', 'Urology', 'Plastic_Surgery',
+  'Neurosurgery', 'Cardiac_Surgery', 'Dental', 'Nursing', 'Pharmacy', 
+  'Physiotherapy', 'Occupational_Therapy', 'Medical_Lab_Technology', 'Radiology_Technology'
+]);
+
+// Educational Categories Master Table
+export const educationalCategories = pgTable("educational_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  categoryType: categoryTypeEnum("category_type").notNull(),
+  classLevel: classLevelEnum("class_level"),
+  board: boardEnum("board"),
+  examType: examTypeEnum("exam_type"),
+  engineeringBranch: engineeringBranchEnum("engineering_branch"),
+  medicalBranch: medicalBranchEnum("medical_branch"),
+  subjects: subjectEnum("subjects").array(),
+  isActive: boolean("is_active").default(true).notNull(),
+  displayOrder: integer("display_order").default(0),
+  icon: varchar("icon"),
+  color: varchar("color"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User Educational Preferences
+export const userEducationalPreferences = pgTable("user_educational_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  categoryId: varchar("category_id").references(() => educationalCategories.id).notNull(),
+  isPrimary: boolean("is_primary").default(false), // Primary category for user
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // User storage table (required for Replit Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -56,6 +122,8 @@ export const users = pgTable("users", {
   streak: integer("streak").default(0).notNull(), // Login streak
   totalEarned: integer("total_earned").default(0).notNull(),
   totalSpent: integer("total_spent").default(0).notNull(),
+  // Educational preferences
+  onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -77,9 +145,8 @@ export const topperProfiles = pgTable("topper_profiles", {
 export const notes = pgTable("notes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: varchar("title").notNull(),
-  subject: varchar("subject").notNull(),
+  subject: subjectEnum("subject").notNull(),
   topic: varchar("topic"),
-  classGrade: varchar("class_grade").notNull(),
   description: text("description"),
   attachments: text("attachments").array(),
   status: noteStatusEnum("status").default('draft').notNull(),
@@ -99,6 +166,9 @@ export const notes = pgTable("notes", {
   difficulty: varchar("difficulty"), // beginner, intermediate, advanced
   estimatedTime: integer("estimated_time"), // minutes to complete
   thumbnailUrl: varchar("thumbnail_url"),
+  // Educational categorization
+  categoryId: varchar("category_id").references(() => educationalCategories.id).notNull(),
+  classGrade: varchar("class_grade"), // For backwards compatibility, will be deprecated
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -325,11 +395,28 @@ export const userChallengeProgress = pgTable("user_challenge_progress", {
 });
 
 // Relations
+export const educationalCategoriesRelations = relations(educationalCategories, ({ many }) => ({
+  userPreferences: many(userEducationalPreferences),
+  notes: many(notes),
+}));
+
+export const userEducationalPreferencesRelations = relations(userEducationalPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userEducationalPreferences.userId],
+    references: [users.id],
+  }),
+  category: one(educationalCategories, {
+    fields: [userEducationalPreferences.categoryId],
+    references: [educationalCategories.id],
+  }),
+}));
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   topperProfile: one(topperProfiles, {
     fields: [users.id],
     references: [topperProfiles.userId],
   }),
+  educationalPreferences: many(userEducationalPreferences),
   notesAsTopper: many(notes, { relationName: "topperNotes" }),
   notesAsReviewer: many(notes, { relationName: "reviewerNotes" }),
   reviewTasks: many(reviewTasks),
@@ -368,6 +455,10 @@ export const notesRelations = relations(notes, ({ one, many }) => ({
     fields: [notes.reviewerId],
     references: [users.id],
     relationName: "reviewerNotes",
+  }),
+  category: one(educationalCategories, {
+    fields: [notes.categoryId],
+    references: [educationalCategories.id],
   }),
   reviewTasks: many(reviewTasks),
   feedback: many(feedback),
@@ -551,6 +642,16 @@ export const userChallengeProgressRelations = relations(userChallengeProgress, (
 }));
 
 // Insert schemas
+export const insertEducationalCategorySchema = createInsertSchema(educationalCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserEducationalPreferenceSchema = createInsertSchema(userEducationalPreferences).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -637,6 +738,10 @@ export const insertUserChallengeProgressSchema = createInsertSchema(userChalleng
 });
 
 // Types
+export type EducationalCategory = typeof educationalCategories.$inferSelect;
+export type InsertEducationalCategory = z.infer<typeof insertEducationalCategorySchema>;
+export type UserEducationalPreference = typeof userEducationalPreferences.$inferSelect;
+export type InsertUserEducationalPreference = z.infer<typeof insertUserEducationalPreferenceSchema>;
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type TopperProfile = typeof topperProfiles.$inferSelect;

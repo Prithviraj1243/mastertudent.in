@@ -140,13 +140,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notes routes
   app.get('/api/notes', async (req, res) => {
     try {
-      const { subject, classGrade, search, page = '1', limit = '20' } = req.query;
+      const { subject, classGrade, search, categoryId, page = '1', limit = '20' } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
       const { notes, total } = await storage.getPublishedNotes({
         subject: subject as string,
         classGrade: classGrade as string,
         search: search as string,
+        categoryId: categoryId as string,
         limit: parseInt(limit as string),
         offset,
       });
@@ -184,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only toppers can upload notes" });
       }
 
-      const { title, subject, topic, classGrade, description } = req.body;
+      const { title, subject, topic, classGrade, description, categoryId } = req.body;
       const files = req.files as Express.Multer.File[];
 
       // Process uploaded files
@@ -199,6 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         attachments,
         topperId: userId,
         status: 'draft',
+        categoryId: categoryId || null, // Optional for backward compatibility
       });
 
       res.json(note);
@@ -638,6 +640,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error completing challenge:", error);
       res.status(500).json({ message: "Failed to complete challenge" });
+    }
+  });
+
+  // Educational categories routes
+  app.get('/api/educational-categories', async (req, res) => {
+    try {
+      const categories = await storage.getEducationalCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching educational categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  // Complete onboarding
+  app.post('/api/complete-onboarding', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { categoryIds } = req.body;
+
+    try {
+      // Save user's educational preferences
+      if (categoryIds && categoryIds.length > 0) {
+        await storage.saveUserEducationalPreferences(userId, categoryIds);
+      }
+
+      // Mark onboarding as completed
+      await storage.completeUserOnboarding(userId);
+
+      res.json({ message: "Onboarding completed successfully" });
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
+    }
+  });
+
+  // Get user educational preferences
+  app.get('/api/user-educational-preferences', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    
+    try {
+      const preferences = await storage.getUserEducationalPreferences(userId);
+      res.json(preferences);
+    } catch (error) {
+      console.error("Error fetching user preferences:", error);
+      res.status(500).json({ message: "Failed to fetch preferences" });
     }
   });
 

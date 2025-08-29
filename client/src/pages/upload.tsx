@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,7 @@ const uploadSchema = z.object({
   topic: z.string().min(1, "Topic is required"),
   classGrade: z.string().min(1, "Class/Grade is required"),
   description: z.string().min(10, "Description must be at least 10 characters").max(1000, "Description too long"),
+  categoryId: z.string().optional(),
 });
 
 type UploadFormData = z.infer<typeof uploadSchema>;
@@ -34,6 +35,11 @@ export default function Upload() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch educational categories
+  const { data: categories } = useQuery<any[]>({
+    queryKey: ['/api/educational-categories'],
+  });
+
   const form = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
@@ -42,6 +48,7 @@ export default function Upload() {
       topic: "",
       classGrade: "",
       description: "",
+      categoryId: "",
     },
   });
 
@@ -277,6 +284,42 @@ export default function Upload() {
                         )}
                       />
                     </div>
+
+                    {/* Educational Category Selection */}
+                    <FormField
+                      control={form.control}
+                      name="categoryId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Educational Category (Optional)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-category">
+                                <SelectValue placeholder="Choose a category that best fits this note" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="max-h-60">
+                              <SelectItem value="">No specific category</SelectItem>
+                              {categories?.map((category) => (
+                                <SelectItem key={category.id} value={category.id}>
+                                  <div className="flex items-center space-x-2">
+                                    <span>{category.icon}</span>
+                                    <span>{category.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ({category.categoryType.replace('_', ' ')})
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                          <p className="text-xs text-muted-foreground">
+                            Selecting a category helps students find your notes more easily
+                          </p>
+                        </FormItem>
+                      )}
+                    />
 
                     {/* Description */}
                     <FormField

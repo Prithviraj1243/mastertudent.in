@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
+import Onboarding from "@/pages/onboarding";
 import Home from "@/pages/home";
 import Subscribe from "@/pages/subscribe";
 import Catalog from "@/pages/catalog";
@@ -19,12 +20,14 @@ import CoinDashboard from "@/pages/coin-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
+      ) : !user?.onboardingCompleted ? (
+        <Route path="/" component={Onboarding} />
       ) : (
         <>
           <Route path="/" component={Home} />

@@ -21,6 +21,8 @@ import {
   userAchievements,
   dailyChallenges,
   userChallengeProgress,
+  educationalCategories,
+  userEducationalPreferences,
   type User,
   type UpsertUser,
   type TopperProfile,
@@ -86,6 +88,7 @@ export interface IStorage {
     subject?: string;
     classGrade?: string;
     search?: string;
+    categoryId?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ notes: Note[]; total: number }>;
@@ -168,6 +171,12 @@ export interface IStorage {
   // Achievement Operations
   createUserAchievement(achievement: InsertUserAchievement): Promise<UserAchievement>;
   getUserAchievements(userId: string): Promise<UserAchievement[]>;
+
+  // Educational Category Operations
+  getEducationalCategories(): Promise<any[]>;
+  saveUserEducationalPreferences(userId: string, categoryIds: string[]): Promise<void>;
+  getUserEducationalPreferences(userId: string): Promise<any[]>;
+  completeUserOnboarding(userId: string): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -272,17 +281,22 @@ export class DatabaseStorage implements IStorage {
     subject?: string;
     classGrade?: string;
     search?: string;
+    categoryId?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ notes: Note[]; total: number }> {
     const conditions = [eq(notes.status, 'published')];
     
     if (filters?.subject) {
-      conditions.push(eq(notes.subject, filters.subject));
+      conditions.push(eq(notes.subject, filters.subject as any));
     }
     
     if (filters?.classGrade) {
       conditions.push(eq(notes.classGrade, filters.classGrade));
+    }
+    
+    if (filters?.categoryId) {
+      conditions.push(eq(notes.categoryId, filters.categoryId));
     }
     
     if (filters?.search) {
@@ -992,6 +1006,69 @@ export class DatabaseStorage implements IStorage {
       .from(userAchievements)
       .where(eq(userAchievements.userId, userId))
       .orderBy(desc(userAchievements.unlockedAt));
+  }
+
+  // Educational Category Operations
+  async getEducationalCategories(): Promise<any[]> {
+    return await db
+      .select()
+      .from(educationalCategories)
+      .where(eq(educationalCategories.isActive, true))
+      .orderBy(educationalCategories.displayOrder, educationalCategories.name);
+  }
+
+  async saveUserEducationalPreferences(userId: string, categoryIds: string[]): Promise<void> {
+    // First, remove existing preferences for this user
+    await db
+      .delete(userEducationalPreferences)
+      .where(eq(userEducationalPreferences.userId, userId));
+
+    // Then insert new preferences
+    if (categoryIds.length > 0) {
+      const preferences = categoryIds.map((categoryId, index) => ({
+        userId,
+        categoryId,
+        isPrimary: index === 0, // First category is primary
+      }));
+      
+      await db.insert(userEducationalPreferences).values(preferences);
+    }
+  }
+
+  async getUserEducationalPreferences(userId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: userEducationalPreferences.id,
+        isPrimary: userEducationalPreferences.isPrimary,
+        createdAt: userEducationalPreferences.createdAt,
+        category: {
+          id: educationalCategories.id,
+          name: educationalCategories.name,
+          description: educationalCategories.description,
+          categoryType: educationalCategories.categoryType,
+          icon: educationalCategories.icon,
+          color: educationalCategories.color,
+        }
+      })
+      .from(userEducationalPreferences)
+      .innerJoin(
+        educationalCategories,
+        eq(userEducationalPreferences.categoryId, educationalCategories.id)
+      )
+      .where(eq(userEducationalPreferences.userId, userId))
+      .orderBy(desc(userEducationalPreferences.isPrimary), educationalCategories.name);
+  }
+
+  async completeUserOnboarding(userId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        onboardingCompleted: true,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 }
 

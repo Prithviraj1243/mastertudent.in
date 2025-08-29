@@ -28,16 +28,23 @@ export default function Catalog() {
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("");
   const [classGrade, setClassGrade] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(1);
 
+  // Fetch educational categories
+  const { data: categories } = useQuery<any[]>({
+    queryKey: ['/api/educational-categories'],
+  });
+
   const { data: notesData, isLoading } = useQuery({
-    queryKey: ["/api/notes", { search, subject, classGrade, page }],
+    queryKey: ["/api/notes", { search, subject, classGrade, categoryId, page }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
       if (subject) params.append("subject", subject);
       if (classGrade) params.append("classGrade", classGrade);
+      if (categoryId) params.append("categoryId", categoryId);
       params.append("page", page.toString());
       params.append("limit", "20");
 
@@ -150,6 +157,26 @@ export default function Catalog() {
                   <SelectItem value="">All Classes</SelectItem>
                   {classes.map((cls) => (
                     <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger className="w-60 hover:border-primary transition-colors" data-testid="select-category">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="">All Categories</SelectItem>
+                  {categories?.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{category.icon}</span>
+                        <span>{category.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({category.categoryType.replace('_', ' ')})
+                        </span>
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
