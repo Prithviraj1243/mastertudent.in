@@ -35,16 +35,16 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50 relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-200/20 via-purple-200/20 to-cyan-200/20 animate-trading-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-200/20 via-purple-200/20 to-cyan-200/20 animate-study-pulse"></div>
       </div>
       
       <Header />
       <div className="relative z-10 flex">
         <Sidebar />
         <main className="flex-1 p-6 animate-slide-in-right">
-          {/* Trading Hub Hero Section */}
+          {/* Study Dashboard Hero Section */}
           <div className="mb-8">
-            <div className="bg-trading-card rounded-3xl p-8 border border-slate-600/30 relative overflow-hidden hover-glow-intense">
+            <div className="bg-study-card rounded-3xl p-8 border border-slate-600/30 relative overflow-hidden hover-glow-intense">
               
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6">
@@ -53,22 +53,22 @@ export default function Home() {
                   </div>
                   <div>
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent animate-scale-in">
-                      Welcome to TradePulse Hub, {(user as any)?.firstName || 'Trader'}! ⚡
+                      Welcome to MasterStudent, {(user as any)?.firstName || 'Student'}! ⚡
                     </h1>
                     <p className="text-slate-300 text-lg font-medium">
-                      Your learning exchange is live • Portfolio active
+                      Your study hub is active • Learning progress tracked
                     </p>
                   </div>
                 </div>
                 
                 <p className="text-slate-300 mb-8 text-lg leading-relaxed">
-                  🎯 Welcome to the ultimate education trading platform. Buy, sell, and exchange knowledge with real-time coin rewards. 
-                  Join thousands of student traders earning while they learn!
+                  🎯 Welcome to the ultimate education platform. Access, share, and discover knowledge with real-time coin rewards. 
+                  Join thousands of students earning while they learn!
                 </p>
                 
                 <div className="flex flex-wrap gap-4">
                   <Button 
-                    className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
+                    className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
                     asChild
                   >
                     <Link href="/catalog" data-testid="button-browse-all">
@@ -78,95 +78,95 @@ export default function Home() {
                   </Button>
                   {((user as any)?.role === 'topper' || (user as any)?.role === 'admin') && (
                     <Button 
-                      className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold border-2 border-emerald-400/50 hover:border-cyan-400"
+                      className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold border-2 border-emerald-400/50 hover:border-cyan-400"
                       asChild
                     >
                       <Link href="/upload" data-testid="button-upload">
                         <TrendingUp className="mr-2 h-5 w-5 text-white animate-glow-pulse" />
-                        💰 Start Trading
+                        💰 Upload Notes
                       </Link>
                     </Button>
                   )}
                   <Button 
-                    className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 text-white hover:from-orange-500 hover:via-red-500 hover:to-pink-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold border-2 border-orange-400/50 hover:border-pink-400"
+                    className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 text-white hover:from-orange-500 hover:via-red-500 hover:to-pink-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold border-2 border-orange-400/50 hover:border-pink-400"
                     asChild
                   >
                     <Link href="/coin-dashboard" data-testid="button-portfolio">
                       <Star className="mr-2 h-5 w-5 text-white animate-glow-pulse" />
-                      💎 View Portfolio
+                      💎 My Dashboard
                     </Link>
                   </Button>
                 </div>
               </div>
               
-              {/* Live Trading Badge */}
-              <div className="absolute top-4 right-4 bg-trading-card rounded-2xl p-4 border border-green-500/30 animate-glow-pulse">
+              {/* Study Status Badge */}
+              <div className="absolute top-4 right-4 bg-study-card rounded-2xl p-4 border border-green-500/30 animate-glow-pulse">
                 <div className="text-center">
                   <div className="flex items-center justify-center mb-2">
                     <div className="w-3 h-3 bg-green-400 rounded-full animate-ping mr-2"></div>
-                    <span className="text-xs font-bold text-green-300">LIVE TRADING</span>
+                    <span className="text-xs font-bold text-green-300">STUDY ACTIVE</span>
                   </div>
-                  <div className="text-sm font-bold text-green-400 animate-value-up">+24.5%</div>
-                  <div className="text-xs text-slate-400">Portfolio Growth</div>
+                  <div className="text-sm font-bold text-green-400 animate-score-up">+24.5%</div>
+                  <div className="text-xs text-slate-400">Learning Progress</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Trading Dashboard Stats */}
+          {/* Study Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-trading-card border-2 border-pink-500/50 hover-trading-card group animate-slide-in-right animate-interactive-hover">
+            <Card className="bg-study-card border-2 border-pink-500/50 hover-study-card group animate-slide-in-right animate-interactive-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-2xl p-3 animate-glow-pulse">
                     <BookOpen className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-cyan-400 text-sm font-bold animate-value-up">+15.2%</div>
+                  <div className="text-cyan-400 text-sm font-bold animate-score-up">+15.2%</div>
                 </div>
                 <div className="text-2xl font-bold text-cyan-300 mb-1 animate-number-counter">10,847</div>
-                <div className="text-pink-200 font-medium">Active Assets</div>
-                <div className="text-xs text-purple-300 mt-1">📈 Market Volume</div>
+                <div className="text-pink-200 font-medium">Study Notes</div>
+                <div className="text-xs text-purple-300 mt-1">📈 Available Content</div>
               </CardContent>
             </Card>
             
-            <Card className="bg-trading-card border-2 border-emerald-500/50 hover-trading-card group animate-slide-in-right animate-interactive-hover" style={{animationDelay: '0.1s'}}>
+            <Card className="bg-study-card border-2 border-emerald-500/50 hover-study-card group animate-slide-in-right animate-interactive-hover" style={{animationDelay: '0.1s'}}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 rounded-2xl p-3 animate-glow-pulse">
                     <Users className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-yellow-400 text-sm font-bold animate-value-up">+8.9%</div>
+                  <div className="text-yellow-400 text-sm font-bold animate-score-up">+8.9%</div>
                 </div>
                 <div className="text-2xl font-bold text-emerald-300 mb-1 animate-number-counter">5,234</div>
-                <div className="text-teal-200 font-medium">Active Traders</div>
+                <div className="text-teal-200 font-medium">Active Students</div>
                 <div className="text-xs text-cyan-300 mt-1">💼 Online Now</div>
               </CardContent>
             </Card>
             
-            <Card className="bg-trading-card border border-purple-500/30 hover-trading-card group animate-slide-in-right" style={{animationDelay: '0.2s'}}>
+            <Card className="bg-study-card border border-purple-500/30 hover-study-card group animate-slide-in-right" style={{animationDelay: '0.2s'}}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-3 animate-glow-pulse">
                     <Download className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-green-400 text-sm font-bold animate-value-up">+32.1%</div>
+                  <div className="text-green-400 text-sm font-bold animate-score-up">+32.1%</div>
                 </div>
                 <div className="text-2xl font-bold text-white mb-1 animate-number-counter">52,941</div>
-                <div className="text-slate-300 font-medium">Total Trades</div>
+                <div className="text-slate-300 font-medium">Downloads</div>
                 <div className="text-xs text-slate-400 mt-1">📊 This Month</div>
               </CardContent>
             </Card>
             
-            <Card className="bg-trading-card border border-yellow-500/30 hover-trading-card group animate-slide-in-right" style={{animationDelay: '0.3s'}}>
+            <Card className="bg-study-card border border-yellow-500/30 hover-study-card group animate-slide-in-right" style={{animationDelay: '0.3s'}}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl p-3 animate-glow-pulse">
                     <Star className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-green-400 text-sm font-bold animate-value-up">+5.7%</div>
+                  <div className="text-green-400 text-sm font-bold animate-score-up">+5.7%</div>
                 </div>
                 <div className="text-2xl font-bold text-white mb-1 animate-number-counter">4.9</div>
-                <div className="text-slate-300 font-medium">Market Rating</div>
+                <div className="text-slate-300 font-medium">Platform Rating</div>
                 <div className="text-xs text-slate-400 mt-1">⭐ Platform Score</div>
               </CardContent>
             </Card>
@@ -264,11 +264,11 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Trading Performance for Students */}
+          {/* Study Performance for Students */}
           {((user as any)?.role === 'student' || true) && (
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">📊 Your Trading Performance</h2>
-              <Card className="bg-trading-card border border-slate-600/30 hover-glow-intense">
+              <h2 className="text-2xl font-bold text-white mb-6">📊 Your Study Performance</h2>
+              <Card className="bg-study-card border border-slate-600/30 hover-glow-intense">
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="text-center">
@@ -277,14 +277,14 @@ export default function Home() {
                       </div>
                       <div className="text-2xl font-bold text-green-400 animate-number-counter">5</div>
                       <div className="text-slate-300 font-medium">Day Streak</div>
-                      <div className="text-xs text-slate-400">Trading Active</div>
+                      <div className="text-xs text-slate-400">Study Active</div>
                     </div>
                     <div className="text-center">
                       <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-4 w-fit mx-auto mb-3 animate-glow-pulse">
                         <Eye className="h-8 w-8 text-white" />
                       </div>
                       <div className="text-2xl font-bold text-blue-400 animate-number-counter">247</div>
-                      <div className="text-slate-300 font-medium">Assets Viewed</div>
+                      <div className="text-slate-300 font-medium">Notes Viewed</div>
                       <div className="text-xs text-slate-400">This Month</div>
                     </div>
                     <div className="text-center">
@@ -293,13 +293,13 @@ export default function Home() {
                       </div>
                       <div className="text-2xl font-bold text-purple-400 animate-number-counter">89%</div>
                       <div className="text-slate-300 font-medium">Success Rate</div>
-                      <div className="text-xs text-slate-400">Portfolio Growth</div>
+                      <div className="text-xs text-slate-400">Study Progress</div>
                     </div>
                   </div>
                   <div className="mt-6 flex flex-wrap gap-2">
                     <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 hover-neon">🏆 Top Performer</Badge>
-                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 hover-neon">📈 Rising Trader</Badge>
-                    <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 hover-neon">💎 Market Explorer</Badge>
+                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 hover-neon">📈 Rising Student</Badge>
+                    <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 hover-neon">💎 Study Explorer</Badge>
                   </div>
                 </CardContent>
               </Card>

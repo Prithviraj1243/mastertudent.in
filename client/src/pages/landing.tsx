@@ -7,7 +7,7 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white/95 border-b border-pink-300/50 sticky top-0 z-50 backdrop-blur-md">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-100/30 via-purple-100/30 to-cyan-100/30 animate-trading-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-100/30 via-purple-100/30 to-cyan-100/30 animate-study-pulse"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
@@ -59,7 +59,7 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
+              className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-browse-notes"
             >
@@ -68,7 +68,7 @@ export default function Landing() {
             </Button>
             <Button 
               size="lg"
-              className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-trading-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-emerald-400/50 hover:border-cyan-400"
+              className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-emerald-400/50 hover:border-cyan-400"
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-become-topper"
             >
@@ -81,15 +81,15 @@ export default function Landing() {
           
           {/* Stats Preview */}
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="bg-white/80 border-2 border-pink-300/50 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl">
+            <div className="bg-white/80 border-2 border-pink-300/50 rounded-xl p-6 hover-study-card animate-interactive-hover shadow-xl">
               <div className="text-3xl font-bold text-purple-600 mb-2 animate-number-counter">10,000+</div>
               <div className="text-purple-700 font-medium">Quality Notes</div>
             </div>
-            <div className="bg-white/80 border-2 border-emerald-300/50 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.1s'}}>
+            <div className="bg-white/80 border-2 border-emerald-300/50 rounded-xl p-6 hover-study-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.1s'}}>
               <div className="text-3xl font-bold text-emerald-600 mb-2 animate-number-counter">5,000+</div>
               <div className="text-emerald-700 font-medium">Active Students</div>
             </div>
-            <div className="bg-white/80 border-2 border-orange-300/50 rounded-xl p-6 hover-trading-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.2s'}}>
+            <div className="bg-white/80 border-2 border-orange-300/50 rounded-xl p-6 hover-study-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.2s'}}>
               <div className="text-3xl font-bold text-orange-600 mb-2 animate-number-counter">500+</div>
               <div className="text-orange-700 font-medium">Top Contributors</div>
             </div>

@@ -120,13 +120,13 @@
 }
 
 @layer utilities {
-  /* Vibrant Light Theme Backgrounds */
-  .bg-trading-dark {
+  /* Educational Theme Backgrounds */
+  .bg-education-gradient {
     background: linear-gradient(135deg, #fef3ff 0%, #f3e8ff 25%, #e9d5ff 50%, #d8b4fe 100%);
     animation: backgroundShift 8s ease-in-out infinite;
   }
   
-  .bg-trading-card {
+  .bg-study-card {
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(252, 231, 243, 0.9) 100%);
     backdrop-filter: blur(25px);
     border: 2px solid rgba(236, 72, 153, 0.3);
@@ -151,10 +151,10 @@
     animation: pulseGradient 3s ease-in-out infinite;
   }
   
-  .bg-trading-gradient {
+  .bg-study-gradient {
     background: linear-gradient(45deg, #0f172a, #1e293b, #334155, #475569);
     background-size: 400% 400%;
-    animation: tradingFlow 8s ease-in-out infinite;
+    animation: studyFlow 8s ease-in-out infinite;
   }
   
   .bg-neon-glow {
@@ -210,18 +210,18 @@
     color: hsl(180, 100%, 25%);
   }
   
-  /* TradePulse Hub Style Animations */
-  .animate-trading-pulse {
-    animation: tradingPulse 2s ease-in-out infinite;
+  /* Educational Platform Animations */
+  .animate-study-pulse {
+    animation: studyPulse 2s ease-in-out infinite;
   }
   
-  .animate-value-up {
-    animation: valueUp 0.6s ease-out;
+  .animate-score-up {
+    animation: scoreUp 0.6s ease-out;
     color: #10b981;
   }
   
-  .animate-value-down {
-    animation: valueDown 0.6s ease-out;
+  .animate-score-down {
+    animation: scoreDown 0.6s ease-out;
     color: #ef4444;
   }
   
@@ -266,18 +266,18 @@
   }
   
   /* Enhanced Interactive Effects */
-  .hover-trading-card {
+  .hover-study-card {
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     cursor: pointer;
   }
   
-  .hover-trading-card:hover {
+  .hover-study-card:hover {
     transform: translateY(-12px) scale(1.05) rotateX(5deg);
     box-shadow: 
-      0 35px 70px rgba(255, 0, 255, 0.25),
-      0 15px 35px rgba(0, 255, 255, 0.15),
-      0 0 40px rgba(255, 255, 0, 0.3);
-    border-color: rgba(255, 0, 255, 0.8);
+      0 35px 70px rgba(139, 92, 246, 0.25),
+      0 15px 35px rgba(59, 130, 246, 0.15),
+      0 0 40px rgba(236, 72, 153, 0.3);
+    border-color: rgba(139, 92, 246, 0.8);
     filter: brightness(1.3) saturate(1.4);
   }
   
@@ -476,25 +476,53 @@
   100% { filter: hue-rotate(360deg); }
 }
 
-/* TradePulse Hub Keyframes */
-@keyframes tradingPulse {
+/* MasterStudent - Study Card Backgrounds */
+.bg-study-card {
+  background: linear-gradient(135deg, 
+    rgba(15, 23, 42, 0.95) 0%, 
+    rgba(30, 41, 59, 0.9) 25%, 
+    rgba(51, 65, 85, 0.85) 50%, 
+    rgba(30, 41, 59, 0.9) 75%, 
+    rgba(15, 23, 42, 0.95) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.hover-study-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-study-card:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 
+              0 10px 10px -5px rgba(0, 0, 0, 0.1),
+              0 0 30px rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.animate-study-pulse {
+  animation: studyFlow 6s ease-in-out infinite;
+}
+
+/* Educational Platform Keyframes */
+@keyframes studyPulse {
   0%, 100% { 
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
     transform: scale(1);
   }
   50% { 
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
     transform: scale(1.02);
   }
 }
 
-@keyframes valueUp {
+@keyframes scoreUp {
   0% { transform: translateY(10px); opacity: 0; }
   50% { transform: translateY(-5px) scale(1.1); }
   100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
-@keyframes valueDown {
+@keyframes scoreDown {
   0% { transform: translateY(-10px); opacity: 0; }
   50% { transform: translateY(5px) scale(1.1); }
   100% { transform: translateY(0) scale(1); opacity: 1; }
@@ -542,7 +570,7 @@
   50% { background-position: 100% 50%; }
 }
 
-@keyframes tradingFlow {
+@keyframes studyFlow {
   0% { background-position: 0% 50%; }
   25% { background-position: 100% 25%; }
   50% { background-position: 0% 75%; }

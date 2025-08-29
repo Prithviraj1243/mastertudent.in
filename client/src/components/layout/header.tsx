@@ -46,12 +46,12 @@ export default function Header() {
 
   return (
     <header className="bg-white/95 border-b border-pink-300/50 sticky top-0 z-50 backdrop-blur-md" data-testid="app-header">
-      <div className="absolute inset-0 bg-gradient-to-r from-pink-100/30 via-purple-100/30 to-cyan-100/30 animate-trading-pulse"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-pink-100/30 via-purple-100/30 to-cyan-100/30 animate-study-pulse"></div>
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
-            <Link href="/" className="flex items-center space-x-3 hover-trading-card group animate-interactive-hover" data-testid="link-home">
+            <Link href="/" className="flex items-center space-x-3 hover-study-card group animate-interactive-hover" data-testid="link-home">
               <div className="relative w-14 h-14 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl border-2 border-pink-400/50">
                 <div className="relative">
                   <div className="text-2xl transform group-hover:scale-110 transition-transform duration-300">📚</div>
@@ -74,20 +74,20 @@ export default function Header() {
             {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-1 ml-8">
               <Link href="/catalog" className="px-4 py-2 text-pink-700 hover:text-white hover:bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-pink-400 animate-interactive-hover" data-testid="link-catalog">
-                📚 Market
+                📚 Browse Notes
               </Link>
               <Link href="/forum" className="px-4 py-2 text-purple-700 hover:text-white hover:bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-purple-400 animate-interactive-hover" data-testid="link-forum">
-                💬 Hub
+                💬 Community
               </Link>
               <Link href="/leaderboard" className="px-4 py-2 text-orange-700 hover:text-white hover:bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-orange-400 animate-interactive-hover" data-testid="link-leaderboard">
-                🏆 Ranks
+                🏆 Leaderboard
               </Link>
               <Link href="/coin-dashboard" className="px-4 py-2 text-emerald-700 hover:text-white hover:bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-emerald-400 animate-interactive-hover" data-testid="link-coin-dashboard">
-                💰 Portfolio
+                💰 My Coins
               </Link>
               {(user.role === 'topper' || user.role === 'admin') && (
                 <Link href="/upload" className="px-4 py-2 text-slate-200 hover:text-white hover:bg-gradient-to-r from-indigo-600/20 to-blue-600/20 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-indigo-500/30" data-testid="link-upload">
-                  ⭐ Trade
+                  ⭐ Upload Notes
                 </Link>
               )}
               {user.role === 'topper' && (
@@ -113,14 +113,14 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Trading-Style Stats */}
+            {/* Study Stats */}
             <div className="hidden md:flex items-center space-x-3">
-              {/* Main Coin Balance - Trading Style */}
+              {/* Main Coin Balance */}
               <div className="relative overflow-hidden group">
-                <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-yellow-500/10 bg-trading-card px-4 py-3 rounded-2xl border border-yellow-500/20 hover-glow-intense cursor-pointer">
+                <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-yellow-500/10 bg-study-card px-4 py-3 rounded-2xl border border-yellow-500/20 hover-glow-intense cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <div className="relative">
-                      <Coins className="text-yellow-400 h-6 w-6 animate-trading-pulse" />
+                      <Coins className="text-yellow-400 h-6 w-6 animate-study-pulse" />
                       <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping"></div>
                     </div>
                     <div className="flex flex-col">
@@ -129,15 +129,12 @@ export default function Header() {
                       </span>
                       <span className="text-xs text-yellow-400/70 leading-none font-medium tracking-wider">COINS</span>
                     </div>
-                    <div className="text-xs text-green-400 font-bold animate-value-up">
-                      +12%
-                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Free Downloads - Trading Style */}
-              <div className="bg-trading-card px-3 py-3 rounded-xl border border-green-500/20 hover-neon group">
+              {/* Free Downloads */}
+              <div className="bg-study-card px-3 py-3 rounded-xl border border-green-500/20 hover-neon group">
                 <div className="flex items-center space-x-2">
                   <Download className="text-green-400 h-5 w-5 group-hover:animate-bounce" />
                   <div className="flex flex-col">
@@ -149,9 +146,9 @@ export default function Header() {
                 </div>
               </div>
 
-              {/* Streak Indicator - Trading Style */}
+              {/* Study Streak */}
               {coinBalance?.streak && coinBalance.streak > 0 && (
-                <div className="bg-trading-card px-3 py-3 rounded-xl border border-orange-500/20 hover-neon group">
+                <div className="bg-study-card px-3 py-3 rounded-xl border border-orange-500/20 hover-neon group">
                   <div className="flex items-center space-x-2">
                     <TrendingUp className="text-orange-400 h-5 w-5 group-hover:animate-pulse" />
                     <div className="flex flex-col">
@@ -165,26 +162,26 @@ export default function Header() {
                 </div>
               )}
 
-              {/* Live Market Indicator */}
-              <div className="bg-trading-card px-3 py-3 rounded-xl border border-cyan-500/20 hover-neon">
+              {/* Study Status Indicator */}
+              <div className="bg-study-card px-3 py-3 rounded-xl border border-cyan-500/20 hover-neon">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
-                  <span className="text-xs text-cyan-300 font-medium">LIVE</span>
+                  <span className="text-xs text-cyan-300 font-medium">ACTIVE</span>
                 </div>
               </div>
             </div>
 
-            {/* Premium Status - Trading Style */}
-            <div className="hidden md:flex items-center space-x-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 bg-trading-card px-3 py-2 rounded-xl border border-purple-500/30 hover-neon">
+            {/* Premium Status */}
+            <div className="hidden md:flex items-center space-x-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 bg-study-card px-3 py-2 rounded-xl border border-purple-500/30 hover-neon">
               <Crown className="text-purple-400 h-4 w-4 animate-float-subtle" />
               <span className="text-sm font-bold text-purple-300" data-testid="text-subscription-status">
                 PRO
               </span>
             </div>
 
-            {/* Notifications - Trading Style */}
+            {/* Notifications */}
             <div className="relative">
-              <Button variant="ghost" size="sm" className="bg-trading-card border border-slate-600/30 hover:border-blue-500/50 hover:bg-blue-600/10 text-slate-300 hover:text-white transition-all duration-300" data-testid="button-notifications">
+              <Button variant="ghost" size="sm" className="bg-study-card border border-slate-600/30 hover:border-blue-500/50 hover:bg-blue-600/10 text-slate-300 hover:text-white transition-all duration-300" data-testid="button-notifications">
                 <Bell className="h-4 w-4" />
               </Button>
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse flex items-center justify-center">
@@ -276,7 +273,7 @@ export default function Header() {
                         onClick={() => setShowMobileMenu(false)}
                         data-testid="mobile-link-forum"
                       >
-                        💬 Discussions
+                        💬 Community
                       </Link>
                       <Link 
                         href="/leaderboard" 
@@ -292,7 +289,7 @@ export default function Header() {
                         onClick={() => setShowMobileMenu(false)}
                         data-testid="mobile-link-coins"
                       >
-                        🪙 Coin Dashboard
+                        🪙 My Coins
                       </Link>
                       {(user.role === 'topper' || user.role === 'admin') && (
                         <Link 
@@ -301,7 +298,7 @@ export default function Header() {
                           onClick={() => setShowMobileMenu(false)}
                           data-testid="mobile-link-upload"
                         >
-                          Upload Notes
+                          📚 Upload Notes
                         </Link>
                       )}
                       {(user.role === 'reviewer' || user.role === 'admin') && (
