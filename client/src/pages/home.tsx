@@ -41,25 +41,25 @@ export default function Home() {
       <Header />
       <div className="relative z-10 flex">
         <Sidebar />
-        <main className="flex-1 p-6 animate-slide-in-right">
+        <main className="flex-1 p-6 animate-slide-in-right" role="main">
           {/* Study Dashboard Hero Section */}
-          <div className="mb-8">
+          <section className="mb-8" aria-labelledby="hero-heading">
             <div className="bg-study-card rounded-3xl p-8 border border-slate-600/30 relative overflow-hidden hover-glow-intense">
               
               <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-6">
+                <header className="flex items-center gap-4 mb-6">
                   <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl animate-glow-pulse">
                     <Award className="h-10 w-10 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent animate-scale-in">
+                    <h1 id="hero-heading" className="text-4xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent animate-scale-in">
                       Welcome to MasterStudent, {(user as any)?.firstName || 'Student'}! ⚡
                     </h1>
                     <p className="text-slate-300 text-lg font-medium">
                       Your study hub is active • Learning progress tracked
                     </p>
                   </div>
-                </div>
+                </header>
                 
                 <p className="text-slate-300 mb-8 text-lg leading-relaxed">
                   🎯 Welcome to the ultimate education platform. Access, share, and discover knowledge with real-time coin rewards. 
@@ -111,7 +111,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           {/* Study Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

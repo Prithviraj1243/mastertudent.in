@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
+import { MetaTags, generateNoteMetaTags } from "@/components/seo/meta-tags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -196,8 +197,12 @@ export default function NoteDetail() {
     ? note.feedback.reduce((sum: number, f: any) => sum + f.rating, 0) / note.feedback.length 
     : 0;
 
+  // Generate SEO meta tags for this specific note
+  const metaTags = generateNoteMetaTags(note);
+
   return (
     <div className="min-h-screen bg-background">
+      <MetaTags {...metaTags} />
       <Header />
       <div className="flex">
         <Sidebar />

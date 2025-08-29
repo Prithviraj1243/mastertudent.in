@@ -64,9 +64,9 @@ export default function Catalog() {
   ];
 
   return (
-    <div className="p-6">
+    <main className="p-6" role="main">
       {/* Header Section */}
-      <div className="mb-8">
+      <header className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground" data-testid="text-catalog-title">
@@ -234,7 +234,7 @@ export default function Catalog() {
             </div>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Notes Grid/List */}
       {isLoading ? (
@@ -296,6 +296,6 @@ export default function Catalog() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

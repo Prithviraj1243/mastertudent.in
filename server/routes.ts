@@ -688,6 +688,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SEO Sitemap route
+  app.get('/sitemap.xml', async (req, res) => {
+    try {
+      const baseUrl = 'https://masterstudent.replit.app';
+      
+      // Get all published notes for sitemap
+      const { notes } = await storage.getPublishedNotes({ limit: 1000, offset: 0 });
+      const categories = await storage.getAllEducationalCategories();
+      
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+  </url>
+  <url>
+    <loc>${baseUrl}/catalog</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+  </url>`;
+
+      // Add category pages
+      categories?.forEach((category: any) => {
+        const categorySlug = category.name.toLowerCase().replace(/\s+/g, '-');
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/category/${categorySlug}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+      });
+
+      // Add individual note pages
+      notes.forEach((note: any) => {
+        const lastMod = note.updatedAt || note.createdAt || note.publishedAt;
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/notes/${note.id}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <lastmod>${new Date(lastMod).toISOString().split('T')[0]}</lastmod>
+  </url>`;
+      });
+
+      sitemap += `
+</urlset>`;
+
+      res.set('Content-Type', 'application/xml');
+      res.send(sitemap);
+    } catch (error) {
+      console.error('Error generating sitemap:', error);
+      res.status(500).json({ message: 'Failed to generate sitemap' });
+    }
+  });
+
   // Serve uploaded files
   app.use('/uploads', (req, res, next) => {
     // Basic file serving - in production, use proper file storage service
