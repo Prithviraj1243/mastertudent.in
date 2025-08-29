@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, GraduationCap, Star, Users, BookOpen, TrendingUp } from "lucide-react";
+import { CheckCircle, GraduationCap, Star, Users, BookOpen, TrendingUp, Quote } from "lucide-react";
 
 export default function Landing() {
   return (
@@ -249,6 +249,206 @@ export default function Landing() {
                 </Button>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              What Our Community Says
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Real stories from students and toppers who've transformed their learning
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Student Testimonials */}
+            <Card className="hover-study-card animate-fade-in" data-testid="testimonial-student-1">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <Quote className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground mb-4 italic">
+                      "MasterStudent saved my semester! I found comprehensive Physics notes that helped me score 95% in my finals. The ₹59/month subscription paid for itself with just one good grade."
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">P</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Priya M.</div>
+                        <div className="text-sm text-muted-foreground">Engineering Student, IIT Delhi</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center mt-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-study-card animate-fade-in" style={{animationDelay: '0.2s'}} data-testid="testimonial-topper-1">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <Quote className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground mb-4 italic">
+                      "As a topper, I've earned over ₹15,000 by uploading my Chemistry notes. It's amazing how my study materials can help others while generating income for me!"
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">A</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Arjun K.</div>
+                        <div className="text-sm text-muted-foreground">Medical Student, AIIMS</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center mt-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-study-card animate-fade-in" style={{animationDelay: '0.4s'}} data-testid="testimonial-student-2">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <Quote className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground mb-4 italic">
+                      "The quality of notes here is incredible! I found detailed Computer Science algorithms that my professors recommended. Much better value than expensive textbooks."
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">R</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Rahul S.</div>
+                        <div className="text-sm text-muted-foreground">CS Student, NIT Trichy</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center mt-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-study-card animate-fade-in" style={{animationDelay: '0.6s'}} data-testid="testimonial-topper-2">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <Quote className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground mb-4 italic">
+                      "I upload my Mathematics notes after every semester. Students love the step-by-step solutions, and I've built a steady income stream. Win-win for everyone!"
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">S</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Sneha D.</div>
+                        <div className="text-sm text-muted-foreground">Math Honors, St. Xavier's</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center mt-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-study-card animate-fade-in" style={{animationDelay: '0.8s'}} data-testid="testimonial-student-3">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <Quote className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground mb-4 italic">
+                      "Found amazing Biology diagrams and explanations that made complex topics simple. The yearly plan at ₹499 is such good value - saved me thousands on coaching!"
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">M</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Meera T.</div>
+                        <div className="text-sm text-muted-foreground">Pre-Med Student, DU</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center mt-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover-study-card animate-fade-in" style={{animationDelay: '1s'}} data-testid="testimonial-topper-3">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <Quote className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground mb-4 italic">
+                      "My Economics notes have been downloaded 500+ times! The platform makes it so easy to share knowledge and earn. Already made ₹8,000 this semester."
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">V</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">Vikash P.</div>
+                        <div className="text-sm text-muted-foreground">Economics Honors, LSR</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center mt-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="mt-16 text-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              <div className="bg-white/80 border-2 border-green-300/50 rounded-xl p-6 hover-study-card animate-fade-in">
+                <div className="text-3xl font-bold text-green-600 mb-2">4.8/5</div>
+                <div className="text-green-700 font-medium">Average Rating</div>
+                <div className="text-sm text-muted-foreground mt-1">Based on 2,500+ reviews</div>
+              </div>
+              <div className="bg-white/80 border-2 border-blue-300/50 rounded-xl p-6 hover-study-card animate-fade-in" style={{animationDelay: '0.1s'}}>
+                <div className="text-3xl font-bold text-blue-600 mb-2">50,000+</div>
+                <div className="text-blue-700 font-medium">Happy Students</div>
+                <div className="text-sm text-muted-foreground mt-1">And growing every day</div>
+              </div>
+              <div className="bg-white/80 border-2 border-purple-300/50 rounded-xl p-6 hover-study-card animate-fade-in" style={{animationDelay: '0.2s'}}>
+                <div className="text-3xl font-bold text-purple-600 mb-2">₹2L+</div>
+                <div className="text-purple-700 font-medium">Earned by Toppers</div>
+                <div className="text-sm text-muted-foreground mt-1">Total earnings this year</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
