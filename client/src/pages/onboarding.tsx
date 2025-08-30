@@ -21,7 +21,7 @@ export default function Onboarding() {
   // Complete onboarding mutation
   const completeOnboarding = useMutation({
     mutationFn: async (categoryIds: string[]) => {
-      return apiRequest('/api/complete-onboarding', 'POST', { categoryIds });
+      return apiRequest('POST', '/api/complete-onboarding', { categoryIds });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
