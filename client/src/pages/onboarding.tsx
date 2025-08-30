@@ -52,10 +52,11 @@ export default function Onboarding() {
   }
 
   const groupedCategories = categories?.reduce((acc, category) => {
-    if (!acc[category.categoryType]) {
-      acc[category.categoryType] = [];
+    const categoryType = (category as any).category_type || category.categoryType;
+    if (!acc[categoryType]) {
+      acc[categoryType] = [];
     }
-    acc[category.categoryType].push(category);
+    acc[categoryType].push(category);
     return acc;
   }, {} as Record<string, EducationalCategory[]>) || {};
 
@@ -99,7 +100,7 @@ export default function Onboarding() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="school" data-testid="tab-school">
-                🏫 School (6th-12th)
+                🏫 School (9th-12th)
               </TabsTrigger>
               <TabsTrigger value="competitive_exam" data-testid="tab-competitive">
                 🎯 Entrance Exams
