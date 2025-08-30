@@ -52,13 +52,19 @@ export default function Onboarding() {
   }
 
   const groupedCategories = categories?.reduce((acc, category) => {
-    const categoryType = (category as any).category_type || category.categoryType;
+    const categoryType = (category as any).category_type || (category as any).categoryType;
     if (!acc[categoryType]) {
       acc[categoryType] = [];
     }
     acc[categoryType].push(category);
     return acc;
   }, {} as Record<string, EducationalCategory[]>) || {};
+
+  // Ensure we have data for each tab
+  if (!groupedCategories.school) groupedCategories.school = [];
+  if (!groupedCategories.competitive_exam) groupedCategories.competitive_exam = [];
+  if (!groupedCategories.professional_exam) groupedCategories.professional_exam = [];
+  if (!groupedCategories.college) groupedCategories.college = [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
@@ -115,6 +121,9 @@ export default function Onboarding() {
 
             {Object.entries(groupedCategories).map(([type, cats]) => (
               <TabsContent key={type} value={type} className="mt-6">
+                <div className="mb-4 text-sm text-gray-600">
+                  Found {cats.length} categories in {type}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {cats.map((category) => {
                     const isSelected = selectedCategories.includes(category.id);
