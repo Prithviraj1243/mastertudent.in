@@ -47,7 +47,21 @@ export default function Onboarding() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading categories...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!categories || categories.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 text-lg">No categories found!</p>
+          <p className="text-gray-600">API Response: {JSON.stringify(categories)}</p>
+        </div>
       </div>
     );
   }
@@ -122,13 +136,13 @@ export default function Onboarding() {
 
             {Object.entries(groupedCategories).map(([type, cats]) => (
               <TabsContent key={type} value={type} className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {cats.map((category) => {
-                    const isSelected = selectedCategories.includes(category.id);
-                    return (
-                      <Card
-                        key={category.id}
-                        className={`p-4 cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {cats.map((category) => {
+                      const isSelected = selectedCategories.includes(category.id);
+                      return (
+                        <Card
+                          key={category.id}
+                          className={`p-4 cursor-pointer transition-all duration-200 hover:shadow-lg ${
                           isSelected 
                             ? 'border-2 border-purple-500 bg-purple-50 shadow-lg' 
                             : 'border border-gray-200 hover:border-purple-300'
