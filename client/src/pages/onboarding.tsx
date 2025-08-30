@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,16 +13,10 @@ export default function Onboarding() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('school');
 
-  // Clear cache on component mount
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['/api/educational-categories'] });
-  }, []);
 
   // Fetch all educational categories
   const { data: categories, isLoading } = useQuery<EducationalCategory[]>({
     queryKey: ['/api/educational-categories'],
-    staleTime: 0, // Force fresh data
-    refetchOnMount: true,
   });
 
   // Complete onboarding mutation
@@ -59,7 +53,7 @@ export default function Onboarding() {
   }
 
   const groupedCategories = categories?.reduce((acc, category) => {
-    const categoryType = (category as any).category_type || (category as any).categoryType;
+    const categoryType = (category as any).categoryType;
     if (!acc[categoryType]) {
       acc[categoryType] = [];
     }
@@ -128,14 +122,6 @@ export default function Onboarding() {
 
             {Object.entries(groupedCategories).map(([type, cats]) => (
               <TabsContent key={type} value={type} className="mt-6">
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
-                  <div className="text-sm text-gray-600 mb-2">
-                    Debug Info: Found {cats.length} categories in "{type}"
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Categories: {cats.map(c => c.name).join(', ')}
-                  </div>
-                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {cats.map((category) => {
                     const isSelected = selectedCategories.includes(category.id);
