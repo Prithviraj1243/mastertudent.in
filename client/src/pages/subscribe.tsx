@@ -64,7 +64,7 @@ const SubscribeForm = ({ plan }: { plan: string }) => {
 
 export default function Subscribe() {
   const [clientSecret, setClientSecret] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState("yearly");
+  const [selectedPlan, setSelectedPlan] = useState("");
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -152,9 +152,6 @@ export default function Subscribe() {
               onClick={() => setSelectedPlan('yearly')}
               data-testid="card-yearly-plan"
             >
-              <div className="absolute -top-3 left-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
-                Best Value
-              </div>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Yearly Plan
@@ -189,10 +186,15 @@ export default function Subscribe() {
             <Button 
               size="lg" 
               onClick={() => createSubscription(selectedPlan)}
-              disabled={loading}
+              disabled={loading || !selectedPlan}
               data-testid="button-proceed-payment"
             >
-              {loading ? "Processing..." : `Subscribe to ${selectedPlan === 'yearly' ? 'Yearly' : 'Monthly'} Plan`}
+              {loading 
+                ? "Processing..." 
+                : !selectedPlan 
+                ? "Select a Plan" 
+                : `Subscribe to ${selectedPlan === 'yearly' ? 'Yearly' : 'Monthly'} Plan`
+              }
             </Button>
           </div>
         </div>
