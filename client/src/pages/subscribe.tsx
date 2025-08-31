@@ -152,6 +152,9 @@ export default function Subscribe() {
               onClick={() => setSelectedPlan('yearly')}
               data-testid="card-yearly-plan"
             >
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg z-10">
+                MOST POPULAR
+              </div>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Yearly Plan
