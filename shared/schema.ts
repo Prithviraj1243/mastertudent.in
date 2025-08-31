@@ -318,7 +318,7 @@ export const forumReplies = pgTable("forum_replies", {
   content: text("content").notNull(),
   authorId: varchar("author_id").references(() => users.id).notNull(),
   postId: varchar("post_id").references(() => forumPosts.id).notNull(),
-  parentReplyId: varchar("parent_reply_id").references(() => forumReplies.id), // For nested replies
+  parentReplyId: varchar("parent_reply_id"),
   likesCount: integer("likes_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
