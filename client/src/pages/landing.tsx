@@ -211,8 +211,8 @@ export default function Landing() {
             
             <Card className="relative border-primary border-2" data-testid="card-pricing-yearly">
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
-                  Best Value
+                <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                  MOST POPULAR
                 </span>
               </div>
               <CardHeader>
