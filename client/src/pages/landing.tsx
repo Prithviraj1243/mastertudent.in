@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, GraduationCap, Star, Users, BookOpen, TrendingUp, Quote } from "lucide-react";
+import logoImage from "@assets/generated_images/Student-friendly_educational_platform_logo_ac319f3f.png";
 
 export default function Landing() {
   return (
@@ -11,13 +12,12 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="relative w-12 h-12 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl border-2 border-pink-400/50">
-                <div className="relative">
-                  <div className="text-xl">📚</div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg animate-bounce">
-                    ⭐
-                  </div>
-                </div>
+              <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl">
+                <img 
+                  src={logoImage}
+                  alt="MasterStudent Logo" 
+                  className="w-full h-full object-contain rounded-2xl"
+                />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-purple-700 via-pink-600 to-cyan-600 bg-clip-text text-transparent">MasterStudent</span>
             </div>

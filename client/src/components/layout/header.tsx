@@ -17,6 +17,7 @@ import {
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import logoImage from "@assets/generated_images/Student-friendly_educational_platform_logo_ac319f3f.png";
 
 export default function Header() {
   const { user, isAuthenticated } = useAuth();
@@ -52,14 +53,12 @@ export default function Header() {
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
             <Link href="/" className="flex items-center space-x-3 hover-study-card group animate-interactive-hover" data-testid="link-home">
-              <div className="relative w-14 h-14 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl border-2 border-pink-400/50">
-                <div className="relative">
-                  <div className="text-2xl transform group-hover:scale-110 transition-transform duration-300">📚</div>
-                  <div className="absolute -top-2 -right-2 w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg animate-bounce">
-                    ⭐
-                  </div>
-                  <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full animate-ping"></div>
-                </div>
+              <div className="relative w-14 h-14 rounded-3xl flex items-center justify-center shadow-2xl transform group-hover:scale-105 transition-transform duration-300">
+                <img 
+                  src={logoImage}
+                  alt="MasterStudent Logo" 
+                  className="w-full h-full object-contain rounded-3xl"
+                />
               </div>
               <div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-purple-700 via-pink-600 to-cyan-600 bg-clip-text text-transparent">
