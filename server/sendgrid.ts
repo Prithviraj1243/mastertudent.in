@@ -74,7 +74,7 @@ export async function sendWelcomeEmail(userEmail: string, userName: string): Pro
           <p>Ready to accelerate your studies? Start browsing our extensive collection of high-quality notes!</p>
           
           <div style="text-align: center;">
-            <a href="https://${process.env.REPL_SLUG || 'masterstudent'}.${process.env.REPL_OWNER || 'your-username'}.replit.app" class="button">
+            <a href="https://masterstudent.in" class="button">
               Start Learning Now →
             </a>
           </div>
@@ -103,7 +103,7 @@ What You Get:
 • 3 free downloads daily
 • Earn coins through engagement
 
-Ready to boost your studies? Visit: https://${process.env.REPL_SLUG || 'masterstudent'}.${process.env.REPL_OWNER || 'your-username'}.replit.app
+Ready to boost your studies? Visit: https://masterstudent.in
 
 Questions? Just reply to this email!
 Happy studying!

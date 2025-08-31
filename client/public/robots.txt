@@ -44,7 +44,7 @@ Allow: /engineering/
 Allow: /medical/
 
 # Sitemap location
-Sitemap: https://masterstudent.replit.app/sitemap.xml
+Sitemap: https://masterstudent.in/sitemap.xml
 
 # Crawl delay (be respectful to server resources)
 Crawl-delay: 1

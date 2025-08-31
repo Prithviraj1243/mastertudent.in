@@ -13,8 +13,8 @@ export function MetaTags({
   title = "MasterStudent - Premium Study Notes from Top Students | CBSE, JEE, NEET, UPSC",
   description = "Access high-quality study notes from top-performing students across CBSE, ICSE, JEE, NEET, UPSC, Engineering, Medical and competitive exams. Subscribe for unlimited downloads and ace your exams with proven study materials.",
   keywords = "study notes, CBSE notes, JEE preparation, NEET study material, UPSC notes, engineering notes, medical notes, competitive exam preparation, top students notes, premium study content, educational platform",
-  image = "https://masterstudent.replit.app/og-image.jpg",
-  url = "https://masterstudent.replit.app",
+  image = "https://masterstudent.in/og-image.jpg",
+  url = "https://masterstudent.in",
   type = "website"
 }: MetaTagsProps) {
   
@@ -72,7 +72,7 @@ export function generateNoteMetaTags(note: any, categoryName?: string) {
   const title = `${note.title} - ${note.subject} Notes | MasterStudent`;
   const description = `Download ${note.title} study notes for ${note.subject}${categoryName ? ` in ${categoryName}` : ''}. Created by top students, perfect for ${note.classGrade || 'exam preparation'}. Rating: ${note.averageRating || 'N/A'}/5 stars.`;
   const keywords = `${note.subject} notes, ${note.title}, ${note.classGrade || 'study material'}, ${categoryName || 'exam preparation'}, ${note.topic || 'academic notes'}, study guide, educational content`;
-  const url = `https://masterstudent.replit.app/notes/${note.id}`;
+  const url = `https://masterstudent.in/notes/${note.id}`;
   
   return {
     title,
@@ -88,7 +88,7 @@ export function generateCategoryMetaTags(categoryName: string, categoryType: str
   const title = `${categoryName} Study Notes - ${categoryType.replace('_', ' ')} | MasterStudent`;
   const description = `Explore comprehensive ${categoryName} study notes and materials. Access premium content from top students for ${categoryType.replace('_', ' ')} examination preparation.`;
   const keywords = `${categoryName} notes, ${categoryType.replace('_', ' ')} study material, exam preparation, educational content, study guide, ${categoryName} syllabus`;
-  const url = `https://masterstudent.replit.app/category/${categoryName.toLowerCase().replace(/\s+/g, '-')}`;
+  const url = `https://masterstudent.in/category/${categoryName.toLowerCase().replace(/\s+/g, '-')}`;
   
   return {
     title,

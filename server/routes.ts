@@ -691,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SEO Sitemap route
   app.get('/sitemap.xml', async (req, res) => {
     try {
-      const baseUrl = 'https://masterstudent.replit.app';
+      const baseUrl = 'https://masterstudent.in';
       
       // Get all published notes for sitemap
       const { notes } = await storage.getPublishedNotes({ limit: 1000, offset: 0 });
