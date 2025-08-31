@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, GraduationCap, Star, Users, BookOpen, TrendingUp, Quote } from "lucide-react";
-import logoImage from "@assets/generated_images/Student-friendly_educational_platform_logo_ac319f3f.png";
+import logoImage from "/src/assets/logo.png";
 
 export default function Landing() {
   return (

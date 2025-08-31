@@ -17,7 +17,7 @@ import {
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import logoImage from "@assets/generated_images/Student-friendly_educational_platform_logo_ac319f3f.png";
+import logoImage from "/src/assets/logo.png";
 
 export default function Header() {
   const { user, isAuthenticated } = useAuth();
