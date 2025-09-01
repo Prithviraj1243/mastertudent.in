@@ -10,7 +10,9 @@ import { storage } from "./storage";
 import { sendWelcomeEmail } from "./sendgrid";
 
 // Set default domains if REPLIT_DOMAINS is not provided
-const replitDomains = process.env.REPLIT_DOMAINS || '7d3f7c40-2772-470d-9f61-c05a5cbddd03-00-1nbayflr0sa70.spock.replit.dev,masterstudent.in';
+const replitDomains = process.env.REPLIT_DOMAINS ? 
+  `${process.env.REPLIT_DOMAINS},masterstudent.in` : 
+  '7d3f7c40-2772-470d-9f61-c05a5cbddd03-00-1nbayflr0sa70.spock.replit.dev,masterstudent.in';
 
 const getOidcConfig = memoize(
   async () => {

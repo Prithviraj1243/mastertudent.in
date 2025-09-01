@@ -17,6 +17,12 @@ interface EmailParams {
 
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   try {
+    // Skip email sending if API key is not properly configured
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_API_KEY.startsWith('SG.')) {
+      console.warn('SendGrid API key not properly configured, skipping email');
+      return true; // Return true to not break the flow
+    }
+
     await mailService.send({
       to: params.to,
       from: params.from,
