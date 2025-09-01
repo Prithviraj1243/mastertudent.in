@@ -25,14 +25,14 @@ export default function Landing() {
             <div className="flex items-center space-x-4">
               <Button 
                 className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-400 hover:to-emerald-500 shadow-lg border border-green-400/30" 
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => window.location.href = '/login'}
                 data-testid="button-login"
               >
                 🔐 Sign In
               </Button>
               <Button 
                 className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-lg border border-blue-400/30"
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => window.location.href = '/login'}
                 data-testid="button-get-started"
               >
                 🚀 Get Started
@@ -60,7 +60,7 @@ export default function Landing() {
             <Button 
               size="lg" 
               className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
-              onClick={() => window.location.href = '/api/login'}
+              onClick={() => window.location.href = '/login'}
               data-testid="button-browse-notes"
             >
               <BookOpen className="mr-2 h-5 w-5 animate-glow-pulse" />
@@ -69,7 +69,7 @@ export default function Landing() {
             <Button 
               size="lg"
               className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-emerald-400/50 hover:border-cyan-400"
-              onClick={() => window.location.href = '/api/login'}
+              onClick={() => window.location.href = '/login'}
               data-testid="button-become-topper"
             >
               <TrendingUp className="mr-2 h-5 w-5 animate-glow-pulse" />
