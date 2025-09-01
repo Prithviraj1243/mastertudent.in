@@ -9,9 +9,8 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { sendWelcomeEmail } from "./sendgrid";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
-}
+// Set default domains if REPLIT_DOMAINS is not provided
+const replitDomains = process.env.REPLIT_DOMAINS || '7d3f7c40-2772-470d-9f61-c05a5cbddd03-00-1nbayflr0sa70.spock.replit.dev,masterstudent.in';
 
 const getOidcConfig = memoize(
   async () => {
@@ -99,8 +98,7 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  for (const domain of replitDomains.split(",")) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
