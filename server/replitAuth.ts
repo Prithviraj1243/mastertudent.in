@@ -39,18 +39,19 @@ export function getSession() {
   });
 }
 
-async function createOrLoginUser(email: string, firstName?: string, lastName?: string) {
+async function createOrLoginUser(email: string, role?: string, firstName?: string, lastName?: string) {
   // Check if user exists
   let existingUser = await storage.getUserByEmail(email);
   
   if (!existingUser) {
-    // Create new user
+    // Create new user with specified role
     const newUser = await storage.upsertUser({
       id: crypto.randomUUID(),
       email: email,
       firstName: firstName || email.split('@')[0],
       lastName: lastName || '',
       profileImageUrl: '',
+      role: role === 'topper' ? 'topper' : 'student', // Default to student if not specified
     });
     
     // Send welcome email to new users
@@ -78,15 +79,18 @@ export async function setupAuth(app: Express) {
     {
       usernameField: 'email',
       passwordField: 'email', // We'll use email as both username and password for simplicity
+      passReqToCallback: true, // Allow access to req object
     },
-    async (email: string, password: string, done) => {
+    async (req: any, email: string, password: string, done) => {
       try {
         // For now, allow any valid email to login
         if (!email || !email.includes('@')) {
           return done(null, false, { message: 'Please enter a valid email address' });
         }
         
-        const user = await createOrLoginUser(email);
+        // Get role from request body
+        const role = req.body?.role;
+        const user = await createOrLoginUser(email, role);
         return done(null, user);
       } catch (error) {
         return done(error);

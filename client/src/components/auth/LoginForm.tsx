@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Mail, Loader2 } from "lucide-react";
+import { Mail, Loader2, Download, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
@@ -13,6 +13,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [email, setEmail] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"student" | "topper" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -28,6 +29,15 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       return;
     }
 
+    if (!selectedRole) {
+      toast({
+        title: "Please Select Purpose",
+        description: "Choose whether you want to download or upload notes",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -36,7 +46,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password: email }), // Use email as password for simplicity
+        body: JSON.stringify({ 
+          email, 
+          password: email,
+          role: selectedRole 
+        }),
       });
 
       const data = await response.json();
@@ -78,7 +92,50 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Role Selection */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Choose Your Purpose</Label>
+            <div className="grid gap-3">
+              <Button
+                type="button"
+                variant={selectedRole === "student" ? "default" : "outline"}
+                onClick={() => setSelectedRole("student")}
+                className={`h-auto p-4 justify-start text-left ${
+                  selectedRole === "student" 
+                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white" 
+                    : "hover:bg-blue-50"
+                }`}
+                data-testid="button-role-student"
+              >
+                <Download className="mr-3 h-5 w-5" />
+                <div>
+                  <div className="font-semibold">For Downloading Notes</div>
+                  <div className="text-sm opacity-90">Access premium study materials from top students</div>
+                </div>
+              </Button>
+              
+              <Button
+                type="button"
+                variant={selectedRole === "topper" ? "default" : "outline"}
+                onClick={() => setSelectedRole("topper")}
+                className={`h-auto p-4 justify-start text-left ${
+                  selectedRole === "topper" 
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white" 
+                    : "hover:bg-emerald-50"
+                }`}
+                data-testid="button-role-topper"
+              >
+                <Upload className="mr-3 h-5 w-5" />
+                <div>
+                  <div className="font-semibold">For Uploading Notes</div>
+                  <div className="text-sm opacity-90">Share your notes and earn coins for each download</div>
+                </div>
+              </Button>
+            </div>
+          </div>
+
+          {/* Email Input */}
           <div className="space-y-2">
             <Label htmlFor="email">Email Address</Label>
             <div className="relative">
@@ -99,7 +156,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           <Button 
             type="submit" 
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            disabled={isLoading}
+            disabled={isLoading || !selectedRole}
             data-testid="button-submit-login"
           >
             {isLoading ? (
@@ -108,7 +165,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 Signing in...
               </>
             ) : (
-              "Sign In / Sign Up"
+              selectedRole === "student" ? "Join as Student" : selectedRole === "topper" ? "Join as Topper" : "Sign In / Sign Up"
             )}
           </Button>
           
