@@ -162,10 +162,10 @@ export default function Header() {
               )}
 
               {/* Study Status Indicator */}
-              <div className="bg-study-card px-3 py-3 rounded-xl border border-cyan-500/20 hover-neon">
+              <div className="bg-study-card px-4 py-3 rounded-xl border border-cyan-500/20 hover-neon min-w-fit">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
-                  <span className="text-xs text-cyan-300 font-medium">ACTIVE</span>
+                  <span className="text-xs text-cyan-300 font-medium whitespace-nowrap">ACTIVE</span>
                 </div>
               </div>
             </div>
