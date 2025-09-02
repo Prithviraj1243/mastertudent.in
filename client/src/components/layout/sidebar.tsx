@@ -56,18 +56,18 @@ export default function Sidebar() {
             </h3>
             <nav className="space-y-2">
               {studentLinks.map((link) => (
-                <Link key={link.path} href={link.path}>
-                  <a 
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                      link.active 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'hover:bg-accent text-foreground'
-                    }`}
-                    data-testid={`sidebar-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <link.icon className="h-4 w-4" />
-                    <span className="text-sm font-medium">{link.label}</span>
-                  </a>
+                <Link 
+                  key={link.path} 
+                  href={link.path}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                    link.active 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'hover:bg-accent text-foreground'
+                  }`}
+                  data-testid={`sidebar-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <link.icon className="h-4 w-4" />
+                  <span className="text-sm font-medium">{link.label}</span>
                 </Link>
               ))}
             </nav>
@@ -81,18 +81,18 @@ export default function Sidebar() {
               </h3>
               <nav className="space-y-2">
                 {topperLinks.map((link) => (
-                  <Link key={link.path} href={link.path}>
-                    <a 
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                        link.active 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'hover:bg-accent text-foreground'
-                      }`}
-                      data-testid={`sidebar-topper-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <link.icon className="h-4 w-4" />
-                      <span className="text-sm font-medium">{link.label}</span>
-                    </a>
+                  <Link 
+                    key={link.path} 
+                    href={link.path}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                      link.active 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'hover:bg-accent text-foreground'
+                    }`}
+                    data-testid={`sidebar-topper-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    <span className="text-sm font-medium">{link.label}</span>
                   </Link>
                 ))}
               </nav>
@@ -107,37 +107,36 @@ export default function Sidebar() {
               </h3>
               <nav className="space-y-2">
                 {/* Review Queue for both reviewers and admins */}
-                <Link href="/review-queue">
-                  <a 
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                      isActive('/review-queue') 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'hover:bg-accent text-foreground'
-                    }`}
-                    data-testid="sidebar-link-review-queue"
-                  >
-                    <ClipboardList className="h-4 w-4" />
-                    <span className="text-sm font-medium">Review Queue</span>
-                    <Badge variant="secondary" className="ml-auto bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded-full">
-                      3
-                    </Badge>
-                  </a>
+                <Link 
+                  href="/review-queue"
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                    isActive('/review-queue') 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'hover:bg-accent text-foreground'
+                  }`}
+                  data-testid="sidebar-link-review-queue"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  <span className="text-sm font-medium">Review Queue</span>
+                  <Badge variant="secondary" className="ml-auto bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded-full">
+                    3
+                  </Badge>
                 </Link>
 
                 {/* Admin-only links */}
                 {user.role === 'admin' && adminLinks.map((link) => (
-                  <Link key={link.path} href={link.path}>
-                    <a 
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                        link.active 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'hover:bg-accent text-foreground'
-                      }`}
-                      data-testid={`sidebar-admin-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <link.icon className="h-4 w-4" />
-                      <span className="text-sm font-medium">{link.label}</span>
-                    </a>
+                  <Link 
+                    key={link.path} 
+                    href={link.path}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                      link.active 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'hover:bg-accent text-foreground'
+                    }`}
+                    data-testid={`sidebar-admin-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    <span className="text-sm font-medium">{link.label}</span>
                   </Link>
                 ))}
               </nav>
@@ -147,14 +146,13 @@ export default function Sidebar() {
           {/* Subscription Upgrade */}
           {user.role === 'student' && (
             <div className="pt-6 border-t border-border">
-              <Link href="/subscribe">
-                <a 
-                  className="flex items-center space-x-3 px-3 py-2 rounded-md bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90 transition-opacity"
-                  data-testid="sidebar-link-upgrade"
-                >
-                  <Crown className="h-4 w-4" />
-                  <span className="text-sm font-medium">Upgrade to Premium</span>
-                </a>
+              <Link 
+                href="/subscribe"
+                className="flex items-center space-x-3 px-3 py-2 rounded-md bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90 transition-opacity"
+                data-testid="sidebar-link-upgrade"
+              >
+                <Crown className="h-4 w-4" />
+                <span className="text-sm font-medium">Upgrade to Premium</span>
               </Link>
             </div>
           )}
