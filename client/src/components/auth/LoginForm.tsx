@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Mail, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -45,10 +46,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           title: "Login Successful!",
           description: `Welcome${data.user.firstName ? `, ${data.user.firstName}` : ''}!`,
         });
-        // Wait a moment for session to be saved, then reload
+        // Invalidate auth cache and redirect to home
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+          window.location.href = "/";
+        }, 1000);
       } else {
         toast({
           title: "Login Failed",

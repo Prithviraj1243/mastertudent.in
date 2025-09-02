@@ -311,7 +311,25 @@ export class DatabaseStorage implements IStorage {
 
     const [notesResult, totalResult] = await Promise.all([
       db
-        .select()
+        .select({
+          id: notes.id,
+          title: notes.title,
+          subject: notes.subject,
+          topic: notes.topic,
+          description: notes.description,
+          status: notes.status,
+          type: notes.type,
+          topperId: notes.topperId,
+          publishedAt: notes.publishedAt,
+          downloadsCount: notes.downloadsCount,
+          viewsCount: notes.viewsCount,
+          likesCount: notes.likesCount,
+          price: notes.price,
+          categoryId: notes.categoryId,
+          classGrade: notes.classGrade,
+          createdAt: notes.createdAt,
+          updatedAt: notes.updatedAt
+        })
         .from(notes)
         .where(and(...conditions))
         .orderBy(desc(notes.publishedAt))
@@ -324,7 +342,7 @@ export class DatabaseStorage implements IStorage {
     ]);
 
     return {
-      notes: notesResult,
+      notes: notesResult as Note[],
       total: totalResult[0].count
     };
   }

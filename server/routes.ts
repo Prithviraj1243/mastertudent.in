@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/notes', isAuthenticated, upload.array('files'), async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const user = await storage.getUser(userId);
@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/notes/:id/submit', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const note = await storage.getNoteById(req.params.id);
@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/notes/:id/download', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const user = await storage.getUser(userId);
@@ -280,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Feedback routes
   app.post('/api/notes/:id/feedback', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { rating, comment } = req.body;
     
     try {
@@ -306,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Review routes (for reviewers/admins)
   app.get('/api/review/queue', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const user = await storage.getUser(userId);
@@ -323,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/review/:id/approve', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const user = await storage.getUser(userId);
@@ -348,7 +348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/review/:id/reject', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { comments } = req.body;
     
     try {
@@ -376,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Analytics routes
   app.get('/api/analytics/topper', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const user = await storage.getUser(userId);
@@ -394,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin routes
   app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const user = await storage.getUser(userId);
@@ -412,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Follow routes
   app.post('/api/follow/:topperId', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const follow = await storage.followTopper(userId, req.params.topperId);
@@ -424,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete('/api/follow/:topperId', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       await storage.unfollowTopper(userId, req.params.topperId);
@@ -439,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get user's coin balance and stats
   app.get('/api/coins/balance', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const user = await storage.getUser(userId);
@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Track note view and award coins
   app.post('/api/notes/:noteId/view', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { noteId } = req.params;
     
     try {
@@ -505,7 +505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Like/unlike a note
   app.post('/api/notes/:noteId/like', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { noteId } = req.params;
     
     try {
@@ -521,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Download note (with coin deduction or free download)
   app.post('/api/notes/:noteId/download', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { noteId } = req.params;
     
     try {
@@ -596,7 +596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get transaction history
   app.get('/api/coins/transactions', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { page = 1, limit = 20 } = req.query;
     
     try {
@@ -623,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get daily challenges
   app.get('/api/challenges/daily', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const challenges = await storage.getDailyChallenges(userId);
@@ -636,7 +636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Complete daily challenge
   app.post('/api/challenges/:challengeId/complete', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { challengeId } = req.params;
     
     try {
@@ -665,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Complete onboarding
   app.post('/api/complete-onboarding', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { categoryIds } = req.body;
 
     try {
@@ -686,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get user educational preferences
   app.get('/api/user-educational-preferences', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     
     try {
       const preferences = await storage.getUserEducationalPreferences(userId);
