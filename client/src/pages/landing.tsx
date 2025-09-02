@@ -2,8 +2,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, GraduationCap, Star, Users, BookOpen, TrendingUp, Quote } from "lucide-react";
 import logoImage from "/src/assets/logo.png";
+import LoginForm from "@/components/auth/LoginForm";
+import { useState } from "react";
 
 export default function Landing() {
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  
+  if (showLoginForm) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <LoginForm onSuccess={() => window.location.href = "/"} />
+          <div className="text-center mt-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowLoginForm(false)}
+            >
+              ← Back to Landing Page
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -25,14 +47,14 @@ export default function Landing() {
             <div className="flex items-center space-x-4">
               <Button 
                 className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-400 hover:to-emerald-500 shadow-lg border border-green-400/30" 
-                onClick={() => window.location.href = '/login'}
+                onClick={() => setShowLoginForm(true)}
                 data-testid="button-login"
               >
                 🔐 Sign In
               </Button>
               <Button 
                 className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-lg border border-blue-400/30"
-                onClick={() => window.location.href = '/login'}
+                onClick={() => setShowLoginForm(true)}
                 data-testid="button-get-started"
               >
                 🚀 Get Started
@@ -60,7 +82,7 @@ export default function Landing() {
             <Button 
               size="lg" 
               className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
-              onClick={() => window.location.href = '/login'}
+              onClick={() => setShowLoginForm(true)}
               data-testid="button-browse-notes"
             >
               <BookOpen className="mr-2 h-5 w-5 animate-glow-pulse" />
@@ -69,7 +91,7 @@ export default function Landing() {
             <Button 
               size="lg"
               className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-emerald-400/50 hover:border-cyan-400"
-              onClick={() => window.location.href = '/login'}
+              onClick={() => setShowLoginForm(true)}
               data-testid="button-become-topper"
             >
               <TrendingUp className="mr-2 h-5 w-5 animate-glow-pulse" />
@@ -465,7 +487,7 @@ export default function Landing() {
           <Button 
             size="lg" 
             variant="secondary"
-            onClick={() => window.location.href = '/api/login'}
+            onClick={() => setShowLoginForm(true)}
             data-testid="button-join-now"
           >
             Join Now - It's Free to Start
