@@ -230,7 +230,7 @@ export default function Onboarding() {
                     <span>Completing...</span>
                   </div>
                 ) : (
-                  `Complete Setup (${selectedCategories.length} selected)`
+                  `Next (${selectedCategories.length} selected)`
                 )}
               </Button>
             </div>
