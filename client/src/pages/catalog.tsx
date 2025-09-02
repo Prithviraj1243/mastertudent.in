@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Grid, List, Filter, X } from "lucide-react";
 import NoteCard from "@/components/notes/note-card";
 import { Note } from "@shared/schema";
+import Header from "@/components/layout/header";
+import Sidebar from "@/components/layout/sidebar";
 
 // Helper function to get subject icons
 const getSubjectIcon = (subject: string) => {
@@ -64,7 +66,11 @@ export default function Catalog() {
   ];
 
   return (
-    <main className="p-6" role="main">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50">
+      <Header />
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 p-6" role="main">
       {/* Header Section */}
       <header className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -296,6 +302,8 @@ export default function Catalog() {
           </div>
         </div>
       )}
-    </main>
+        </main>
+      </div>
+    </div>
   );
 }

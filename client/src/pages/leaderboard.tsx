@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import Header from "@/components/layout/header";
+import Sidebar from "@/components/layout/sidebar";
 
 interface LeaderboardUser {
   id: string;
@@ -95,8 +97,11 @@ export default function Leaderboard() {
   const userRank = currentLeaderboard.findIndex(u => u.id === (user as any)?.id) + 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-indigo-900/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50">
+      <Header />
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 p-6">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2" data-testid="title-leaderboard">
@@ -418,6 +423,7 @@ export default function Leaderboard() {
             </Card>
           </div>
         </div>
+        </main>
       </div>
     </div>
   );
