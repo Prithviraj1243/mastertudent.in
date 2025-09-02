@@ -36,10 +36,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Helper function to get user ID from request
+  const getUserId = (req: any) => req.user?.id || req.user?.claims?.sub;
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Handle both new email-based auth and old OIDC auth
+      const userId = getUserId(req);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
+      
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -60,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Subscription routes
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req);
     const { plan } = req.body; // 'monthly' or 'yearly'
 
     try {

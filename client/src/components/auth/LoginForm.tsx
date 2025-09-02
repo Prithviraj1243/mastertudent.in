@@ -45,8 +45,10 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           title: "Login Successful!",
           description: `Welcome${data.user.firstName ? `, ${data.user.firstName}` : ''}!`,
         });
-        // Reload the page to refresh authentication state
-        window.location.href = "/";
+        // Wait a moment for session to be saved, then reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         toast({
           title: "Login Failed",
