@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Loader2, Download, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -16,6 +17,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [selectedRole, setSelectedRole] = useState<"student" | "topper" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,11 +62,19 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           title: "Login Successful!",
           description: `Welcome${data.user.firstName ? `, ${data.user.firstName}` : ''}!`,
         });
-        // Invalidate auth cache and redirect to home
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        // Invalidate auth cache to trigger re-fetch and proper routing
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        // Refetch user data and let App.tsx handle routing
+        await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+        
+        // Give a moment for the cache to update, then navigate
         setTimeout(() => {
-          window.location.href = "/";
-        }, 1000);
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            setLocation("/");
+          }
+        }, 500);
       } else {
         toast({
           title: "Login Failed",

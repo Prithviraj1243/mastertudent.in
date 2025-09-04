@@ -40,7 +40,8 @@ function Router() {
     );
   }
 
-  if (user && !user.onboardingCompleted) {
+  // Check if user needs onboarding
+  if (user && user.onboardingCompleted === false) {
     return (
       <Switch>
         <Route component={Onboarding} />
