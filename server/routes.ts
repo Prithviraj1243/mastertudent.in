@@ -374,6 +374,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Uploader Profile Routes
+  app.get('/api/uploader/stats', isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== 'topper' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied - Toppers only" });
+      }
+
+      const stats = await storage.getUploaderStats(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching uploader stats:", error);
+      res.status(500).json({ message: "Failed to fetch uploader stats" });
+    }
+  });
+
+  app.get('/api/withdrawals', isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== 'topper' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied - Toppers only" });
+      }
+
+      const withdrawals = await storage.getWithdrawalRequests(userId);
+      res.json(withdrawals);
+    } catch (error) {
+      console.error("Error fetching withdrawal requests:", error);
+      res.status(500).json({ message: "Failed to fetch withdrawal requests" });
+    }
+  });
+
+  app.post('/api/withdrawals/request', isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    const { amount, coins, bankDetails, upiId } = req.body;
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== 'topper' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied - Toppers only" });
+      }
+
+      // Check minimum withdrawal amount
+      if (amount < 200) {
+        return res.status(400).json({ message: "Minimum withdrawal amount is ₹200" });
+      }
+
+      // Check wallet balance (assuming 1 rupee = 20 coins)
+      const walletBalance = Math.floor(user.totalEarned / 20);
+      if (amount > walletBalance) {
+        return res.status(400).json({ message: "Insufficient wallet balance" });
+      }
+
+      const withdrawal = await storage.createWithdrawalRequest({
+        topperId: userId,
+        amount,
+        coins,
+        bankDetails,
+        upiId,
+        status: 'pending',
+      });
+
+      res.json(withdrawal);
+    } catch (error) {
+      console.error("Error creating withdrawal request:", error);
+      res.status(500).json({ message: "Failed to create withdrawal request" });
+    }
+  });
+
   // Analytics routes
   app.get('/api/analytics/topper', isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);

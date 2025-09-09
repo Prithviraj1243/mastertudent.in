@@ -767,6 +767,12 @@ export const insertUserChallengeProgressSchema = createInsertSchema(userChalleng
   createdAt: true,
 });
 
+export const insertWithdrawalRequestSchema = createInsertSchema(withdrawalRequests).omit({
+  id: true,
+  requestedAt: true,
+  createdAt: true,
+});
+
 // Types
 export type EducationalCategory = typeof educationalCategories.$inferSelect;
 export type InsertEducationalCategory = z.infer<typeof insertEducationalCategorySchema>;
@@ -812,3 +818,5 @@ export type DailyChallenge = typeof dailyChallenges.$inferSelect;
 export type InsertDailyChallenge = z.infer<typeof insertDailyChallengeSchema>;
 export type UserChallengeProgress = typeof userChallengeProgress.$inferSelect;
 export type InsertUserChallengeProgress = z.infer<typeof insertUserChallengeProgressSchema>;
+export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+export type InsertWithdrawalRequest = z.infer<typeof insertWithdrawalRequestSchema>;

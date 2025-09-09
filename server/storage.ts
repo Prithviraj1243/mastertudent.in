@@ -23,6 +23,7 @@ import {
   userChallengeProgress,
   educationalCategories,
   userEducationalPreferences,
+  withdrawalRequests,
   type User,
   type UpsertUser,
   type TopperProfile,
@@ -61,6 +62,8 @@ import {
   type InsertDailyChallenge,
   type UserChallengeProgress,
   type InsertUserChallengeProgress,
+  type WithdrawalRequest,
+  type InsertWithdrawalRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, sql, count, avg, sum } from "drizzle-orm";
@@ -177,6 +180,11 @@ export interface IStorage {
   saveUserEducationalPreferences(userId: string, categoryIds: string[]): Promise<void>;
   getUserEducationalPreferences(userId: string): Promise<any[]>;
   completeUserOnboarding(userId: string): Promise<User>;
+  
+  // Uploader/Wallet operations
+  getUploaderStats(topperId: string): Promise<any>;
+  getWithdrawalRequests(topperId: string): Promise<WithdrawalRequest[]>;
+  createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1087,6 +1095,47 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  // Uploader/Wallet operations
+  async getUploaderStats(topperId: string): Promise<any> {
+    const [userStats] = await db
+      .select({
+        totalUploads: count(notes.id),
+        publishedNotes: count(sql`CASE WHEN ${notes.status} = 'published' THEN 1 END`),
+        totalDownloads: sum(notes.downloadsCount),
+        totalEarned: users.totalEarned,
+      })
+      .from(notes)
+      .rightJoin(users, eq(users.id, topperId))
+      .where(eq(notes.topperId, topperId))
+      .groupBy(users.id, users.totalEarned);
+
+    // Calculate wallet balance (1 rupee = 20 coins)
+    const walletBalance = Math.floor((userStats?.totalEarned || 0) / 20);
+
+    return {
+      totalUploads: userStats?.totalUploads || 0,
+      publishedNotes: userStats?.publishedNotes || 0,
+      totalDownloads: userStats?.totalDownloads || 0,
+      walletBalance,
+    };
+  }
+
+  async getWithdrawalRequests(topperId: string): Promise<WithdrawalRequest[]> {
+    return await db
+      .select()
+      .from(withdrawalRequests)
+      .where(eq(withdrawalRequests.topperId, topperId))
+      .orderBy(desc(withdrawalRequests.requestedAt));
+  }
+
+  async createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest> {
+    const [withdrawal] = await db
+      .insert(withdrawalRequests)
+      .values(request)
+      .returning();
+    return withdrawal;
   }
 }
 

@@ -112,6 +112,11 @@ export default function Header() {
                 </Link>
               )}
               {user.role === 'topper' && (
+                <Link href="/uploader-profile" className="px-4 py-2 text-green-700 hover:text-white hover:bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-green-400 animate-interactive-hover" data-testid="link-uploader-profile">
+                  💰 My Wallet
+                </Link>
+              )}
+              {user.role === 'topper' && (
                 <Link href="/analytics" className="px-4 py-2 text-slate-200 hover:text-white hover:bg-gradient-to-r from-red-600/20 to-pink-600/20 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-red-500/30" data-testid="link-analytics">
                   📊 Analytics
                 </Link>

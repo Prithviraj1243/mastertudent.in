@@ -18,6 +18,7 @@ import Analytics from "@/pages/analytics";
 import Forum from "@/pages/forum";
 import Leaderboard from "@/pages/leaderboard";
 import CoinDashboard from "@/pages/coin-dashboard";
+import UploaderProfile from "@/pages/uploader-profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/notes/:id" component={NoteDetail} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/uploader-profile" component={UploaderProfile} />
       <Route component={NotFound} />
     </Switch>
   );
