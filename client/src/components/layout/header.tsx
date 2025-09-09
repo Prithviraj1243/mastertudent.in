@@ -116,6 +116,11 @@ export default function Header() {
                   📊 Analytics
                 </Link>
               )}
+              {user.role === 'admin' && (
+                <Link href="/review-queue" className="px-4 py-2 text-amber-700 hover:text-white hover:bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-amber-400 animate-interactive-hover" data-testid="link-review-queue">
+                  🔍 Review Queue
+                </Link>
+              )}
             </nav>
           </div>
 
