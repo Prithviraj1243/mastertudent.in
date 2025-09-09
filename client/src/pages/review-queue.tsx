@@ -17,6 +17,9 @@ export default function ReviewQueue() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [rejectionComment, setRejectionComment] = useState("");
+  const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState("");
 
   // Check if user has admin permissions
   if (user && user.role !== 'admin') {
@@ -87,6 +90,9 @@ export default function ReviewQueue() {
         description: "Note rejected with feedback sent to topper.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/review/queue"] });
+      setRejectionDialogOpen(false);
+      setRejectionComment("");
+      setSelectedTaskId("");
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -107,6 +113,27 @@ export default function ReviewQueue() {
       });
     },
   });
+
+  const handleRejectClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setRejectionDialogOpen(true);
+  };
+
+  const handleRejectSubmit = () => {
+    if (!rejectionComment.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for rejection.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    rejectMutation.mutate({ 
+      taskId: selectedTaskId, 
+      comments: [rejectionComment.trim()] 
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -259,17 +286,59 @@ export default function ReviewQueue() {
                               >
                                 {approveMutation.isPending ? "Approving..." : "Approve"}
                               </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => rejectMutation.mutate({ 
-                                  taskId: task.id, 
-                                  comments: ['Needs improvement'] 
-                                })}
-                                disabled={rejectMutation.isPending}
-                                data-testid={`button-reject-${task.id}`}
-                              >
-                                {rejectMutation.isPending ? "Rejecting..." : "Reject"}
-                              </Button>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => handleRejectClick(task.id)}
+                                    disabled={rejectMutation.isPending}
+                                    data-testid={`button-reject-${task.id}`}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Reject Note - Provide Reason</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <label className="text-sm font-medium">
+                                        Reason for rejection (will be sent to the topper):
+                                      </label>
+                                      <Textarea
+                                        value={rejectionComment}
+                                        onChange={(e) => setRejectionComment(e.target.value)}
+                                        placeholder="Please provide specific feedback on what needs to be improved..."
+                                        className="mt-2"
+                                        rows={4}
+                                        data-testid="textarea-rejection-comment"
+                                      />
+                                    </div>
+                                    <div className="flex justify-end space-x-2">
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                          setRejectionDialogOpen(false);
+                                          setRejectionComment("");
+                                          setSelectedTaskId("");
+                                        }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        onClick={handleRejectSubmit}
+                                        disabled={rejectMutation.isPending || !rejectionComment.trim()}
+                                        className="bg-red-600 hover:bg-red-700"
+                                        data-testid="button-confirm-reject"
+                                      >
+                                        {rejectMutation.isPending ? "Rejecting..." : "Reject Note"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             </>
                           )}
                           <Button 
