@@ -112,7 +112,7 @@ export const getQueryFn: <T>(options: {
           color: "#059669",
           createdAt: null
         }
-      ] as T;
+      ];
     }
     
     return data;
