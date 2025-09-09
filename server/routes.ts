@@ -810,6 +810,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Emergency seeding endpoint for production
+  app.post('/api/emergency-seed', async (req, res) => {
+    try {
+      await storage.seedEducationalCategories();
+      res.json({ message: "Emergency seeding completed" });
+    } catch (error) {
+      console.error("Emergency seeding failed:", error);
+      res.status(500).json({ message: "Seeding failed" });
+    }
+  });
+
   // Complete onboarding
   app.post('/api/complete-onboarding', isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
