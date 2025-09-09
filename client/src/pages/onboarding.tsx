@@ -66,10 +66,15 @@ export default function Onboarding() {
         categoryType: "school",
         classLevel: "9",
         board: "CBSE",
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 10,
         icon: "📔",
-        color: "#3B82F6"
+        color: "#3B82F6",
+        createdAt: null
       },
       {
         id: "frontend-2", 
@@ -78,10 +83,15 @@ export default function Onboarding() {
         categoryType: "school",
         classLevel: "10",
         board: "CBSE",
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 13,
         icon: "📕",
-        color: "#3B82F6"
+        color: "#3B82F6",
+        createdAt: null
       },
       {
         id: "frontend-3",
@@ -90,10 +100,15 @@ export default function Onboarding() {
         categoryType: "school",
         classLevel: "11", 
         board: "CBSE",
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 16,
         icon: "🔬",
-        color: "#F59E0B"
+        color: "#F59E0B",
+        createdAt: null
       },
       {
         id: "frontend-4",
@@ -102,32 +117,49 @@ export default function Onboarding() {
         categoryType: "school",
         classLevel: "12",
         board: "CBSE", 
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 20,
         icon: "🎓",
-        color: "#F59E0B"
+        color: "#F59E0B",
+        createdAt: null
       },
       {
         id: "frontend-5",
         name: "JEE Main",
         description: "Joint Entrance Examination - Main",
         categoryType: "competitive_exam",
+        classLevel: null,
+        board: null,
         examType: "JEE_Main",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 30,
         icon: "⚙️",
-        color: "#059669"
+        color: "#059669",
+        createdAt: null
       },
       {
         id: "frontend-6",
         name: "NEET UG",
         description: "National Eligibility cum Entrance Test - Undergraduate", 
         categoryType: "competitive_exam",
+        classLevel: null,
+        board: null,
         examType: "NEET_UG",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 32,
         icon: "🩺",
-        color: "#7C3AED"
+        color: "#7C3AED",
+        createdAt: null
       },
       {
         id: "frontend-7",
