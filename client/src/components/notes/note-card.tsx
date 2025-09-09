@@ -80,10 +80,12 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
             <div className="flex-1">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <Link href={`/notes/${note.id}`}>
-                    <a className="text-lg font-semibold text-foreground hover:text-primary transition-colors" data-testid="link-note-title">
-                      {note.title}
-                    </a>
+                  <Link 
+                    href={`/notes/${note.id}`}
+                    className="text-lg font-semibold text-foreground hover:text-primary transition-colors"
+                    data-testid="link-note-title"
+                  >
+                    {note.title}
                   </Link>
                   <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                     <span data-testid="text-note-subject">{note.subject}</span>
@@ -138,11 +140,11 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
                   </span>
                 </div>
                 
-                <Link href={`/notes/${note.id}`}>
-                  <Button size="sm" data-testid="button-view-note">
+                <Button size="sm" asChild data-testid="button-view-note">
+                  <Link href={`/notes/${note.id}`}>
                     View Details
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -186,10 +188,12 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
 
         {/* Title and description */}
         <div className="mb-4">
-          <Link href={`/notes/${note.id}`}>
-            <a className="text-lg font-bold text-foreground mb-2 block hover:text-primary transition-colors line-clamp-2 group-hover:text-primary" data-testid="link-note-title">
-              {note.title}
-            </a>
+          <Link 
+            href={`/notes/${note.id}`}
+            className="text-lg font-bold text-foreground mb-2 block hover:text-primary transition-colors line-clamp-2 group-hover:text-primary"
+            data-testid="link-note-title"
+          >
+            {note.title}
           </Link>
           <p className="text-muted-foreground text-sm line-clamp-3 mb-3" data-testid="text-note-description">
             {note.description}
@@ -245,12 +249,12 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
         </div>
 
         {/* Action button */}
-        <Link href={`/notes/${note.id}`}>
-          <Button className="w-full button-glow hover-scale group" data-testid="button-download-note">
+        <Button className="w-full button-glow hover-scale group" asChild data-testid="button-download-note">
+          <Link href={`/notes/${note.id}`}>
             <BookOpen className="h-4 w-4 mr-2 group-hover:animate-bounce" />
             View & Download
-          </Button>
-        </Link>
+          </Link>
+        </Button>
 
         {/* Time stamp */}
         <div className="mt-3 text-center">

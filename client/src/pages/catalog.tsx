@@ -44,9 +44,9 @@ export default function Catalog() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
-      if (subject) params.append("subject", subject);
-      if (classGrade) params.append("classGrade", classGrade);
-      if (categoryId) params.append("categoryId", categoryId);
+      if (subject && subject !== "all") params.append("subject", subject);
+      if (classGrade && classGrade !== "all") params.append("classGrade", classGrade);
+      if (categoryId && categoryId !== "all") params.append("categoryId", categoryId);
       params.append("page", page.toString());
       params.append("limit", "20");
 
@@ -143,7 +143,7 @@ export default function Catalog() {
                   <SelectValue placeholder="All Subjects" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Subjects</SelectItem>
+                  <SelectItem value="all">All Subjects</SelectItem>
                   {subjects.map((subj) => (
                     <SelectItem key={subj} value={subj}>
                       <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function Catalog() {
                   <SelectValue placeholder="All Classes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Classes</SelectItem>
+                  <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((cls) => (
                     <SelectItem key={cls} value={cls}>{cls}</SelectItem>
                   ))}
@@ -172,7 +172,7 @@ export default function Catalog() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {categories?.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">

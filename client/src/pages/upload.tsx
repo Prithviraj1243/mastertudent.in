@@ -79,7 +79,12 @@ export default function Upload() {
     mutationFn: async (data: UploadFormData) => {
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
-        formData.append(key, value);
+        // Convert "none" categoryId to empty string
+        if (key === 'categoryId' && value === 'none') {
+          formData.append(key, '');
+        } else {
+          formData.append(key, value);
+        }
       });
       files.forEach(file => {
         formData.append('files', file);
@@ -299,7 +304,7 @@ export default function Upload() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="max-h-60">
-                              <SelectItem value="">No specific category</SelectItem>
+                              <SelectItem value="none">No specific category</SelectItem>
                               {categories?.map((category) => (
                                 <SelectItem key={category.id} value={category.id}>
                                   <div className="flex items-center space-x-2">
