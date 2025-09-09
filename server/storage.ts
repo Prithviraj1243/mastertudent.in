@@ -185,6 +185,12 @@ export interface IStorage {
   getUploaderStats(topperId: string): Promise<any>;
   getWithdrawalRequests(topperId: string): Promise<WithdrawalRequest[]>;
   createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest>;
+  
+  // Admin withdrawal operations
+  getAllWithdrawalRequests(): Promise<WithdrawalRequest[]>;
+  approveWithdrawalRequest(id: string, adminId: string): Promise<WithdrawalRequest>;
+  rejectWithdrawalRequest(id: string, adminId: string, reason: string): Promise<WithdrawalRequest>;
+  settleWithdrawalRequest(id: string, adminId: string, comments?: string): Promise<WithdrawalRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1134,6 +1140,55 @@ export class DatabaseStorage implements IStorage {
     const [withdrawal] = await db
       .insert(withdrawalRequests)
       .values(request)
+      .returning();
+    return withdrawal;
+  }
+
+  // Admin withdrawal operations
+  async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> {
+    return await db
+      .select()
+      .from(withdrawalRequests)
+      .orderBy(desc(withdrawalRequests.requestedAt));
+  }
+
+  async approveWithdrawalRequest(id: string, adminId: string): Promise<WithdrawalRequest> {
+    const [withdrawal] = await db
+      .update(withdrawalRequests)
+      .set({
+        status: 'approved',
+        processedAt: new Date(),
+        processedBy: adminId,
+      })
+      .where(eq(withdrawalRequests.id, id))
+      .returning();
+    return withdrawal;
+  }
+
+  async rejectWithdrawalRequest(id: string, adminId: string, reason: string): Promise<WithdrawalRequest> {
+    const [withdrawal] = await db
+      .update(withdrawalRequests)
+      .set({
+        status: 'rejected',
+        processedAt: new Date(),
+        processedBy: adminId,
+        rejectionReason: reason,
+      })
+      .where(eq(withdrawalRequests.id, id))
+      .returning();
+    return withdrawal;
+  }
+
+  async settleWithdrawalRequest(id: string, adminId: string, comments?: string): Promise<WithdrawalRequest> {
+    const [withdrawal] = await db
+      .update(withdrawalRequests)
+      .set({
+        status: 'settled',
+        processedAt: new Date(),
+        processedBy: adminId,
+        adminComments: comments,
+      })
+      .where(eq(withdrawalRequests.id, id))
       .returning();
     return withdrawal;
   }

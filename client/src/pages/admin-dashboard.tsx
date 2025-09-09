@@ -1,10 +1,237 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, Crown, Clock, TrendingUp, DollarSign, Star, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Users, BookOpen, Crown, Clock, TrendingUp, DollarSign, Star, Download, Wallet, CheckCircle, XCircle } from "lucide-react";
 import { AlertCircle } from "lucide-react";
+import { useState } from "react";
+
+function WithdrawalSettlement() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [settlementComments, setSettlementComments] = useState("");
+
+  const { data: withdrawals, isLoading } = useQuery({
+    queryKey: ["/api/admin/withdrawals"],
+    retry: false,
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/admin/withdrawals/${id}/approve`, { method: "PATCH" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals"] });
+      toast({ title: "Withdrawal approved successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to approve withdrawal", variant: "destructive" });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => 
+      apiRequest(`/api/admin/withdrawals/${id}/reject`, { 
+        method: "PATCH", 
+        body: JSON.stringify({ rejectionReason: reason })
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals"] });
+      toast({ title: "Withdrawal rejected successfully" });
+      setRejectionReason("");
+    },
+    onError: () => {
+      toast({ title: "Failed to reject withdrawal", variant: "destructive" });
+    },
+  });
+
+  const settleMutation = useMutation({
+    mutationFn: ({ id, comments }: { id: string; comments?: string }) => 
+      apiRequest(`/api/admin/withdrawals/${id}/settle`, { 
+        method: "PATCH", 
+        body: JSON.stringify({ settlementComments: comments })
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals"] });
+      toast({ title: "Withdrawal settled successfully" });
+      setSettlementComments("");
+    },
+    onError: () => {
+      toast({ title: "Failed to settle withdrawal", variant: "destructive" });
+    },
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="text-orange-600 border-orange-200">Pending</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="text-blue-600 border-blue-200">Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="text-red-600 border-red-200">Rejected</Badge>;
+      case 'settled':
+        return <Badge variant="outline" className="text-green-600 border-green-200">Settled</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  return (
+    <Card data-testid="card-withdrawal-settlement">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Wallet className="h-5 w-5" />
+          <span>Withdrawal Settlement</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {withdrawals?.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No withdrawal requests found</p>
+          ) : (
+            withdrawals?.map((withdrawal: any) => (
+              <div key={withdrawal.id} className="border rounded-lg p-4 space-y-3" data-testid={`withdrawal-${withdrawal.id}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">₹{withdrawal.amount}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Requested on {new Date(withdrawal.requestedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  {getStatusBadge(withdrawal.status)}
+                </div>
+                
+                <div className="text-sm space-y-1">
+                  <p><span className="font-medium">Topper ID:</span> {withdrawal.topperId}</p>
+                  <p><span className="font-medium">Coins:</span> {withdrawal.coins}</p>
+                  {withdrawal.upiId && (
+                    <p><span className="font-medium">UPI ID:</span> {withdrawal.upiId}</p>
+                  )}
+                  {withdrawal.bankDetails && (
+                    <p><span className="font-medium">Bank Details:</span> {JSON.stringify(withdrawal.bankDetails)}</p>
+                  )}
+                </div>
+
+                {withdrawal.status === 'pending' && (
+                  <div className="flex space-x-2 pt-2">
+                    <Button
+                      onClick={() => approveMutation.mutate(withdrawal.id)}
+                      disabled={approveMutation.isPending}
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700"
+                      data-testid={`button-approve-${withdrawal.id}`}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approve
+                    </Button>
+                    
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          data-testid={`button-reject-${withdrawal.id}`}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Reject Withdrawal Request</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <Textarea
+                            placeholder="Reason for rejection..."
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            data-testid="textarea-rejection-reason"
+                          />
+                          <Button
+                            onClick={() => rejectMutation.mutate({ id: withdrawal.id, reason: rejectionReason })}
+                            disabled={rejectMutation.isPending || !rejectionReason.trim()}
+                            variant="destructive"
+                            data-testid="button-confirm-reject"
+                          >
+                            Confirm Rejection
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
+
+                {withdrawal.status === 'approved' && (
+                  <div className="pt-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          className="bg-blue-600 hover:bg-blue-700"
+                          data-testid={`button-settle-${withdrawal.id}`}
+                        >
+                          Mark as Settled
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Mark Withdrawal as Settled</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <Textarea
+                            placeholder="Settlement comments (optional)..."
+                            value={settlementComments}
+                            onChange={(e) => setSettlementComments(e.target.value)}
+                            data-testid="textarea-settlement-comments"
+                          />
+                          <Button
+                            onClick={() => settleMutation.mutate({ id: withdrawal.id, comments: settlementComments })}
+                            disabled={settleMutation.isPending}
+                            data-testid="button-confirm-settle"
+                          >
+                            Confirm Settlement
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
+
+                {withdrawal.rejectionReason && (
+                  <div className="bg-red-50 p-3 rounded text-sm">
+                    <p className="font-medium text-red-800">Rejection Reason:</p>
+                    <p className="text-red-700">{withdrawal.rejectionReason}</p>
+                  </div>
+                )}
+
+                {withdrawal.adminComments && (
+                  <div className="bg-blue-50 p-3 rounded text-sm">
+                    <p className="font-medium text-blue-800">Admin Comments:</p>
+                    <p className="text-blue-700">{withdrawal.adminComments}</p>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -165,6 +392,11 @@ export default function AdminDashboard() {
                     </p>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Withdrawal Settlement */}
+              <div className="mb-8">
+                <WithdrawalSettlement />
               </div>
 
               {/* Management Tools */}

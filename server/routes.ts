@@ -446,6 +446,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin withdrawal management endpoints
+  app.get('/api/admin/withdrawals', isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admins only" });
+      }
+      
+      const withdrawals = await storage.getAllWithdrawalRequests();
+      res.json(withdrawals);
+    } catch (error) {
+      console.error("Error fetching all withdrawal requests:", error);
+      res.status(500).json({ message: "Failed to fetch withdrawal requests" });
+    }
+  });
+
+  app.patch('/api/admin/withdrawals/:id/approve', isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admins only" });
+      }
+      
+      const withdrawal = await storage.approveWithdrawalRequest(id, userId);
+      res.json(withdrawal);
+    } catch (error) {
+      console.error("Error approving withdrawal request:", error);
+      res.status(500).json({ message: "Failed to approve withdrawal request" });
+    }
+  });
+
+  app.patch('/api/admin/withdrawals/:id/reject', isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    const { rejectionReason } = req.body;
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admins only" });
+      }
+      
+      const withdrawal = await storage.rejectWithdrawalRequest(id, userId, rejectionReason);
+      res.json(withdrawal);
+    } catch (error) {
+      console.error("Error rejecting withdrawal request:", error);
+      res.status(500).json({ message: "Failed to reject withdrawal request" });
+    }
+  });
+
+  app.patch('/api/admin/withdrawals/:id/settle', isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    const { settlementComments } = req.body;
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admins only" });
+      }
+      
+      const withdrawal = await storage.settleWithdrawalRequest(id, userId, settlementComments);
+      res.json(withdrawal);
+    } catch (error) {
+      console.error("Error settling withdrawal request:", error);
+      res.status(500).json({ message: "Failed to settle withdrawal request" });
+    }
+  });
+
   // Analytics routes
   app.get('/api/analytics/topper', isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
