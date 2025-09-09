@@ -32,6 +32,7 @@ export const noteStatusEnum = pgEnum('note_status', ['draft', 'submitted', 'appr
 export const reviewStatusEnum = pgEnum('review_status', ['open', 'changes_requested', 'approved', 'rejected']);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'inactive', 'cancelled', 'past_due']);
 export const payoutStatusEnum = pgEnum('payout_status', ['pending', 'approved', 'paid']);
+export const withdrawalStatusEnum = pgEnum('withdrawal_status', ['pending', 'approved', 'rejected', 'settled']);
 export const noteTypeEnum = pgEnum('note_type', ['notes', 'homework']);
 export const transactionTypeEnum = pgEnum('transaction_type', ['coin_earned', 'coin_spent', 'coin_purchased', 'download_free', 'download_paid']);
 export const forumCategoryEnum = pgEnum('forum_category', ['latest_news', 'revolutionary_ideas', 'assignment_discussions', 'general', 'help_support']);
@@ -357,6 +358,23 @@ export const broadcasts = pgTable("broadcasts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Withdrawal requests
+export const withdrawalRequests = pgTable("withdrawal_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  topperId: varchar("topper_id").references(() => users.id).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Amount in rupees
+  coins: integer("coins").notNull(), // Equivalent coins being withdrawn
+  bankDetails: jsonb("bank_details"), // Bank account info
+  upiId: varchar("upi_id"), // UPI ID for payments
+  status: withdrawalStatusEnum("status").default('pending').notNull(),
+  requestedAt: timestamp("requested_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+  processedBy: varchar("processed_by").references(() => users.id),
+  adminComments: text("admin_comments"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // User achievements
 export const userAchievements = pgTable("user_achievements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -436,6 +454,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   broadcasts: many(broadcasts),
   achievements: many(userAchievements),
   challengeProgress: many(userChallengeProgress),
+  withdrawalRequests: many(withdrawalRequests),
 }));
 
 export const topperProfilesRelations = relations(topperProfiles, ({ one }) => ({
@@ -638,6 +657,17 @@ export const userChallengeProgressRelations = relations(userChallengeProgress, (
   challenge: one(dailyChallenges, {
     fields: [userChallengeProgress.challengeId],
     references: [dailyChallenges.id],
+  }),
+}));
+
+export const withdrawalRequestsRelations = relations(withdrawalRequests, ({ one }) => ({
+  topper: one(users, {
+    fields: [withdrawalRequests.topperId],
+    references: [users.id],
+  }),
+  processedByAdmin: one(users, {
+    fields: [withdrawalRequests.processedBy],
+    references: [users.id],
   }),
 }));
 
