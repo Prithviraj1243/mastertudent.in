@@ -310,8 +310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(userId);
-      if (!user || (user.role !== 'reviewer' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Access denied" });
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
       const tasks = await storage.getReviewTasks();
@@ -327,8 +327,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(userId);
-      if (!user || (user.role !== 'reviewer' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Access denied" });
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
       const task = await storage.updateReviewTask(req.params.id, {
@@ -353,8 +353,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const user = await storage.getUser(userId);
-      if (!user || (user.role !== 'reviewer' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Access denied" });
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
       const task = await storage.updateReviewTask(req.params.id, {

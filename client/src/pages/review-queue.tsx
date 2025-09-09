@@ -7,16 +7,19 @@ import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle, Edit, TrendingUp, AlertCircle, FileText, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Clock, CheckCircle, Edit, TrendingUp, AlertCircle, FileText, User, X } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useState } from "react";
 
 export default function ReviewQueue() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Check if user has review permissions
-  if (user && user.role !== 'reviewer' && user.role !== 'admin') {
+  // Check if user has admin permissions
+  if (user && user.role !== 'admin') {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -28,7 +31,7 @@ export default function ReviewQueue() {
                 <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
                 <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
                 <p className="text-muted-foreground">
-                  Only reviewers and admins can access the review queue.
+                  Only admin members can access the review queue for quality control.
                 </p>
               </CardContent>
             </Card>
