@@ -55,18 +55,130 @@ export default function Onboarding() {
     );
   }
 
+  // Use fallback categories if backend returns empty
+  let finalCategories = categories;
   if (!categories || categories.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 text-lg">No categories found!</p>
-          <p className="text-gray-600">API Response: {JSON.stringify(categories)}</p>
-        </div>
-      </div>
-    );
+    finalCategories = [
+      {
+        id: "frontend-1",
+        name: "Class 9th CBSE",
+        description: "Class 9 CBSE Board",
+        categoryType: "school",
+        classLevel: "9",
+        board: "CBSE",
+        isActive: true,
+        displayOrder: 10,
+        icon: "📔",
+        color: "#3B82F6"
+      },
+      {
+        id: "frontend-2", 
+        name: "Class 10th CBSE",
+        description: "Class 10 CBSE Board with Board Exams",
+        categoryType: "school",
+        classLevel: "10",
+        board: "CBSE",
+        isActive: true,
+        displayOrder: 13,
+        icon: "📕",
+        color: "#3B82F6"
+      },
+      {
+        id: "frontend-3",
+        name: "Class 11th CBSE Science",
+        description: "Class 11 CBSE Science Stream (PCM/PCB)",
+        categoryType: "school",
+        classLevel: "11", 
+        board: "CBSE",
+        isActive: true,
+        displayOrder: 16,
+        icon: "🔬",
+        color: "#F59E0B"
+      },
+      {
+        id: "frontend-4",
+        name: "Class 12th CBSE Science", 
+        description: "Class 12 CBSE Science Stream (PCM/PCB)",
+        categoryType: "school",
+        classLevel: "12",
+        board: "CBSE", 
+        isActive: true,
+        displayOrder: 20,
+        icon: "🎓",
+        color: "#F59E0B"
+      },
+      {
+        id: "frontend-5",
+        name: "JEE Main",
+        description: "Joint Entrance Examination - Main",
+        categoryType: "competitive_exam",
+        examType: "JEE_Main",
+        isActive: true,
+        displayOrder: 30,
+        icon: "⚙️",
+        color: "#059669"
+      },
+      {
+        id: "frontend-6",
+        name: "NEET UG",
+        description: "National Eligibility cum Entrance Test - Undergraduate", 
+        categoryType: "competitive_exam",
+        examType: "NEET_UG",
+        isActive: true,
+        displayOrder: 32,
+        icon: "🩺",
+        color: "#7C3AED"
+      },
+      {
+        id: "frontend-7",
+        name: "Class 11th CBSE Commerce",
+        description: "Class 11 CBSE Commerce Stream",
+        categoryType: "school",
+        classLevel: "11",
+        board: "CBSE",
+        isActive: true,
+        displayOrder: 17,
+        icon: "💼",
+        color: "#F59E0B"
+      },
+      {
+        id: "frontend-8",
+        name: "Class 12th CBSE Commerce",
+        description: "Class 12 CBSE Commerce Stream", 
+        categoryType: "school",
+        classLevel: "12",
+        board: "CBSE",
+        isActive: true,
+        displayOrder: 21,
+        icon: "📈",
+        color: "#F59E0B"
+      },
+      {
+        id: "frontend-9",
+        name: "UPSC CSE",
+        description: "Union Public Service Commission - Civil Services Examination",
+        categoryType: "competitive_exam",
+        examType: "UPSC_CSE",
+        isActive: true,
+        displayOrder: 40,
+        icon: "🏛️",
+        color: "#DC2626"
+      },
+      {
+        id: "frontend-10",
+        name: "SSC CGL",
+        description: "Staff Selection Commission - Combined Graduate Level",
+        categoryType: "competitive_exam", 
+        examType: "SSC_CGL",
+        isActive: true,
+        displayOrder: 35,
+        icon: "📝",
+        color: "#7C2D12"
+      }
+    ] as EducationalCategory[];
   }
 
-  const groupedCategories = categories?.reduce((acc, category) => {
+  const groupedCategories = finalCategories?.reduce((acc, category) => {
     const categoryType = (category as any).categoryType;
     if (!acc[categoryType]) {
       acc[categoryType] = [];
