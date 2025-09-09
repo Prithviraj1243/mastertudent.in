@@ -12,16 +12,25 @@ import {
   Coins,
   Download,
   TrendingUp,
-  Gift
+  Gift,
+  ArrowLeft
 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import logoImage from "/src/assets/logo.png";
 
 export default function Header() {
   const { user, isAuthenticated } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [location] = useLocation();
+  
+  const handleBack = () => {
+    window.history.back();
+  };
+  
+  // Show back button on pages other than home
+  const showBackButton = location !== "/" && location !== "/login" && location !== "/onboarding";
 
   // Fetch coin balance
   const { data: coinBalance } = useQuery<{
@@ -52,6 +61,19 @@ export default function Header() {
         <div className="flex justify-between items-center h-20">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
+            {/* Back Button */}
+            {showBackButton && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="mr-2 bg-study-card border border-slate-600/30 hover:border-blue-500/50 hover:bg-blue-600/10 text-slate-300 hover:text-white transition-all duration-300"
+                data-testid="button-back"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            
             <Link href="/" className="flex items-center space-x-3 hover-study-card group animate-interactive-hover" data-testid="link-home">
               <div className="relative w-14 h-14 rounded-3xl flex items-center justify-center shadow-2xl transform group-hover:scale-105 transition-transform duration-300">
                 <img 
