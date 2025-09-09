@@ -180,6 +180,7 @@ export interface IStorage {
   saveUserEducationalPreferences(userId: string, categoryIds: string[]): Promise<void>;
   getUserEducationalPreferences(userId: string): Promise<any[]>;
   completeUserOnboarding(userId: string): Promise<User>;
+  seedEducationalCategories(): Promise<void>;
   
   // Uploader/Wallet operations
   getUploaderStats(topperId: string): Promise<any>;
@@ -1101,6 +1102,41 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async seedEducationalCategories(): Promise<void> {
+    // Check if categories already exist
+    const existingCategories = await db.select().from(educationalCategories).limit(1);
+    if (existingCategories.length > 0) {
+      return; // Categories already seeded
+    }
+
+    const categoriesToSeed = [
+      // School Categories
+      { name: "Class 9th CBSE", description: "Class 9 CBSE Board", categoryType: "school", classLevel: "9", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 10, icon: "📔", color: "#3B82F6" },
+      { name: "Class 9th ICSE", description: "Class 9 ICSE Board", categoryType: "school", classLevel: "9", board: "ICSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 11, icon: "📔", color: "#10B981" },
+      { name: "Class 10th CBSE", description: "Class 10 CBSE Board with Board Exams", categoryType: "school", classLevel: "10", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 13, icon: "📕", color: "#3B82F6" },
+      { name: "Class 10th ICSE", description: "Class 10 ICSE Board with Board Exams", categoryType: "school", classLevel: "10", board: "ICSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 14, icon: "📕", color: "#10B981" },
+      { name: "Class 11th CBSE Science", description: "Class 11 CBSE Science Stream (PCM/PCB)", categoryType: "school", classLevel: "11", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Computer_Science"], isActive: true, displayOrder: 16, icon: "🔬", color: "#F59E0B" },
+      { name: "Class 11th CBSE Commerce", description: "Class 11 CBSE Commerce Stream", categoryType: "school", classLevel: "11", board: "CBSE", subjects: ["Accountancy", "Business_Studies", "Economics", "English", "Mathematics"], isActive: true, displayOrder: 17, icon: "💼", color: "#8B5CF6" },
+      { name: "Class 11th CBSE Arts", description: "Class 11 CBSE Arts/Humanities Stream", categoryType: "school", classLevel: "11", board: "CBSE", subjects: ["History", "Geography", "Political_Science", "Economics", "English", "Psychology"], isActive: true, displayOrder: 18, icon: "🎨", color: "#EF4444" },
+      { name: "Class 12th CBSE Science", description: "Class 12 CBSE Science Stream (PCM/PCB)", categoryType: "school", classLevel: "12", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Computer_Science"], isActive: true, displayOrder: 20, icon: "🎓", color: "#F59E0B" },
+      { name: "Class 12th CBSE Commerce", description: "Class 12 CBSE Commerce Stream", categoryType: "school", classLevel: "12", board: "CBSE", subjects: ["Accountancy", "Business_Studies", "Economics", "English", "Mathematics"], isActive: true, displayOrder: 21, icon: "🎓", color: "#8B5CF6" },
+      { name: "Class 12th CBSE Arts", description: "Class 12 CBSE Arts/Humanities Stream", categoryType: "school", classLevel: "12", board: "CBSE", subjects: ["History", "Geography", "Political_Science", "Economics", "English", "Psychology"], isActive: true, displayOrder: 22, icon: "🎓", color: "#EF4444" },
+
+      // Competitive Exam Categories
+      { name: "JEE Main", description: "Joint Entrance Examination - Main", categoryType: "competitive_exam", examType: "JEE", subjects: ["Mathematics", "Physics", "Chemistry"], isActive: true, displayOrder: 30, icon: "⚙️", color: "#059669" },
+      { name: "JEE Advanced", description: "Joint Entrance Examination - Advanced", categoryType: "competitive_exam", examType: "JEE", subjects: ["Mathematics", "Physics", "Chemistry"], isActive: true, displayOrder: 31, icon: "🚀", color: "#DC2626" },
+      { name: "NEET UG", description: "National Eligibility cum Entrance Test - Undergraduate", categoryType: "competitive_exam", examType: "NEET", subjects: ["Physics", "Chemistry", "Biology"], isActive: true, displayOrder: 32, icon: "🩺", color: "#7C3AED" },
+      { name: "CUET UG", description: "Common University Entrance Test - Undergraduate", categoryType: "competitive_exam", examType: "CUET", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History", "Geography", "Political_Science", "Economics"], isActive: true, displayOrder: 33, icon: "🎯", color: "#0891B2" },
+
+      // Professional Exam Categories
+      { name: "SSC CGL", description: "Staff Selection Commission - Combined Graduate Level", categoryType: "professional_exam", examType: "SSC", subjects: ["General_Intelligence", "General_Awareness", "Quantitative_Aptitude", "English"], isActive: true, displayOrder: 40, icon: "🏛️", color: "#B91C1C" },
+      { name: "SSC CHSL", description: "Staff Selection Commission - Combined Higher Secondary Level", categoryType: "professional_exam", examType: "SSC", subjects: ["General_Intelligence", "General_Awareness", "Quantitative_Aptitude", "English"], isActive: true, displayOrder: 41, icon: "🏛️", color: "#B91C1C" },
+      { name: "UPSC CSE", description: "Union Public Service Commission - Civil Services Examination", categoryType: "professional_exam", examType: "UPSC", subjects: ["General_Studies", "Optional_Subject", "Essay", "English", "Hindi"], isActive: true, displayOrder: 42, icon: "⚖️", color: "#1F2937" }
+    ];
+
+    await db.insert(educationalCategories).values(categoriesToSeed as any);
   }
 
   // Uploader/Wallet operations

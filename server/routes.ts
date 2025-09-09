@@ -809,6 +809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // Complete onboarding
   app.post('/api/complete-onboarding', isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
