@@ -220,6 +220,18 @@ export default function Header() {
               </div>
             </div>
 
+            {/* Sign Out Button */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/30 hover:border-red-400/50 hover:bg-red-500/30 text-red-300 hover:text-white transition-all duration-300 font-medium"
+              data-testid="button-signout-main"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+
             {/* User Profile */}
             <div className="flex items-center space-x-3">
               {/* Role Badge */}
