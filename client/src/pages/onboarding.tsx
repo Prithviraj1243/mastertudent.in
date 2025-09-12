@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { EducationalCategory, UserEducationalPreference } from "@shared/schema";
 import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
@@ -59,6 +60,7 @@ export default function Onboarding() {
   let finalCategories = categories;
   if (!categories || categories.length === 0) {
     finalCategories = [
+      // School Categories
       {
         id: "frontend-1",
         name: "Class 9th CBSE",
@@ -128,6 +130,41 @@ export default function Onboarding() {
         createdAt: null
       },
       {
+        id: "frontend-7",
+        name: "Class 11th CBSE Commerce",
+        description: "Class 11 CBSE Commerce Stream",
+        categoryType: "school",
+        classLevel: "11",
+        board: "CBSE",
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 17,
+        icon: "💼",
+        color: "#F59E0B",
+        createdAt: null
+      },
+      {
+        id: "frontend-8",
+        name: "Class 12th CBSE Commerce",
+        description: "Class 12 CBSE Commerce Stream", 
+        categoryType: "school",
+        classLevel: "12",
+        board: "CBSE",
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 21,
+        icon: "📈",
+        color: "#F59E0B",
+        createdAt: null
+      },
+      // Competitive Exam Categories - Entrance Exams
+      {
         id: "frontend-5",
         name: "JEE Main",
         description: "Joint Entrance Examination - Main",
@@ -141,6 +178,23 @@ export default function Onboarding() {
         isActive: true,
         displayOrder: 30,
         icon: "⚙️",
+        color: "#059669",
+        createdAt: null
+      },
+      {
+        id: "frontend-11",
+        name: "JEE Advanced",
+        description: "Joint Entrance Examination - Advanced",
+        categoryType: "competitive_exam",
+        classLevel: null,
+        board: null,
+        examType: "JEE_Advanced",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 31,
+        icon: "🎯",
         color: "#059669",
         createdAt: null
       },
@@ -162,50 +216,261 @@ export default function Onboarding() {
         createdAt: null
       },
       {
-        id: "frontend-7",
-        name: "Class 11th CBSE Commerce",
-        description: "Class 11 CBSE Commerce Stream",
-        categoryType: "school",
-        classLevel: "11",
-        board: "CBSE",
+        id: "frontend-12",
+        name: "CUET UG",
+        description: "Common University Entrance Test - Undergraduate",
+        categoryType: "competitive_exam",
+        classLevel: null,
+        board: null,
+        examType: "CUET_UG",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
-        displayOrder: 17,
-        icon: "💼",
-        color: "#F59E0B"
+        displayOrder: 33,
+        icon: "🎓",
+        color: "#7C3AED",
+        createdAt: null
       },
       {
-        id: "frontend-8",
-        name: "Class 12th CBSE Commerce",
-        description: "Class 12 CBSE Commerce Stream", 
-        categoryType: "school",
-        classLevel: "12",
-        board: "CBSE",
+        id: "frontend-13",
+        name: "CUET PG",
+        description: "Common University Entrance Test - Postgraduate",
+        categoryType: "competitive_exam",
+        classLevel: null,
+        board: null,
+        examType: "CUET_PG",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
-        displayOrder: 21,
-        icon: "📈",
-        color: "#F59E0B"
+        displayOrder: 34,
+        icon: "📚",
+        color: "#7C3AED",
+        createdAt: null
       },
+      // Professional Exam Categories - Government & Banking
       {
         id: "frontend-9",
         name: "UPSC CSE",
         description: "Union Public Service Commission - Civil Services Examination",
-        categoryType: "competitive_exam",
+        categoryType: "professional_exam",
+        classLevel: null,
+        board: null,
         examType: "UPSC_CSE",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 40,
         icon: "🏛️",
-        color: "#DC2626"
+        color: "#DC2626",
+        createdAt: null
       },
       {
         id: "frontend-10",
         name: "SSC CGL",
         description: "Staff Selection Commission - Combined Graduate Level",
-        categoryType: "competitive_exam", 
+        categoryType: "professional_exam", 
+        classLevel: null,
+        board: null,
         examType: "SSC_CGL",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
         isActive: true,
         displayOrder: 35,
         icon: "📝",
-        color: "#7C2D12"
+        color: "#7C2D12",
+        createdAt: null
+      },
+      {
+        id: "frontend-14",
+        name: "SSC CHSL",
+        description: "Staff Selection Commission - Combined Higher Secondary Level",
+        categoryType: "professional_exam",
+        classLevel: null,
+        board: null,
+        examType: "SSC_CHSL",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 36,
+        icon: "📊",
+        color: "#7C2D12",
+        createdAt: null
+      },
+      {
+        id: "frontend-15",
+        name: "SBI PO",
+        description: "State Bank of India - Probationary Officer",
+        categoryType: "professional_exam",
+        classLevel: null,
+        board: null,
+        examType: "SBI_PO",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 45,
+        icon: "🏦",
+        color: "#1E40AF",
+        createdAt: null
+      },
+      {
+        id: "frontend-16",
+        name: "IBPS PO",
+        description: "Institute of Banking Personnel Selection - Probationary Officer",
+        categoryType: "professional_exam",
+        classLevel: null,
+        board: null,
+        examType: "IBPS_PO",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 46,
+        icon: "💳",
+        color: "#1E40AF",
+        createdAt: null
+      },
+      {
+        id: "frontend-17",
+        name: "RBI Grade B",
+        description: "Reserve Bank of India - Grade B Officer",
+        categoryType: "professional_exam",
+        classLevel: null,
+        board: null,
+        examType: "RBI_Grade_B",
+        engineeringBranch: null,
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 47,
+        icon: "🏛️",
+        color: "#1E40AF",
+        createdAt: null
+      },
+      // College Categories - Engineering & Medical
+      {
+        id: "frontend-18",
+        name: "Computer Science Engineering",
+        description: "Computer Science and Engineering Branch",
+        categoryType: "college",
+        classLevel: null,
+        board: null,
+        examType: null,
+        engineeringBranch: "Computer_Science",
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 50,
+        icon: "💻",
+        color: "#059669",
+        createdAt: null
+      },
+      {
+        id: "frontend-19",
+        name: "Electronics & Communication Engineering",
+        description: "Electronics and Communication Engineering Branch",
+        categoryType: "college",
+        classLevel: null,
+        board: null,
+        examType: null,
+        engineeringBranch: "Electronics_Communication",
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 51,
+        icon: "📡",
+        color: "#059669",
+        createdAt: null
+      },
+      {
+        id: "frontend-20",
+        name: "Mechanical Engineering",
+        description: "Mechanical Engineering Branch",
+        categoryType: "college",
+        classLevel: null,
+        board: null,
+        examType: null,
+        engineeringBranch: "Mechanical",
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 52,
+        icon: "⚙️",
+        color: "#059669",
+        createdAt: null
+      },
+      {
+        id: "frontend-21",
+        name: "Civil Engineering",
+        description: "Civil Engineering Branch",
+        categoryType: "college",
+        classLevel: null,
+        board: null,
+        examType: null,
+        engineeringBranch: "Civil",
+        medicalBranch: null,
+        subjects: null,
+        isActive: true,
+        displayOrder: 53,
+        icon: "🏗️",
+        color: "#059669",
+        createdAt: null
+      },
+      {
+        id: "frontend-22",
+        name: "MBBS General Medicine",
+        description: "Bachelor of Medicine and Bachelor of Surgery - General Medicine",
+        categoryType: "college",
+        classLevel: null,
+        board: null,
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: "General_Medicine",
+        subjects: null,
+        isActive: true,
+        displayOrder: 60,
+        icon: "🩺",
+        color: "#7C3AED",
+        createdAt: null
+      },
+      {
+        id: "frontend-23",
+        name: "MBBS Surgery",
+        description: "Bachelor of Medicine and Bachelor of Surgery - Surgery Specialization",
+        categoryType: "college",
+        classLevel: null,
+        board: null,
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: "Surgery",
+        subjects: null,
+        isActive: true,
+        displayOrder: 61,
+        icon: "🔬",
+        color: "#7C3AED",
+        createdAt: null
+      },
+      {
+        id: "frontend-24",
+        name: "MBBS Pediatrics",
+        description: "Bachelor of Medicine and Bachelor of Surgery - Pediatrics Specialization",
+        categoryType: "college",
+        classLevel: null,
+        board: null,
+        examType: null,
+        engineeringBranch: null,
+        medicalBranch: "Pediatrics",
+        subjects: null,
+        isActive: true,
+        displayOrder: 62,
+        icon: "👶",
+        color: "#7C3AED",
+        createdAt: null
       }
     ] as EducationalCategory[];
   }
@@ -226,9 +491,22 @@ export default function Onboarding() {
   if (!groupedCategories.college) groupedCategories.college = [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+        {/* Header with Back Button */}
+        <div className="relative mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => setLocation('/')}
+            className="absolute left-0 top-0 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-600"
+            data-testid="button-back-onboarding"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
+        
+        {/* Title Section */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="relative w-20 h-20 bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl border-4 border-pink-400/50">
@@ -338,7 +616,7 @@ export default function Onboarding() {
               </h4>
               <div className="flex flex-wrap gap-2">
                 {selectedCategories.map((categoryId) => {
-                  const category = categories?.find(c => c.id === categoryId);
+                  const category = finalCategories?.find(c => c.id === categoryId);
                   return category ? (
                     <Badge key={categoryId} className="bg-purple-100 text-purple-800">
                       {category.icon} {category.name}

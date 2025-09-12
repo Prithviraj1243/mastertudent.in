@@ -930,17 +930,25 @@ export class DatabaseStorage implements IStorage {
   async getForumPosts(categoryId?: string, page = 1, limit = 20): Promise<{ posts: ForumPost[]; total: number }> {
     const offset = (page - 1) * limit;
     
-    let query = db.select().from(forumPosts);
-    let countQuery = db.select({ count: count(forumPosts.id) }).from(forumPosts);
-
+    const conditions = [];
     if (categoryId) {
-      query = query.where(eq(forumPosts.categoryId, categoryId));
-      countQuery = countQuery.where(eq(forumPosts.categoryId, categoryId));
+      conditions.push(eq(forumPosts.categoryId, categoryId));
     }
 
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
     const [posts, [{ count: total }]] = await Promise.all([
-      query.orderBy(desc(forumPosts.isPinned), desc(forumPosts.lastReplyAt), desc(forumPosts.createdAt)).limit(limit).offset(offset),
-      countQuery
+      db
+        .select()
+        .from(forumPosts)
+        .where(whereClause)
+        .orderBy(desc(forumPosts.isPinned), desc(forumPosts.lastReplyAt), desc(forumPosts.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ count: count(forumPosts.id) })
+        .from(forumPosts)
+        .where(whereClause)
     ]);
 
     return { posts, total: Number(total) };
@@ -1018,13 +1026,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBroadcasts(target?: string): Promise<Broadcast[]> {
-    let query = db.select().from(broadcasts).where(eq(broadcasts.isActive, true));
+    const conditions = [eq(broadcasts.isActive, true)];
     
     if (target) {
-      query = query.where(or(eq(broadcasts.target, target as any), eq(broadcasts.target, 'all_users')));
+      conditions.push(or(eq(broadcasts.target, target as any), eq(broadcasts.target, 'all_users'))!);
     }
 
-    return await query.orderBy(desc(broadcasts.sentAt));
+    return await db
+      .select()
+      .from(broadcasts)
+      .where(and(...conditions))
+      .orderBy(desc(broadcasts.sentAt));
   }
 
   // Achievement Operations
@@ -1043,11 +1055,24 @@ export class DatabaseStorage implements IStorage {
 
   // Educational Category Operations
   async getEducationalCategories(): Promise<any[]> {
-    return await db
+    const categories = await db
       .select()
       .from(educationalCategories)
       .where(eq(educationalCategories.isActive, true))
       .orderBy(educationalCategories.displayOrder, educationalCategories.name);
+    
+    // Auto-seed if no categories exist
+    if (categories.length === 0) {
+      await this.seedEducationalCategories();
+      // Fetch categories again after seeding
+      return await db
+        .select()
+        .from(educationalCategories)
+        .where(eq(educationalCategories.isActive, true))
+        .orderBy(educationalCategories.displayOrder, educationalCategories.name);
+    }
+    
+    return categories;
   }
 
   async saveUserEducationalPreferences(userId: string, categoryIds: string[]): Promise<void> {
@@ -1112,28 +1137,39 @@ export class DatabaseStorage implements IStorage {
     }
 
     const categoriesToSeed = [
-      // School Categories
+      // School Categories - CBSE
       { name: "Class 9th CBSE", description: "Class 9 CBSE Board", categoryType: "school", classLevel: "9", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 10, icon: "📔", color: "#3B82F6" },
-      { name: "Class 9th ICSE", description: "Class 9 ICSE Board", categoryType: "school", classLevel: "9", board: "ICSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 11, icon: "📔", color: "#10B981" },
       { name: "Class 10th CBSE", description: "Class 10 CBSE Board with Board Exams", categoryType: "school", classLevel: "10", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 13, icon: "📕", color: "#3B82F6" },
-      { name: "Class 10th ICSE", description: "Class 10 ICSE Board with Board Exams", categoryType: "school", classLevel: "10", board: "ICSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Geography", "History", "Economics"], isActive: true, displayOrder: 14, icon: "📕", color: "#10B981" },
       { name: "Class 11th CBSE Science", description: "Class 11 CBSE Science Stream (PCM/PCB)", categoryType: "school", classLevel: "11", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Computer_Science"], isActive: true, displayOrder: 16, icon: "🔬", color: "#F59E0B" },
-      { name: "Class 11th CBSE Commerce", description: "Class 11 CBSE Commerce Stream", categoryType: "school", classLevel: "11", board: "CBSE", subjects: ["Accountancy", "Business_Studies", "Economics", "English", "Mathematics"], isActive: true, displayOrder: 17, icon: "💼", color: "#8B5CF6" },
-      { name: "Class 11th CBSE Arts", description: "Class 11 CBSE Arts/Humanities Stream", categoryType: "school", classLevel: "11", board: "CBSE", subjects: ["History", "Geography", "Political_Science", "Economics", "English", "Psychology"], isActive: true, displayOrder: 18, icon: "🎨", color: "#EF4444" },
+      { name: "Class 11th CBSE Commerce", description: "Class 11 CBSE Commerce Stream", categoryType: "school", classLevel: "11", board: "CBSE", subjects: ["Accountancy", "Business_Studies", "Economics", "English", "Mathematics"], isActive: true, displayOrder: 17, icon: "💼", color: "#F59E0B" },
       { name: "Class 12th CBSE Science", description: "Class 12 CBSE Science Stream (PCM/PCB)", categoryType: "school", classLevel: "12", board: "CBSE", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Computer_Science"], isActive: true, displayOrder: 20, icon: "🎓", color: "#F59E0B" },
-      { name: "Class 12th CBSE Commerce", description: "Class 12 CBSE Commerce Stream", categoryType: "school", classLevel: "12", board: "CBSE", subjects: ["Accountancy", "Business_Studies", "Economics", "English", "Mathematics"], isActive: true, displayOrder: 21, icon: "🎓", color: "#8B5CF6" },
-      { name: "Class 12th CBSE Arts", description: "Class 12 CBSE Arts/Humanities Stream", categoryType: "school", classLevel: "12", board: "CBSE", subjects: ["History", "Geography", "Political_Science", "Economics", "English", "Psychology"], isActive: true, displayOrder: 22, icon: "🎓", color: "#EF4444" },
+      { name: "Class 12th CBSE Commerce", description: "Class 12 CBSE Commerce Stream", categoryType: "school", classLevel: "12", board: "CBSE", subjects: ["Accountancy", "Business_Studies", "Economics", "English", "Mathematics"], isActive: true, displayOrder: 21, icon: "📈", color: "#F59E0B" },
 
-      // Competitive Exam Categories
-      { name: "JEE Main", description: "Joint Entrance Examination - Main", categoryType: "competitive_exam", examType: "JEE", subjects: ["Mathematics", "Physics", "Chemistry"], isActive: true, displayOrder: 30, icon: "⚙️", color: "#059669" },
-      { name: "JEE Advanced", description: "Joint Entrance Examination - Advanced", categoryType: "competitive_exam", examType: "JEE", subjects: ["Mathematics", "Physics", "Chemistry"], isActive: true, displayOrder: 31, icon: "🚀", color: "#DC2626" },
-      { name: "NEET UG", description: "National Eligibility cum Entrance Test - Undergraduate", categoryType: "competitive_exam", examType: "NEET", subjects: ["Physics", "Chemistry", "Biology"], isActive: true, displayOrder: 32, icon: "🩺", color: "#7C3AED" },
-      { name: "CUET UG", description: "Common University Entrance Test - Undergraduate", categoryType: "competitive_exam", examType: "CUET", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History", "Geography", "Political_Science", "Economics"], isActive: true, displayOrder: 33, icon: "🎯", color: "#0891B2" },
+      // Competitive Exam Categories - Entrance Exams
+      { name: "JEE Main", description: "Joint Entrance Examination - Main", categoryType: "competitive_exam", examType: "JEE_Main", subjects: ["Mathematics", "Physics", "Chemistry"], isActive: true, displayOrder: 30, icon: "⚙️", color: "#059669" },
+      { name: "JEE Advanced", description: "Joint Entrance Examination - Advanced", categoryType: "competitive_exam", examType: "JEE_Advanced", subjects: ["Mathematics", "Physics", "Chemistry"], isActive: true, displayOrder: 31, icon: "🎯", color: "#059669" },
+      { name: "NEET UG", description: "National Eligibility cum Entrance Test - Undergraduate", categoryType: "competitive_exam", examType: "NEET_UG", subjects: ["Physics", "Chemistry", "Biology"], isActive: true, displayOrder: 32, icon: "🩺", color: "#7C3AED" },
+      { name: "CUET UG", description: "Common University Entrance Test - Undergraduate", categoryType: "competitive_exam", examType: "CUET_UG", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History", "Geography", "Political_Science", "Economics"], isActive: true, displayOrder: 33, icon: "🎓", color: "#7C3AED" },
+      { name: "CUET PG", description: "Common University Entrance Test - Postgraduate", categoryType: "competitive_exam", examType: "CUET_PG", subjects: ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History", "Geography", "Political_Science", "Economics"], isActive: true, displayOrder: 34, icon: "📚", color: "#7C3AED" },
 
-      // Professional Exam Categories
-      { name: "SSC CGL", description: "Staff Selection Commission - Combined Graduate Level", categoryType: "professional_exam", examType: "SSC", subjects: ["General_Intelligence", "General_Awareness", "Quantitative_Aptitude", "English"], isActive: true, displayOrder: 40, icon: "🏛️", color: "#B91C1C" },
-      { name: "SSC CHSL", description: "Staff Selection Commission - Combined Higher Secondary Level", categoryType: "professional_exam", examType: "SSC", subjects: ["General_Intelligence", "General_Awareness", "Quantitative_Aptitude", "English"], isActive: true, displayOrder: 41, icon: "🏛️", color: "#B91C1C" },
-      { name: "UPSC CSE", description: "Union Public Service Commission - Civil Services Examination", categoryType: "professional_exam", examType: "UPSC", subjects: ["General_Studies", "Optional_Subject", "Essay", "English", "Hindi"], isActive: true, displayOrder: 42, icon: "⚖️", color: "#1F2937" }
+      // Professional Exam Categories - Government & Banking
+      { name: "UPSC CSE", description: "Union Public Service Commission - Civil Services Examination", categoryType: "professional_exam", examType: "UPSC_CSE", subjects: ["General_Studies", "Optional_Subject", "Essay", "English", "Hindi"], isActive: true, displayOrder: 40, icon: "🏛️", color: "#DC2626" },
+      { name: "SSC CGL", description: "Staff Selection Commission - Combined Graduate Level", categoryType: "professional_exam", examType: "SSC_CGL", subjects: ["General_Intelligence", "General_Awareness", "Quantitative_Aptitude", "English"], isActive: true, displayOrder: 35, icon: "📝", color: "#7C2D12" },
+      { name: "SSC CHSL", description: "Staff Selection Commission - Combined Higher Secondary Level", categoryType: "professional_exam", examType: "SSC_CHSL", subjects: ["General_Intelligence", "General_Awareness", "Quantitative_Aptitude", "English"], isActive: true, displayOrder: 36, icon: "📊", color: "#7C2D12" },
+      { name: "SBI PO", description: "State Bank of India - Probationary Officer", categoryType: "professional_exam", examType: "SBI_PO", subjects: ["Reasoning", "Quantitative_Aptitude", "English", "General_Awareness", "Computer_Knowledge"], isActive: true, displayOrder: 45, icon: "🏦", color: "#1E40AF" },
+      { name: "IBPS PO", description: "Institute of Banking Personnel Selection - Probationary Officer", categoryType: "professional_exam", examType: "IBPS_PO", subjects: ["Reasoning", "Quantitative_Aptitude", "English", "General_Awareness", "Computer_Knowledge"], isActive: true, displayOrder: 46, icon: "💳", color: "#1E40AF" },
+      { name: "RBI Grade B", description: "Reserve Bank of India - Grade B Officer", categoryType: "professional_exam", examType: "RBI_Grade_B", subjects: ["Reasoning", "Quantitative_Aptitude", "English", "General_Awareness", "Economics", "Finance"], isActive: true, displayOrder: 47, icon: "🏛️", color: "#1E40AF" },
+
+      // College Categories - Engineering Branches
+      { name: "Computer Science Engineering", description: "Computer Science and Engineering Branch", categoryType: "college", engineeringBranch: "Computer_Science", subjects: ["Programming", "Data_Structures", "Algorithms", "Database_Systems", "Computer_Networks", "Software_Engineering"], isActive: true, displayOrder: 50, icon: "💻", color: "#059669" },
+      { name: "Electronics & Communication Engineering", description: "Electronics and Communication Engineering Branch", categoryType: "college", engineeringBranch: "Electronics_Communication", subjects: ["Circuit_Analysis", "Digital_Electronics", "Signal_Processing", "Communication_Systems", "Microprocessors", "VLSI_Design"], isActive: true, displayOrder: 51, icon: "📡", color: "#059669" },
+      { name: "Mechanical Engineering", description: "Mechanical Engineering Branch", categoryType: "college", engineeringBranch: "Mechanical", subjects: ["Thermodynamics", "Fluid_Mechanics", "Machine_Design", "Manufacturing_Processes", "Heat_Transfer", "Dynamics"], isActive: true, displayOrder: 52, icon: "⚙️", color: "#059669" },
+      { name: "Civil Engineering", description: "Civil Engineering Branch", categoryType: "college", engineeringBranch: "Civil", subjects: ["Structural_Engineering", "Geotechnical_Engineering", "Transportation_Engineering", "Environmental_Engineering", "Fluid_Mechanics", "Construction_Management"], isActive: true, displayOrder: 53, icon: "🏗️", color: "#059669" },
+
+      // College Categories - Medical Specializations
+      { name: "MBBS General Medicine", description: "Bachelor of Medicine and Bachelor of Surgery - General Medicine", categoryType: "college", medicalBranch: "General_Medicine", subjects: ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Pharmacology", "Internal_Medicine"], isActive: true, displayOrder: 60, icon: "🩺", color: "#7C3AED" },
+      { name: "MBBS Surgery", description: "Bachelor of Medicine and Bachelor of Surgery - Surgery Specialization", categoryType: "college", medicalBranch: "Surgery", subjects: ["Anatomy", "Physiology", "General_Surgery", "Surgical_Procedures", "Anesthesia", "Critical_Care"], isActive: true, displayOrder: 61, icon: "🔬", color: "#7C3AED" },
+      { name: "MBBS Pediatrics", description: "Bachelor of Medicine and Bachelor of Surgery - Pediatrics Specialization", categoryType: "college", medicalBranch: "Pediatrics", subjects: ["Child_Development", "Pediatric_Medicine", "Neonatology", "Child_Psychology", "Vaccination", "Growth_Disorders"], isActive: true, displayOrder: 62, icon: "👶", color: "#7C3AED" }
     ];
 
     await db.insert(educationalCategories).values(categoriesToSeed as any);
