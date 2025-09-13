@@ -23,11 +23,16 @@ export default function Onboarding() {
   // Complete onboarding mutation
   const completeOnboarding = useMutation({
     mutationFn: async (categoryIds: string[]) => {
+      console.log('Mutation function called with categoryIds:', categoryIds);
       return apiRequest('POST', '/api/complete-onboarding', { categoryIds });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Mutation succeeded:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       setLocation('/');
+    },
+    onError: (error) => {
+      console.error('Mutation failed:', error);
     },
   });
 
@@ -40,8 +45,12 @@ export default function Onboarding() {
   };
 
   const handleComplete = () => {
+    console.log('handleComplete called with categories:', selectedCategories);
     if (selectedCategories.length > 0) {
+      console.log('Calling completeOnboarding.mutate...');
       completeOnboarding.mutate(selectedCategories);
+    } else {
+      console.log('No categories selected, not calling mutation');
     }
   };
 
