@@ -1130,11 +1130,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedEducationalCategories(): Promise<void> {
-    // Check if categories already exist
-    const existingCategories = await db.select().from(educationalCategories).limit(1);
-    if (existingCategories.length > 0) {
+    // Check if specific categories already exist to prevent duplicates
+    const existingCounts = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(educationalCategories)
+      .where(sql`name IN ('Class 9th CBSE', 'JEE Main', 'UPSC CSE', 'Computer Science Engineering')`);
+    
+    if (existingCounts[0]?.count > 0) {
+      console.log('Categories already seeded, skipping...');
       return; // Categories already seeded
     }
+    
+    console.log('Seeding educational categories...');
 
     const categoriesToSeed = [
       // School Categories - CBSE
