@@ -12,7 +12,9 @@ import {
   TrendingUp,
   Award,
   Eye,
-  BookOpen
+  BookOpen,
+  MessageCircle,
+  ThumbsUp
 } from "lucide-react";
 import { Note } from "@shared/schema";
 
@@ -112,21 +114,21 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
                   <div className="flex items-center space-x-2">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                        {getInitials(note.topper?.firstName + ' ' + note.topper?.lastName || 'U')}
+                        {getInitials(note.topperId || 'U')}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground" data-testid="text-topper-name">
-                      {note.topper?.firstName} {note.topper?.lastName}
+                      Anonymous Student
                     </span>
                   </div>
                   
                   <div className="flex items-center space-x-1">
-                    <div className="flex text-yellow-400">
+                    <div className="flex text-gray-300">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <StarIcon key={star} className="h-3 w-3 fill-current" />
+                        <StarIcon key={star} className="h-3 w-3" />
                       ))}
                     </div>
-                    <span className="text-xs text-muted-foreground">4.8</span>
+                    <span className="text-xs text-muted-foreground">Not rated</span>
                   </div>
                   
                   <span className="text-xs text-muted-foreground" data-testid="text-downloads-count">
@@ -136,7 +138,7 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
                   
                   <span className="text-xs text-muted-foreground">
                     <Clock className="h-3 w-3 inline mr-1" />
-                    {formatDate(note.publishedAt || note.createdAt)}
+                    {formatDate((note.publishedAt || note.createdAt || new Date()).toString())}
                   </span>
                 </div>
                 
@@ -212,19 +214,15 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
           </Avatar>
           <div className="flex-1">
             <p className="text-sm font-semibold text-foreground" data-testid="text-topper-name">
-              Top Student
+              Anonymous Student
             </p>
             <div className="flex items-center space-x-2">
-              <div className="flex text-yellow-400">
+              <div className="flex text-gray-300">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <StarIcon key={star} className="h-3 w-3 fill-current" />
+                  <StarIcon key={star} className="h-3 w-3" />
                 ))}
               </div>
-              <span className="text-xs text-muted-foreground">4.8</span>
-              <Badge variant="secondary" className="text-xs">
-                <Award className="h-3 w-3 mr-1" />
-                Verified
-              </Badge>
+              <span className="text-xs text-muted-foreground">Not rated</span>
             </div>
           </div>
         </div>
@@ -238,13 +236,39 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
           </div>
           <div className="text-center p-2 bg-green-50 rounded-lg">
             <Eye className="h-4 w-4 text-green-600 mx-auto mb-1" />
-            <div className="text-sm font-semibold text-green-800">1.2k</div>
+            <div className="text-sm font-semibold text-green-800">{note.viewsCount || 0}</div>
             <div className="text-xs text-green-600">Views</div>
           </div>
           <div className="text-center p-2 bg-purple-50 rounded-lg">
-            <TrendingUp className="h-4 w-4 text-purple-600 mx-auto mb-1" />
-            <div className="text-sm font-semibold text-purple-800">95%</div>
-            <div className="text-xs text-purple-600">Helpful</div>
+            <Heart className="h-4 w-4 text-purple-600 mx-auto mb-1" />
+            <div className="text-sm font-semibold text-purple-800">{note.likesCount || 0}</div>
+            <div className="text-xs text-purple-600">Likes</div>
+          </div>
+        </div>
+
+        {/* Reviews Section - showing real data status */}
+        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" />
+              Reviews & Ratings
+            </h4>
+          </div>
+          
+          <div className="text-center py-4">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="flex text-gray-300">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <StarIcon key={star} className="h-4 w-4" />
+                ))}
+              </div>
+              <span className="text-sm text-gray-500">No ratings yet</span>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">Be the first to rate and review this note!</p>
+            <Button variant="outline" size="sm" className="text-xs" data-testid="button-rate-note">
+              <StarIcon className="h-3 w-3 mr-1" />
+              Rate This Note
+            </Button>
           </div>
         </div>
 
@@ -260,7 +284,7 @@ export default function NoteCard({ note, viewMode = "grid" }: NoteCardProps) {
         <div className="mt-3 text-center">
           <span className="text-xs text-muted-foreground">
             <Clock className="h-3 w-3 inline mr-1" />
-            Updated {formatDate(note.publishedAt || note.createdAt)}
+            Updated {formatDate((note.publishedAt || note.createdAt || new Date()).toString())}
           </span>
         </div>
       </CardContent>

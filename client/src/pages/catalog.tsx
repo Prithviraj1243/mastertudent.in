@@ -34,6 +34,15 @@ export default function Catalog() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(1);
 
+  // Get categoryId from URL params (from exam selection flow)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedCategoryId = urlParams.get('categoryId');
+    if (selectedCategoryId) {
+      setCategoryId(selectedCategoryId);
+    }
+  }, []);
+
   // Fetch educational categories
   const { data: categories } = useQuery<any[]>({
     queryKey: ['/api/educational-categories'],
