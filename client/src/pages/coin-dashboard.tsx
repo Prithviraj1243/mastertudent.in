@@ -201,9 +201,9 @@ export default function CoinDashboard() {
 
         {/* Main Content Tabs */}
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-          <CardHeader>
+          <CardContent className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-4 mb-6">
                 <TabsTrigger value="overview" className="flex items-center gap-2">
                   <Wallet className="h-4 w-4" />
                   Overview
@@ -221,10 +221,6 @@ export default function CoinDashboard() {
                   History
                 </TabsTrigger>
               </TabsList>
-              </TabsList>
-          </CardHeader>
-
-          <CardContent>
             <TabsContent value="overview" className="space-y-6">
               {/* Current Streak */}
               {coinStats?.streak && coinStats.streak > 0 && (
@@ -481,6 +477,7 @@ export default function CoinDashboard() {
                 </div>
               )}
             </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
         </main>
