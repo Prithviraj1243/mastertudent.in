@@ -221,7 +221,7 @@ export default function CoinDashboard() {
                   History
                 </TabsTrigger>
               </TabsList>
-            </Tabs>
+              </TabsList>
           </CardHeader>
 
           <CardContent>
