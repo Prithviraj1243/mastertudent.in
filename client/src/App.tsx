@@ -10,6 +10,8 @@ import Onboarding from "@/pages/onboarding";
 import Home from "@/pages/home";
 import Subscribe from "@/pages/subscribe";
 import Catalog from "@/pages/catalog";
+import CategorySelection from "@/pages/category-selection";
+import ExamSelection from "@/pages/exam-selection";
 import Upload from "@/pages/upload";
 import ReviewQueue from "@/pages/review-queue";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -53,6 +55,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/categories" component={CategorySelection} />
+      <Route path="/exam-selection" component={ExamSelection} />
       <Route path="/subscribe" component={Subscribe} />
       <Route path="/catalog" component={Catalog} />
       <Route path="/forum" component={Forum} />

@@ -800,11 +800,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Educational categories routes with fallback
   app.get('/api/educational-categories', async (req, res) => {
+    const categoryType = req.query.categoryType as string;
+    
     try {
-      let categories = await storage.getEducationalCategories();
+      const raw = await storage.getEducationalCategories();
+      let categories = Array.isArray(raw) ? raw : [];
       
-      // If database is empty, provide fallback categories
-      if (!categories || categories.length === 0) {
+      // Filter by categoryType if provided
+      if (categoryType) {
+        categories = categories.filter(cat => cat.categoryType === categoryType);
+      }
+      
+      // If database is empty or no categories match filter, provide fallback categories
+      if (categories.length === 0) {
         categories = [
           {
             id: "fallback-1",
@@ -877,6 +885,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             color: "#7C3AED"
           }
         ];
+        
+        // Filter fallback categories by categoryType if provided
+        if (categoryType) {
+          categories = categories.filter(cat => cat.categoryType === categoryType);
+        }
       }
       
       res.json(categories);
@@ -916,6 +929,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           color: "#059669"
         }
       ];
+      
+      // Filter emergency fallback categories by categoryType if provided  
+      if (categoryType) {
+        return res.json(fallbackCategories.filter(cat => cat.categoryType === categoryType));
+      }
       
       res.json(fallbackCategories);
     }

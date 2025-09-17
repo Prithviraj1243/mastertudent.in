@@ -71,7 +71,7 @@ export default function Home() {
                     className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
                     asChild
                   >
-                    <Link href="/catalog" data-testid="button-browse-all">
+                    <Link href="/categories" data-testid="button-browse-all">
                       <BookOpen className="mr-2 h-5 w-5 text-white animate-glow-pulse" />
                       <span className="text-white font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">📈 Browse Notes</span>
                     </Link>
