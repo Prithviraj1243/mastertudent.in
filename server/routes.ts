@@ -33,11 +33,36 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Server start timestamp for cache busting
+  const serverStartTime = Date.now();
+  
+  // Cache control middleware for HTML and API responses
+  app.use((req, res, next) => {
+    // Apply no-cache to all HTML requests (including root "/")
+    if (req.method === 'GET' && req.headers.accept?.includes('text/html')) {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+    }
+    // Apply no-cache to all API requests
+    if (req.path.startsWith('/api/')) {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+    }
+    next();
+  });
+
   // Auth middleware
   await setupAuth(app);
 
   // Helper function to get user ID from request
   const getUserId = (req: any) => req.user?.id || req.user?.claims?.sub;
+
+  // Version endpoint for cache busting
+  app.get('/api/version', (req, res) => {
+    res.json({ version: serverStartTime, timestamp: Date.now() });
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
