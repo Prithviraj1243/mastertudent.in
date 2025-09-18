@@ -45,6 +45,11 @@ export default function Onboarding() {
     }
   };
 
+  const handleSkip = () => {
+    // Complete onboarding with no categories to mark it as completed
+    completeOnboarding.mutate([]);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 flex items-center justify-center">
@@ -635,7 +640,8 @@ export default function Onboarding() {
             <div className="flex space-x-4">
               <Button 
                 variant="outline"
-                onClick={() => setLocation('/')}
+                onClick={handleSkip}
+                disabled={completeOnboarding.isPending}
                 data-testid="button-skip"
               >
                 Skip for now

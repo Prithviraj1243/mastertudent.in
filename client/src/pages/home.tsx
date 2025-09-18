@@ -191,21 +191,23 @@ export default function Home() {
               ].map((category, index) => (
                 <Link key={category.name} href={`/catalog?subject=${encodeURIComponent(category.name)}`}>
                   <Card 
-                    className="hover-lift cursor-pointer border-2 border-transparent hover:border-purple-300 transition-all duration-300 bg-white shadow-lg animate-fade-in group"
+                    className="hover-lift cursor-pointer border-2 border-transparent hover:border-purple-300 transition-all duration-300 bg-white shadow-lg animate-fade-in group h-48 flex flex-col"
                     style={{animationDelay: `${index * 0.1}s`}}
                   >
-                    <CardContent className="p-6 text-center relative overflow-hidden">
+                    <CardContent className="p-6 text-center relative overflow-hidden flex-1 flex flex-col justify-between">
                       {/* Background gradient */}
                       <div className={`absolute inset-0 ${category.color} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
                       
-                      <div className="relative z-10">
-                        <div className="text-4xl mb-3 animate-bounce-in" style={{animationDelay: `${index * 0.2}s`}}>
-                          {category.icon}
+                      <div className="relative z-10 flex flex-col justify-between h-full">
+                        <div className="flex flex-col items-center">
+                          <div className="text-4xl mb-3 animate-bounce-in" style={{animationDelay: `${index * 0.2}s`}}>
+                            {category.icon}
+                          </div>
+                          <div className="font-bold text-foreground text-sm mb-2 group-hover:text-purple-600 transition-colors leading-tight">
+                            {category.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground mb-3">{category.count}</div>
                         </div>
-                        <div className="font-bold text-foreground text-base mb-2 group-hover:text-purple-600 transition-colors">
-                          {category.name}
-                        </div>
-                        <div className="text-sm text-muted-foreground mb-2">{category.count}</div>
                         <Badge 
                           variant="secondary" 
                           className="text-xs bg-gradient-primary text-white px-2 py-1 hover-scale"
