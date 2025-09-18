@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Mail, Loader2, Download, Upload } from "lucide-react";
+import { Mail, Loader2, Download, Upload, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -14,6 +14,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<"student" | "topper" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -26,6 +27,15 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       toast({
         title: "Invalid Email",
         description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters long",
         variant: "destructive",
       });
       return;
@@ -50,7 +60,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         },
         body: JSON.stringify({ 
           email, 
-          password: email,
+          password: password,
           role: selectedRole 
         }),
       });
@@ -159,6 +169,25 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 className="pl-10"
                 required
                 data-testid="input-email"
+              />
+            </div>
+          </div>
+
+          {/* Password Input */}
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="Create a password (min 6 characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10"
+                required
+                minLength={6}
+                data-testid="input-password"
               />
             </div>
           </div>
