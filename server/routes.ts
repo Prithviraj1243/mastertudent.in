@@ -17,38 +17,38 @@ if (process.env.STRIPE_SECRET_KEY) {
 
 // Configure multer for file uploads
 const upload = multer({
-  dest: 'uploads/',
+  dest: "uploads/",
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+    const allowedTypes = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type'));
+      cb(new Error("Invalid file type"));
     }
-  }
+  },
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Server start timestamp for cache busting
   const serverStartTime = Date.now();
-  
+
   // Cache control middleware for HTML and API responses
   app.use((req, res, next) => {
     // Apply no-cache to all HTML requests (including root "/")
-    if (req.method === 'GET' && req.headers.accept?.includes('text/html')) {
-      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
+    if (req.method === "GET" && req.headers.accept?.includes("text/html")) {
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
     }
     // Apply no-cache to all API requests
-    if (req.path.startsWith('/api/')) {
-      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
+    if (req.path.startsWith("/api/")) {
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
     }
     next();
   });
@@ -60,20 +60,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const getUserId = (req: any) => req.user?.id || req.user?.claims?.sub;
 
   // Version endpoint for cache busting
-  app.get('/api/version', (req, res) => {
+  app.get("/api/version", (req, res) => {
     res.json({ version: serverStartTime, timestamp: Date.now() });
   });
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       // Handle both new email-based auth and old OIDC auth
       const userId = getUserId(req);
-      
+
       if (!userId) {
         return res.status(401).json({ message: "User ID not found" });
       }
-      
+
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -81,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get topper profile if user is a topper
       let topperProfile = null;
-      if (user.role === 'topper') {
+      if (user.role === "topper") {
         topperProfile = await storage.getTopperProfile(user.id);
       }
 
@@ -93,88 +93,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Subscription routes
-  app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { plan } = req.body; // 'monthly' or 'yearly'
+  app.post(
+    "/api/create-subscription",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { plan } = req.body; // 'monthly' or 'yearly'
 
-    try {
-      // Check if Stripe is configured
-      if (!stripe) {
-        return res.status(503).json({ 
-          error: "Payment processing is currently unavailable. Stripe integration is not configured." 
+      try {
+        // Check if Stripe is configured
+        if (!stripe) {
+          return res.status(503).json({
+            error:
+              "Payment processing is currently unavailable. Stripe integration is not configured.",
+          });
+        }
+
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        // Check if user already has active subscription
+        const existingSubscription =
+          await storage.getActiveSubscription(userId);
+        if (existingSubscription) {
+          return res.json({
+            message: "Already subscribed",
+            subscription: existingSubscription,
+          });
+        }
+
+        let customer;
+        if (user.stripeCustomerId) {
+          customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        } else {
+          customer = await stripe.customers.create({
+            email: user.email!,
+            name: `${user.firstName} ${user.lastName}`.trim(),
+          });
+          await storage.updateUserStripeInfo(userId, customer.id, "");
+        }
+
+        // Price IDs - these need to be set in environment
+        const priceId =
+          plan === "yearly"
+            ? process.env.STRIPE_YEARLY_PRICE_ID
+            : process.env.STRIPE_MONTHLY_PRICE_ID;
+
+        const subscription = await stripe.subscriptions.create({
+          customer: customer.id,
+          items: [{ price: priceId }],
+          payment_behavior: "default_incomplete",
+          expand: ["latest_invoice.payment_intent"],
         });
-      }
 
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
+        // Save subscription to database
+        const renewalDate = new Date();
+        if (plan === "yearly") {
+          renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+        } else {
+          renewalDate.setMonth(renewalDate.getMonth() + 1);
+        }
 
-      // Check if user already has active subscription
-      const existingSubscription = await storage.getActiveSubscription(userId);
-      if (existingSubscription) {
-        return res.json({ 
-          message: "Already subscribed",
-          subscription: existingSubscription 
+        await storage.createSubscription({
+          studentId: userId,
+          plan,
+          startDate: new Date(),
+          renewalDate,
+          status: "active",
+          gateway: "stripe",
+          gatewayCustomerId: customer.id,
+          gatewaySubId: subscription.id,
         });
-      }
 
-      let customer;
-      if (user.stripeCustomerId) {
-        customer = await stripe.customers.retrieve(user.stripeCustomerId);
-      } else {
-        customer = await stripe.customers.create({
-          email: user.email!,
-          name: `${user.firstName} ${user.lastName}`.trim(),
+        await storage.updateUserStripeInfo(
+          userId,
+          customer.id,
+          subscription.id,
+        );
+
+        res.json({
+          subscriptionId: subscription.id,
+          clientSecret: (subscription.latest_invoice as any)?.payment_intent
+            ?.client_secret,
         });
-        await storage.updateUserStripeInfo(userId, customer.id, '');
+      } catch (error: any) {
+        console.error("Subscription error:", error);
+        res.status(400).json({ error: error.message });
       }
-
-      // Price IDs - these need to be set in environment
-      const priceId = plan === 'yearly' ? process.env.STRIPE_YEARLY_PRICE_ID : process.env.STRIPE_MONTHLY_PRICE_ID;
-      
-      const subscription = await stripe.subscriptions.create({
-        customer: customer.id,
-        items: [{ price: priceId }],
-        payment_behavior: 'default_incomplete',
-        expand: ['latest_invoice.payment_intent'],
-      });
-
-      // Save subscription to database
-      const renewalDate = new Date();
-      if (plan === 'yearly') {
-        renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-      } else {
-        renewalDate.setMonth(renewalDate.getMonth() + 1);
-      }
-
-      await storage.createSubscription({
-        studentId: userId,
-        plan,
-        startDate: new Date(),
-        renewalDate,
-        status: 'active',
-        gateway: 'stripe',
-        gatewayCustomerId: customer.id,
-        gatewaySubId: subscription.id,
-      });
-
-      await storage.updateUserStripeInfo(userId, customer.id, subscription.id);
-
-      res.json({
-        subscriptionId: subscription.id,
-        clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
-      });
-    } catch (error: any) {
-      console.error("Subscription error:", error);
-      res.status(400).json({ error: error.message });
-    }
-  });
+    },
+  );
 
   // Notes routes
-  app.get('/api/notes', async (req, res) => {
+  app.get("/api/notes", async (req, res) => {
     try {
-      const { subject, classGrade, search, categoryId, page = '1', limit = '20' } = req.query;
+      const {
+        subject,
+        classGrade,
+        search,
+        categoryId,
+        page = "1",
+        limit = "20",
+      } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
       const { notes, total } = await storage.getPublishedNotes({
@@ -186,14 +207,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         offset,
       });
 
-      res.json({ notes, total, page: parseInt(page as string), limit: parseInt(limit as string) });
+      res.json({
+        notes,
+        total,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+      });
     } catch (error) {
       console.error("Error fetching notes:", error);
       res.status(500).json({ message: "Failed to fetch notes" });
     }
   });
 
-  app.get('/api/notes/:id', async (req, res) => {
+  app.get("/api/notes/:id", async (req, res) => {
     try {
       const note = await storage.getNoteById(req.params.id);
       if (!note) {
@@ -202,7 +228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get feedback for the note
       const feedbackList = await storage.getFeedbackByNote(note.id);
-      
+
       res.json({ ...note, feedback: feedbackList });
     } catch (error) {
       console.error("Error fetching note:", error);
@@ -210,43 +236,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/notes', isAuthenticated, upload.array('files'), async (req: any, res) => {
-    const userId = getUserId(req);
-    
-    try {
-      const user = await storage.getUser(userId);
-      if (!user || (user.role !== 'topper' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Only toppers can upload notes" });
+  app.post(
+    "/api/notes",
+    isAuthenticated,
+    upload.array("files"),
+    async (req: any, res) => {
+      const userId = getUserId(req);
+
+      try {
+        const user = await storage.getUser(userId);
+        if (!user || (user.role !== "topper" && user.role !== "admin")) {
+          return res
+            .status(403)
+            .json({ message: "Only toppers can upload notes" });
+        }
+
+        const { title, subject, topic, classGrade, description, categoryId } =
+          req.body;
+        const files = req.files as Express.Multer.File[];
+
+        // Process uploaded files
+        const attachments = files.map((file) => `/uploads/${file.filename}`);
+
+        const note = await storage.createNote({
+          title,
+          subject,
+          topic,
+          classGrade,
+          description,
+          attachments,
+          topperId: userId,
+          status: "draft",
+          categoryId: categoryId || null, // Optional for backward compatibility
+        });
+
+        res.json(note);
+      } catch (error) {
+        console.error("Error creating note:", error);
+        res.status(500).json({ message: "Failed to create note" });
       }
+    },
+  );
 
-      const { title, subject, topic, classGrade, description, categoryId } = req.body;
-      const files = req.files as Express.Multer.File[];
-
-      // Process uploaded files
-      const attachments = files.map(file => `/uploads/${file.filename}`);
-
-      const note = await storage.createNote({
-        title,
-        subject,
-        topic,
-        classGrade,
-        description,
-        attachments,
-        topperId: userId,
-        status: 'draft',
-        categoryId: categoryId || null, // Optional for backward compatibility
-      });
-
-      res.json(note);
-    } catch (error) {
-      console.error("Error creating note:", error);
-      res.status(500).json({ message: "Failed to create note" });
-    }
-  });
-
-  app.put('/api/notes/:id/submit', isAuthenticated, async (req: any, res) => {
+  app.put("/api/notes/:id/submit", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const note = await storage.getNoteById(req.params.id);
       if (!note) {
@@ -258,12 +292,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update note status to submitted
-      const updatedNote = await storage.updateNoteStatus(req.params.id, 'submitted');
+      const updatedNote = await storage.updateNoteStatus(
+        req.params.id,
+        "submitted",
+      );
 
       // Create review task
       await storage.createReviewTask({
         noteId: req.params.id,
-        status: 'open',
+        status: "open",
       });
 
       res.json(updatedNote);
@@ -273,69 +310,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/notes/:id/download', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    
-    try {
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+  app.post(
+    "/api/notes/:id/download",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+
+      try {
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        // Check subscription
+        const subscription = await storage.getActiveSubscription(userId);
+        if (!subscription) {
+          return res
+            .status(403)
+            .json({ message: "Active subscription required" });
+        }
+
+        const note = await storage.getNoteById(req.params.id);
+        if (!note || note.status !== "published") {
+          return res.status(404).json({ message: "Note not found" });
+        }
+
+        // Record download
+        await storage.recordDownload(userId, req.params.id);
+
+        res.json({
+          message: "Download recorded",
+          downloadUrl: note.attachments,
+        });
+      } catch (error) {
+        console.error("Error downloading note:", error);
+        res.status(500).json({ message: "Failed to download note" });
       }
-
-      // Check subscription
-      const subscription = await storage.getActiveSubscription(userId);
-      if (!subscription) {
-        return res.status(403).json({ message: "Active subscription required" });
-      }
-
-      const note = await storage.getNoteById(req.params.id);
-      if (!note || note.status !== 'published') {
-        return res.status(404).json({ message: "Note not found" });
-      }
-
-      // Record download
-      await storage.recordDownload(userId, req.params.id);
-
-      res.json({ message: "Download recorded", downloadUrl: note.attachments });
-    } catch (error) {
-      console.error("Error downloading note:", error);
-      res.status(500).json({ message: "Failed to download note" });
-    }
-  });
+    },
+  );
 
   // Feedback routes
-  app.post('/api/notes/:id/feedback', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { rating, comment } = req.body;
-    
-    try {
-      // Check if user already gave feedback
-      const existingFeedback = await storage.getFeedbackByStudent(userId, req.params.id);
-      if (existingFeedback) {
-        return res.status(400).json({ message: "Feedback already provided" });
+  app.post(
+    "/api/notes/:id/feedback",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { rating, comment } = req.body;
+
+      try {
+        // Check if user already gave feedback
+        const existingFeedback = await storage.getFeedbackByStudent(
+          userId,
+          req.params.id,
+        );
+        if (existingFeedback) {
+          return res.status(400).json({ message: "Feedback already provided" });
+        }
+
+        const feedback = await storage.createFeedback({
+          noteId: req.params.id,
+          studentId: userId,
+          rating,
+          comment,
+        });
+
+        res.json(feedback);
+      } catch (error) {
+        console.error("Error creating feedback:", error);
+        res.status(500).json({ message: "Failed to create feedback" });
       }
-
-      const feedback = await storage.createFeedback({
-        noteId: req.params.id,
-        studentId: userId,
-        rating,
-        comment,
-      });
-
-      res.json(feedback);
-    } catch (error) {
-      console.error("Error creating feedback:", error);
-      res.status(500).json({ message: "Failed to create feedback" });
-    }
-  });
+    },
+  );
 
   // Review routes (for reviewers/admins)
-  app.get('/api/review/queue', isAuthenticated, async (req: any, res) => {
+  app.get("/api/review/queue", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
@@ -347,23 +400,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/review/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.put("/api/review/:id/approve", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
       const task = await storage.updateReviewTask(req.params.id, {
-        status: 'approved',
+        status: "approved",
         decidedAt: new Date(),
         reviewerId: userId,
       });
 
       // Update note status to approved/published
-      const note = await storage.updateNoteStatus(task.noteId, 'published', userId);
+      const note = await storage.updateNoteStatus(
+        task.noteId,
+        "published",
+        userId,
+      );
 
       res.json({ task, note });
     } catch (error) {
@@ -372,25 +429,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/review/:id/reject', isAuthenticated, async (req: any, res) => {
+  app.put("/api/review/:id/reject", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
     const { comments } = req.body;
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
       const task = await storage.updateReviewTask(req.params.id, {
-        status: 'rejected',
+        status: "rejected",
         comments: comments || [],
         decidedAt: new Date(),
         reviewerId: userId,
       });
 
       // Update note status to rejected
-      const note = await storage.updateNoteStatus(task.noteId, 'rejected', userId);
+      const note = await storage.updateNoteStatus(
+        task.noteId,
+        "rejected",
+        userId,
+      );
 
       res.json({ task, note });
     } catch (error) {
@@ -400,13 +461,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Uploader Profile Routes
-  app.get('/api/uploader/stats', isAuthenticated, async (req: any, res) => {
+  app.get("/api/uploader/stats", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || (user.role !== 'topper' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Access denied - Toppers only" });
+      if (!user || (user.role !== "topper" && user.role !== "admin")) {
+        return res
+          .status(403)
+          .json({ message: "Access denied - Toppers only" });
       }
 
       const stats = await storage.getUploaderStats(userId);
@@ -417,13 +480,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/withdrawals', isAuthenticated, async (req: any, res) => {
+  app.get("/api/withdrawals", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || (user.role !== 'topper' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Access denied - Toppers only" });
+      if (!user || (user.role !== "topper" && user.role !== "admin")) {
+        return res
+          .status(403)
+          .json({ message: "Access denied - Toppers only" });
       }
 
       const withdrawals = await storage.getWithdrawalRequests(userId);
@@ -434,53 +499,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/withdrawals/request', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { amount, coins, bankDetails, upiId } = req.body;
-    
-    try {
-      const user = await storage.getUser(userId);
-      if (!user || (user.role !== 'topper' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Access denied - Toppers only" });
+  app.post(
+    "/api/withdrawals/request",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { amount, coins, bankDetails, upiId } = req.body;
+
+      try {
+        const user = await storage.getUser(userId);
+        if (!user || (user.role !== "topper" && user.role !== "admin")) {
+          return res
+            .status(403)
+            .json({ message: "Access denied - Toppers only" });
+        }
+
+        // Check minimum withdrawal amount
+        if (amount < 200) {
+          return res
+            .status(400)
+            .json({ message: "Minimum withdrawal amount is ₹200" });
+        }
+
+        // Check wallet balance (assuming 1 rupee = 20 coins)
+        const walletBalance = Math.floor(user.totalEarned / 20);
+        if (amount > walletBalance) {
+          return res
+            .status(400)
+            .json({ message: "Insufficient wallet balance" });
+        }
+
+        const withdrawal = await storage.createWithdrawalRequest({
+          topperId: userId,
+          amount,
+          coins,
+          bankDetails,
+          upiId,
+          status: "pending",
+        });
+
+        res.json(withdrawal);
+      } catch (error) {
+        console.error("Error creating withdrawal request:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to create withdrawal request" });
       }
-
-      // Check minimum withdrawal amount
-      if (amount < 200) {
-        return res.status(400).json({ message: "Minimum withdrawal amount is ₹200" });
-      }
-
-      // Check wallet balance (assuming 1 rupee = 20 coins)
-      const walletBalance = Math.floor(user.totalEarned / 20);
-      if (amount > walletBalance) {
-        return res.status(400).json({ message: "Insufficient wallet balance" });
-      }
-
-      const withdrawal = await storage.createWithdrawalRequest({
-        topperId: userId,
-        amount,
-        coins,
-        bankDetails,
-        upiId,
-        status: 'pending',
-      });
-
-      res.json(withdrawal);
-    } catch (error) {
-      console.error("Error creating withdrawal request:", error);
-      res.status(500).json({ message: "Failed to create withdrawal request" });
-    }
-  });
+    },
+  );
 
   // Admin withdrawal management endpoints
-  app.get('/api/admin/withdrawals', isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/withdrawals", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ message: "Access denied - Admins only" });
       }
-      
+
       const withdrawals = await storage.getAllWithdrawalRequests();
       res.json(withdrawals);
     } catch (error) {
@@ -489,69 +566,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/withdrawals/:id/approve', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { id } = req.params;
-    
-    try {
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied - Admins only" });
-      }
-      
-      const withdrawal = await storage.approveWithdrawalRequest(id, userId);
-      res.json(withdrawal);
-    } catch (error) {
-      console.error("Error approving withdrawal request:", error);
-      res.status(500).json({ message: "Failed to approve withdrawal request" });
-    }
-  });
+  app.patch(
+    "/api/admin/withdrawals/:id/approve",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { id } = req.params;
 
-  app.patch('/api/admin/withdrawals/:id/reject', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { id } = req.params;
-    const { rejectionReason } = req.body;
-    
-    try {
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied - Admins only" });
-      }
-      
-      const withdrawal = await storage.rejectWithdrawalRequest(id, userId, rejectionReason);
-      res.json(withdrawal);
-    } catch (error) {
-      console.error("Error rejecting withdrawal request:", error);
-      res.status(500).json({ message: "Failed to reject withdrawal request" });
-    }
-  });
+      try {
+        const user = await storage.getUser(userId);
+        if (!user || user.role !== "admin") {
+          return res
+            .status(403)
+            .json({ message: "Access denied - Admins only" });
+        }
 
-  app.patch('/api/admin/withdrawals/:id/settle', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { id } = req.params;
-    const { settlementComments } = req.body;
-    
-    try {
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied - Admins only" });
+        const withdrawal = await storage.approveWithdrawalRequest(id, userId);
+        res.json(withdrawal);
+      } catch (error) {
+        console.error("Error approving withdrawal request:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to approve withdrawal request" });
       }
-      
-      const withdrawal = await storage.settleWithdrawalRequest(id, userId, settlementComments);
-      res.json(withdrawal);
-    } catch (error) {
-      console.error("Error settling withdrawal request:", error);
-      res.status(500).json({ message: "Failed to settle withdrawal request" });
-    }
-  });
+    },
+  );
+
+  app.patch(
+    "/api/admin/withdrawals/:id/reject",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { id } = req.params;
+      const { rejectionReason } = req.body;
+
+      try {
+        const user = await storage.getUser(userId);
+        if (!user || user.role !== "admin") {
+          return res
+            .status(403)
+            .json({ message: "Access denied - Admins only" });
+        }
+
+        const withdrawal = await storage.rejectWithdrawalRequest(
+          id,
+          userId,
+          rejectionReason,
+        );
+        res.json(withdrawal);
+      } catch (error) {
+        console.error("Error rejecting withdrawal request:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to reject withdrawal request" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/admin/withdrawals/:id/settle",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { id } = req.params;
+      const { settlementComments } = req.body;
+
+      try {
+        const user = await storage.getUser(userId);
+        if (!user || user.role !== "admin") {
+          return res
+            .status(403)
+            .json({ message: "Access denied - Admins only" });
+        }
+
+        const withdrawal = await storage.settleWithdrawalRequest(
+          id,
+          userId,
+          settlementComments,
+        );
+        res.json(withdrawal);
+      } catch (error) {
+        console.error("Error settling withdrawal request:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to settle withdrawal request" });
+      }
+    },
+  );
 
   // Analytics routes
-  app.get('/api/analytics/topper', isAuthenticated, async (req: any, res) => {
+  app.get("/api/analytics/topper", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || user.role !== 'topper') {
+      if (!user || user.role !== "topper") {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -564,12 +673,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes
-  app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -582,9 +691,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Follow routes
-  app.post('/api/follow/:topperId', isAuthenticated, async (req: any, res) => {
+  app.post("/api/follow/:topperId", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const follow = await storage.followTopper(userId, req.params.topperId);
       res.json(follow);
@@ -594,24 +703,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/follow/:topperId', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    
-    try {
-      await storage.unfollowTopper(userId, req.params.topperId);
-      res.json({ message: "Unfollowed successfully" });
-    } catch (error) {
-      console.error("Error unfollowing topper:", error);
-      res.status(500).json({ message: "Failed to unfollow topper" });
-    }
-  });
+  app.delete(
+    "/api/follow/:topperId",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+
+      try {
+        await storage.unfollowTopper(userId, req.params.topperId);
+        res.json({ message: "Unfollowed successfully" });
+      } catch (error) {
+        console.error("Error unfollowing topper:", error);
+        res.status(500).json({ message: "Failed to unfollow topper" });
+      }
+    },
+  );
 
   // Coin System Routes
 
   // Get user's coin balance and stats
-  app.get('/api/coins/balance', isAuthenticated, async (req: any, res) => {
+  app.get("/api/coins/balance", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const user = await storage.getUser(userId);
       if (!user) {
@@ -624,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalEarned: user.totalEarned,
         totalSpent: user.totalSpent,
         reputation: user.reputation,
-        streak: user.streak
+        streak: user.streak,
       });
     } catch (error) {
       console.error("Error fetching coin balance:", error);
@@ -633,129 +746,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Track note view and award coins
-  app.post('/api/notes/:noteId/view', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { noteId } = req.params;
-    
-    try {
-      const note = await storage.getNote(noteId);
-      if (!note) {
-        return res.status(404).json({ message: "Note not found" });
-      }
+  app.post(
+    "/api/notes/:noteId/view",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { noteId } = req.params;
 
-      // Don't award coins for viewing own notes
-      if (note.topperId === userId) {
+      try {
+        const note = await storage.getNote(noteId);
+        if (!note) {
+          return res.status(404).json({ message: "Note not found" });
+        }
+
+        // Don't award coins for viewing own notes
+        if (note.topperId === userId) {
+          await storage.incrementNoteViews(noteId);
+          return res.json({ coinsEarned: 0, message: "View recorded" });
+        }
+
+        // Check if user already viewed this note today
+        const hasViewedToday = await storage.hasUserViewedNoteToday(
+          userId,
+          noteId,
+        );
+
+        let coinsEarned = 0;
+        if (!hasViewedToday) {
+          // Award 1 coin for first view of the day
+          coinsEarned = 1;
+          await storage.recordNoteView(userId, noteId, coinsEarned);
+          await storage.updateUserCoins(userId, coinsEarned);
+
+          // Also award coins to the note creator
+          await storage.updateUserCoins(note.topperId, coinsEarned);
+          await storage.recordTransaction(
+            note.topperId,
+            "coin_earned",
+            coinsEarned,
+            coinsEarned,
+            noteId,
+            "Earned from note view",
+          );
+        }
+
         await storage.incrementNoteViews(noteId);
-        return res.json({ coinsEarned: 0, message: "View recorded" });
+        await storage.recordTransaction(
+          userId,
+          "coin_earned",
+          coinsEarned,
+          coinsEarned,
+          noteId,
+          "Earned from viewing note",
+        );
+
+        res.json({
+          coinsEarned,
+          message: coinsEarned > 0 ? "Coins earned!" : "View recorded",
+        });
+      } catch (error) {
+        console.error("Error recording note view:", error);
+        res.status(500).json({ message: "Failed to record view" });
       }
-
-      // Check if user already viewed this note today
-      const hasViewedToday = await storage.hasUserViewedNoteToday(userId, noteId);
-      
-      let coinsEarned = 0;
-      if (!hasViewedToday) {
-        // Award 1 coin for first view of the day
-        coinsEarned = 1;
-        await storage.recordNoteView(userId, noteId, coinsEarned);
-        await storage.updateUserCoins(userId, coinsEarned);
-        
-        // Also award coins to the note creator
-        await storage.updateUserCoins(note.topperId, coinsEarned);
-        await storage.recordTransaction(note.topperId, 'coin_earned', coinsEarned, coinsEarned, noteId, 'Earned from note view');
-      }
-
-      await storage.incrementNoteViews(noteId);
-      await storage.recordTransaction(userId, 'coin_earned', coinsEarned, coinsEarned, noteId, 'Earned from viewing note');
-
-      res.json({ coinsEarned, message: coinsEarned > 0 ? "Coins earned!" : "View recorded" });
-    } catch (error) {
-      console.error("Error recording note view:", error);
-      res.status(500).json({ message: "Failed to record view" });
-    }
-  });
+    },
+  );
 
   // Like/unlike a note
-  app.post('/api/notes/:noteId/like', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { noteId } = req.params;
-    
-    try {
-      const isLiked = await storage.toggleNoteLike(userId, noteId);
-      const likesCount = await storage.getNoteLikesCount(noteId);
+  app.post(
+    "/api/notes/:noteId/like",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { noteId } = req.params;
 
-      res.json({ isLiked, likesCount });
-    } catch (error) {
-      console.error("Error toggling note like:", error);
-      res.status(500).json({ message: "Failed to toggle like" });
-    }
-  });
+      try {
+        const isLiked = await storage.toggleNoteLike(userId, noteId);
+        const likesCount = await storage.getNoteLikesCount(noteId);
+
+        res.json({ isLiked, likesCount });
+      } catch (error) {
+        console.error("Error toggling note like:", error);
+        res.status(500).json({ message: "Failed to toggle like" });
+      }
+    },
+  );
 
   // Download note (with coin deduction or free download)
-  app.post('/api/notes/:noteId/download', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { noteId } = req.params;
-    
-    try {
-      const user = await storage.getUser(userId);
-      const note = await storage.getNote(noteId);
-      
-      if (!user || !note) {
-        return res.status(404).json({ message: "User or note not found" });
-      }
+  app.post(
+    "/api/notes/:noteId/download",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { noteId } = req.params;
 
-      // Check if user has already downloaded this note
-      const hasDownloaded = await storage.hasUserDownloaded(userId, noteId);
-      if (hasDownloaded) {
-        return res.json({ message: "Already downloaded", downloaded: true });
-      }
+      try {
+        const user = await storage.getUser(userId);
+        const note = await storage.getNote(noteId);
 
-      let usedFreeDownload = false;
-      let coinsSpent = 0;
+        if (!user || !note) {
+          return res.status(404).json({ message: "User or note not found" });
+        }
 
-      // Reset free downloads if it's a new day
-      await storage.resetDailyFreeDownloads(userId);
+        // Check if user has already downloaded this note
+        const hasDownloaded = await storage.hasUserDownloaded(userId, noteId);
+        if (hasDownloaded) {
+          return res.json({ message: "Already downloaded", downloaded: true });
+        }
 
-      // Check if user can use free download
-      if (user.freeDownloadsLeft > 0) {
-        usedFreeDownload = true;
-        await storage.useFreeDowload(userId);
-        await storage.recordTransaction(userId, 'download_free', 0, 0, noteId, 'Free download used');
-      } else if (user.coinBalance >= note.price) {
-        // Use coins to download
-        coinsSpent = note.price;
-        await storage.updateUserCoins(userId, -coinsSpent);
-        await storage.recordTransaction(userId, 'download_paid', coinsSpent, -coinsSpent, noteId, 'Paid download with coins');
-        
-        // Award coins to note creator (50% of price)
-        const creatorEarnings = Math.floor(coinsSpent * 0.5);
-        await storage.updateUserCoins(note.topperId, creatorEarnings);
-        await storage.recordTransaction(note.topperId, 'coin_earned', creatorEarnings, creatorEarnings, noteId, 'Earned from note download');
-      } else {
-        return res.status(400).json({ 
-          message: "Insufficient coins and no free downloads left",
-          required: note.price,
-          current: user.coinBalance
+        let usedFreeDownload = false;
+        let coinsSpent = 0;
+
+        // Reset free downloads if it's a new day
+        await storage.resetDailyFreeDownloads(userId);
+
+        // Check if user can use free download
+        if (user.freeDownloadsLeft > 0) {
+          usedFreeDownload = true;
+          await storage.useFreeDowload(userId);
+          await storage.recordTransaction(
+            userId,
+            "download_free",
+            0,
+            0,
+            noteId,
+            "Free download used",
+          );
+        } else if (user.coinBalance >= note.price) {
+          // Use coins to download
+          coinsSpent = note.price;
+          await storage.updateUserCoins(userId, -coinsSpent);
+          await storage.recordTransaction(
+            userId,
+            "download_paid",
+            coinsSpent,
+            -coinsSpent,
+            noteId,
+            "Paid download with coins",
+          );
+
+          // Award coins to note creator (50% of price)
+          const creatorEarnings = Math.floor(coinsSpent * 0.5);
+          await storage.updateUserCoins(note.topperId, creatorEarnings);
+          await storage.recordTransaction(
+            note.topperId,
+            "coin_earned",
+            creatorEarnings,
+            creatorEarnings,
+            noteId,
+            "Earned from note download",
+          );
+        } else {
+          return res.status(400).json({
+            message: "Insufficient coins and no free downloads left",
+            required: note.price,
+            current: user.coinBalance,
+          });
+        }
+
+        // Record the download
+        await storage.recordDownload(userId, noteId);
+        await storage.incrementNoteDownloads(noteId);
+
+        res.json({
+          message: "Download successful",
+          usedFreeDownload,
+          coinsSpent,
+          downloaded: true,
         });
+      } catch (error) {
+        console.error("Error downloading note:", error);
+        res.status(500).json({ message: "Failed to download note" });
       }
-
-      // Record the download
-      await storage.recordDownload(userId, noteId);
-      await storage.incrementNoteDownloads(noteId);
-
-      res.json({ 
-        message: "Download successful",
-        usedFreeDownload,
-        coinsSpent,
-        downloaded: true
-      });
-    } catch (error) {
-      console.error("Error downloading note:", error);
-      res.status(500).json({ message: "Failed to download note" });
-    }
-  });
+    },
+  );
 
   // Get coin packages for purchase
-  app.get('/api/coins/packages', async (req, res) => {
+  app.get("/api/coins/packages", async (req, res) => {
     try {
       const packages = await storage.getCoinPackages();
       res.json(packages);
@@ -766,12 +932,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get transaction history
-  app.get('/api/coins/transactions', isAuthenticated, async (req: any, res) => {
+  app.get("/api/coins/transactions", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
     const { page = 1, limit = 20 } = req.query;
-    
+
     try {
-      const transactions = await storage.getUserTransactions(userId, parseInt(page as string), parseInt(limit as string));
+      const transactions = await storage.getUserTransactions(
+        userId,
+        parseInt(page as string),
+        parseInt(limit as string),
+      );
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -780,11 +950,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get leaderboard
-  app.get('/api/leaderboard', async (req, res) => {
-    const { type = 'earnings', limit = 50 } = req.query;
-    
+  app.get("/api/leaderboard", async (req, res) => {
+    const { type = "earnings", limit = 50 } = req.query;
+
     try {
-      const leaderboard = await storage.getLeaderboard(type as string, parseInt(limit as string));
+      const leaderboard = await storage.getLeaderboard(
+        type as string,
+        parseInt(limit as string),
+      );
       res.json(leaderboard);
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
@@ -793,9 +966,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get daily challenges
-  app.get('/api/challenges/daily', isAuthenticated, async (req: any, res) => {
+  app.get("/api/challenges/daily", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
-    
+
     try {
       const challenges = await storage.getDailyChallenges(userId);
       res.json(challenges);
@@ -806,36 +979,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete daily challenge
-  app.post('/api/challenges/:challengeId/complete', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { challengeId } = req.params;
-    
-    try {
-      const result = await storage.completeDailyChallenge(userId, challengeId);
-      if (result.completed) {
-        res.json({ message: "Challenge completed!", coinsEarned: result.coinsEarned });
-      } else {
-        res.json({ message: "Challenge not yet completed", progress: result.progress });
+  app.post(
+    "/api/challenges/:challengeId/complete",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { challengeId } = req.params;
+
+      try {
+        const result = await storage.completeDailyChallenge(
+          userId,
+          challengeId,
+        );
+        if (result.completed) {
+          res.json({
+            message: "Challenge completed!",
+            coinsEarned: result.coinsEarned,
+          });
+        } else {
+          res.json({
+            message: "Challenge not yet completed",
+            progress: result.progress,
+          });
+        }
+      } catch (error) {
+        console.error("Error completing challenge:", error);
+        res.status(500).json({ message: "Failed to complete challenge" });
       }
-    } catch (error) {
-      console.error("Error completing challenge:", error);
-      res.status(500).json({ message: "Failed to complete challenge" });
-    }
-  });
+    },
+  );
 
   // Educational categories routes with fallback
-  app.get('/api/educational-categories', async (req, res) => {
+  app.get("/api/educational-categories", async (req, res) => {
     const categoryType = req.query.categoryType as string;
-    
+
     try {
       const raw = await storage.getEducationalCategories();
       let categories = Array.isArray(raw) ? raw : [];
-      
+
       // Filter by categoryType if provided
       if (categoryType) {
-        categories = categories.filter(cat => cat.categoryType === categoryType);
+        categories = categories.filter(
+          (cat) => cat.categoryType === categoryType,
+        );
       }
-      
+
       // If database is empty or no categories match filter, provide fallback categories
       if (categories.length === 0) {
         categories = [
@@ -849,10 +1037,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isActive: true,
             displayOrder: 10,
             icon: "📔",
-            color: "#3B82F6"
+            color: "#3B82F6",
           },
           {
-            id: "fallback-2", 
+            id: "fallback-2",
             name: "Class 10th CBSE",
             description: "Class 10 CBSE Board with Board Exams",
             categoryType: "school",
@@ -861,31 +1049,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isActive: true,
             displayOrder: 13,
             icon: "📕",
-            color: "#3B82F6"
+            color: "#3B82F6",
           },
           {
             id: "fallback-3",
             name: "Class 11th CBSE Science",
             description: "Class 11 CBSE Science Stream (PCM/PCB)",
             categoryType: "school",
-            classLevel: "11", 
+            classLevel: "11",
             board: "CBSE",
             isActive: true,
             displayOrder: 16,
             icon: "🔬",
-            color: "#F59E0B"
+            color: "#F59E0B",
           },
           {
             id: "fallback-4",
-            name: "Class 12th CBSE Science", 
+            name: "Class 12th CBSE Science",
             description: "Class 12 CBSE Science Stream (PCM/PCB)",
             categoryType: "school",
             classLevel: "12",
-            board: "CBSE", 
+            board: "CBSE",
             isActive: true,
             displayOrder: 20,
             icon: "🎓",
-            color: "#F59E0B"
+            color: "#F59E0B",
           },
           {
             id: "fallback-5",
@@ -896,31 +1084,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isActive: true,
             displayOrder: 30,
             icon: "⚙️",
-            color: "#059669"
+            color: "#059669",
           },
           {
             id: "fallback-6",
             name: "NEET UG",
-            description: "National Eligibility cum Entrance Test - Undergraduate", 
+            description:
+              "National Eligibility cum Entrance Test - Undergraduate",
             categoryType: "competitive_exam",
             examType: "NEET_UG",
             isActive: true,
             displayOrder: 32,
             icon: "🩺",
-            color: "#7C3AED"
-          }
+            color: "#7C3AED",
+          },
         ];
-        
+
         // Filter fallback categories by categoryType if provided
         if (categoryType) {
-          categories = categories.filter(cat => cat.categoryType === categoryType);
+          categories = categories.filter(
+            (cat) => cat.categoryType === categoryType,
+          );
         }
       }
-      
+
       res.json(categories);
     } catch (error) {
       console.error("Error fetching educational categories:", error);
-      
+
       // Even if there's an error, provide basic categories
       const fallbackCategories = [
         {
@@ -931,17 +1122,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: true,
           displayOrder: 1,
           icon: "📚",
-          color: "#3B82F6"
+          color: "#3B82F6",
         },
         {
           id: "emergency-2",
           name: "Class 12th CBSE",
-          description: "Class 12 CBSE Board", 
+          description: "Class 12 CBSE Board",
           categoryType: "school",
           isActive: true,
           displayOrder: 2,
           icon: "🎓",
-          color: "#F59E0B"
+          color: "#F59E0B",
         },
         {
           id: "emergency-3",
@@ -951,82 +1142,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: true,
           displayOrder: 3,
           icon: "⚙️",
-          color: "#059669"
-        }
+          color: "#059669",
+        },
       ];
-      
-      // Filter emergency fallback categories by categoryType if provided  
+
+      // Filter emergency fallback categories by categoryType if provided
       if (categoryType) {
-        return res.json(fallbackCategories.filter(cat => cat.categoryType === categoryType));
+        return res.json(
+          fallbackCategories.filter((cat) => cat.categoryType === categoryType),
+        );
       }
-      
+
       res.json(fallbackCategories);
     }
   });
 
-
-
   // Complete onboarding
-  app.post('/api/complete-onboarding', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    const { categoryIds } = req.body;
+  app.post(
+    "/api/complete-onboarding",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { categoryIds } = req.body;
 
-    try {
-      // Save user's educational preferences
-      if (categoryIds && categoryIds.length > 0) {
-        await storage.saveUserEducationalPreferences(userId, categoryIds);
+      try {
+        // Save user's educational preferences
+        if (categoryIds && categoryIds.length > 0) {
+          await storage.saveUserEducationalPreferences(userId, categoryIds);
+        }
+
+        // Mark onboarding as completed
+        await storage.completeUserOnboarding(userId);
+
+        res.json({ message: "Onboarding completed successfully" });
+      } catch (error) {
+        console.error("Error completing onboarding:", error);
+        res.status(500).json({ message: "Failed to complete onboarding" });
       }
-
-      // Mark onboarding as completed
-      await storage.completeUserOnboarding(userId);
-
-      res.json({ message: "Onboarding completed successfully" });
-    } catch (error) {
-      console.error("Error completing onboarding:", error);
-      res.status(500).json({ message: "Failed to complete onboarding" });
-    }
-  });
+    },
+  );
 
   // Get user educational preferences
-  app.get('/api/user-educational-preferences', isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-    
-    try {
-      const preferences = await storage.getUserEducationalPreferences(userId);
-      res.json(preferences);
-    } catch (error) {
-      console.error("Error fetching user preferences:", error);
-      res.status(500).json({ message: "Failed to fetch preferences" });
-    }
-  });
+  app.get(
+    "/api/user-educational-preferences",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+
+      try {
+        const preferences = await storage.getUserEducationalPreferences(userId);
+        res.json(preferences);
+      } catch (error) {
+        console.error("Error fetching user preferences:", error);
+        res.status(500).json({ message: "Failed to fetch preferences" });
+      }
+    },
+  );
 
   // SEO Sitemap route
-  app.get('/sitemap.xml', async (req, res) => {
+  app.get("/sitemap.xml", async (req, res) => {
     try {
-      const baseUrl = 'https://masterstudent.in';
-      
+      const baseUrl = "https://masterstudent.in";
+
       // Get all published notes for sitemap
-      const { notes } = await storage.getPublishedNotes({ limit: 1000, offset: 0 });
+      const { notes } = await storage.getPublishedNotes({
+        limit: 1000,
+        offset: 0,
+      });
       const categories = await storage.getEducationalCategories();
-      
+
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${baseUrl}</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <lastmod>${new Date().toISOString().split("T")[0]}</lastmod>
   </url>
   <url>
     <loc>${baseUrl}/catalog</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <lastmod>${new Date().toISOString().split("T")[0]}</lastmod>
   </url>`;
 
       // Add category pages
       categories?.forEach((category: any) => {
-        const categorySlug = category.name.toLowerCase().replace(/\s+/g, '-');
+        const categorySlug = category.name.toLowerCase().replace(/\s+/g, "-");
         sitemap += `
   <url>
     <loc>${baseUrl}/category/${categorySlug}</loc>
@@ -1043,25 +1245,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <loc>${baseUrl}/notes/${note.id}</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
-    <lastmod>${new Date(lastMod).toISOString().split('T')[0]}</lastmod>
+    <lastmod>${new Date(lastMod).toISOString().split("T")[0]}</lastmod>
   </url>`;
       });
 
       sitemap += `
 </urlset>`;
 
-      res.set('Content-Type', 'application/xml');
+      res.set("Content-Type", "application/xml");
       res.send(sitemap);
     } catch (error) {
-      console.error('Error generating sitemap:', error);
-      res.status(500).json({ message: 'Failed to generate sitemap' });
+      console.error("Error generating sitemap:", error);
+      res.status(500).json({ message: "Failed to generate sitemap" });
     }
   });
 
   // Serve uploaded files
-  app.use('/uploads', (req, res, next) => {
+  app.use("/uploads", (req, res, next) => {
     // Basic file serving - in production, use proper file storage service
-    const filePath = path.join(__dirname, '..', 'uploads', req.path);
+    const filePath = path.join(__dirname, "..", "uploads", req.path);
     if (fs.existsSync(filePath)) {
       res.sendFile(filePath);
     } else {
