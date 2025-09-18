@@ -44,14 +44,7 @@ export default function Landing() {
               <span className="text-2xl font-bold bg-gradient-to-r from-purple-700 via-pink-600 to-cyan-600 bg-clip-text text-transparent">MasterStudent</span>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <Button 
-                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-400 hover:to-emerald-500 shadow-lg border border-green-400/30" 
-                onClick={() => setShowLoginForm(true)}
-                data-testid="button-login"
-              >
-                🔐 Sign In
-              </Button>
+            <div className="flex items-center">
               <Button 
                 className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-lg border border-blue-400/30"
                 onClick={() => setShowLoginForm(true)}
