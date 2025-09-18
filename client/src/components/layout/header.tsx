@@ -93,36 +93,36 @@ export default function Header() {
             </Link>
             
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-1 ml-8">
-              <Link href="/catalog" className="px-4 py-2 text-pink-700 hover:text-white hover:bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-pink-400 animate-interactive-hover" data-testid="link-catalog">
+            <nav className="hidden md:flex space-x-1 ml-6">
+              <Link href="/catalog" className="px-3 py-2 text-pink-700 hover:text-white hover:bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-pink-400 animate-interactive-hover" data-testid="link-catalog">
                 📚 Browse Notes
               </Link>
-              <Link href="/forum" className="px-4 py-2 text-purple-700 hover:text-white hover:bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-purple-400 animate-interactive-hover" data-testid="link-forum">
+              <Link href="/forum" className="px-3 py-2 text-purple-700 hover:text-white hover:bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-purple-400 animate-interactive-hover" data-testid="link-forum">
                 💬 Community
               </Link>
-              <Link href="/leaderboard" className="px-4 py-2 text-orange-700 hover:text-white hover:bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-orange-400 animate-interactive-hover" data-testid="link-leaderboard">
+              <Link href="/leaderboard" className="px-3 py-2 text-orange-700 hover:text-white hover:bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-orange-400 animate-interactive-hover" data-testid="link-leaderboard">
                 🏆 Leaderboard
               </Link>
-              <Link href="/coin-dashboard" className="px-4 py-2 text-emerald-700 hover:text-white hover:bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-emerald-400 animate-interactive-hover" data-testid="link-coin-dashboard">
+              <Link href="/coin-dashboard" className="px-3 py-2 text-emerald-700 hover:text-white hover:bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-emerald-400 animate-interactive-hover" data-testid="link-coin-dashboard">
                 💰 My Coins
               </Link>
               {(user.role === 'topper' || user.role === 'admin') && (
-                <Link href="/upload" className="px-4 py-2 text-slate-200 hover:text-white hover:bg-gradient-to-r from-indigo-600/20 to-blue-600/20 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-indigo-500/30" data-testid="link-upload">
+                <Link href="/upload" className="px-3 py-2 text-slate-200 hover:text-white hover:bg-gradient-to-r from-indigo-600/20 to-blue-600/20 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-indigo-500/30" data-testid="link-upload">
                   ⭐ Upload Notes
                 </Link>
               )}
               {user.role === 'topper' && (
-                <Link href="/uploader-profile" className="px-4 py-2 text-green-700 hover:text-white hover:bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-green-400 animate-interactive-hover" data-testid="link-uploader-profile">
+                <Link href="/uploader-profile" className="px-3 py-2 text-green-700 hover:text-white hover:bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-green-400 animate-interactive-hover" data-testid="link-uploader-profile">
                   💰 My Wallet
                 </Link>
               )}
               {user.role === 'topper' && (
-                <Link href="/analytics" className="px-4 py-2 text-slate-200 hover:text-white hover:bg-gradient-to-r from-red-600/20 to-pink-600/20 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-red-500/30" data-testid="link-analytics">
+                <Link href="/analytics" className="px-3 py-2 text-slate-200 hover:text-white hover:bg-gradient-to-r from-red-600/20 to-pink-600/20 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-red-500/30" data-testid="link-analytics">
                   📊 Analytics
                 </Link>
               )}
               {user.role === 'admin' && (
-                <Link href="/review-queue" className="px-4 py-2 text-amber-700 hover:text-white hover:bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-amber-400 animate-interactive-hover" data-testid="link-review-queue">
+                <Link href="/review-queue" className="px-3 py-2 text-amber-700 hover:text-white hover:bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl transition-all hover-neon font-medium border border-transparent hover:border-amber-400 animate-interactive-hover" data-testid="link-review-queue">
                   🔍 Review Queue
                 </Link>
               )}
@@ -130,7 +130,7 @@ export default function Header() {
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             {/* Search - Desktop only */}
             <div className="hidden lg:flex items-center">
               <div className="relative">
@@ -138,24 +138,24 @@ export default function Header() {
                 <input
                   type="text"
                   placeholder="Search notes..."
-                  className="pl-10 pr-4 py-2 border border-border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring w-64"
+                  className="pl-10 pr-4 py-2 border border-border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring w-48"
                   data-testid="input-header-search"
                 />
               </div>
             </div>
 
             {/* Study Stats */}
-            <div className="hidden md:flex items-center space-x-3">
+            <div className="hidden md:flex items-center space-x-2">
               {/* Main Coin Balance */}
               <div className="relative overflow-hidden group">
-                <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-yellow-500/10 bg-study-card px-4 py-3 rounded-2xl border border-yellow-500/20 hover-glow-intense cursor-pointer">
-                  <div className="flex items-center space-x-3">
+                <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-yellow-500/10 bg-study-card px-3 py-2 rounded-2xl border border-yellow-500/20 hover-glow-intense cursor-pointer">
+                  <div className="flex items-center space-x-2">
                     <div className="relative">
-                      <Coins className="text-yellow-400 h-6 w-6 animate-study-pulse" />
+                      <Coins className="text-yellow-400 h-5 w-5 animate-study-pulse" />
                       <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping"></div>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-lg font-bold text-yellow-300 leading-none animate-number-counter" data-testid="text-coin-balance">
+                      <span className="text-base font-bold text-yellow-300 leading-none animate-number-counter" data-testid="text-coin-balance">
                         {coinBalance?.coinBalance?.toLocaleString() || '1,250'}
                       </span>
                       <span className="text-xs text-yellow-400/70 leading-none font-medium tracking-wider">COINS</span>
@@ -165,7 +165,7 @@ export default function Header() {
               </div>
 
               {/* Free Downloads */}
-              <div className="bg-study-card px-3 py-3 rounded-xl border border-green-500/20 hover-neon group">
+              <div className="bg-study-card px-2 py-2 rounded-xl border border-green-500/20 hover-neon group">
                 <div className="flex items-center space-x-2">
                   <Download className="text-green-400 h-5 w-5 group-hover:animate-bounce" />
                   <div className="flex flex-col">
@@ -179,7 +179,7 @@ export default function Header() {
 
               {/* Study Streak */}
               {coinBalance?.streak && coinBalance.streak > 0 && (
-                <div className="bg-study-card px-3 py-3 rounded-xl border border-orange-500/20 hover-neon group">
+                <div className="bg-study-card px-2 py-2 rounded-xl border border-orange-500/20 hover-neon group">
                   <div className="flex items-center space-x-2">
                     <TrendingUp className="text-orange-400 h-5 w-5 group-hover:animate-pulse" />
                     <div className="flex flex-col">
@@ -194,7 +194,7 @@ export default function Header() {
               )}
 
               {/* Study Status Indicator */}
-              <div className="bg-study-card px-4 py-3 rounded-xl border border-cyan-500/20 hover-neon min-w-fit">
+              <div className="bg-study-card px-3 py-2 rounded-xl border border-cyan-500/20 hover-neon min-w-fit">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
                   <span className="text-xs text-cyan-300 font-medium whitespace-nowrap">ACTIVE</span>
@@ -203,9 +203,9 @@ export default function Header() {
             </div>
 
             {/* Premium Status */}
-            <div className="hidden md:flex items-center space-x-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 bg-study-card px-3 py-2 rounded-xl border border-purple-500/30 hover-neon">
+            <div className="hidden md:flex items-center space-x-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 bg-study-card px-2 py-1 rounded-xl border border-purple-500/30 hover-neon">
               <Crown className="text-purple-400 h-4 w-4 animate-float-subtle" />
-              <span className="text-sm font-bold text-purple-300" data-testid="text-subscription-status">
+              <span className="text-xs font-bold text-purple-300" data-testid="text-subscription-status">
                 PRO
               </span>
             </div>
