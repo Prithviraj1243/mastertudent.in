@@ -518,10 +518,23 @@ export class DatabaseStorage implements IStorage {
     return download;
   }
 
-  async getDownloadHistory(studentId: string): Promise<Download[]> {
+  async getDownloadHistory(studentId: string): Promise<any[]> {
     return await db
-      .select()
+      .select({
+        id: downloads.id,
+        noteId: downloads.noteId,
+        downloadedAt: downloads.downloadedAt,
+        note: {
+          id: notes.id,
+          title: notes.title,
+          subject: notes.subject,
+          type: notes.type,
+          description: notes.description,
+          createdAt: notes.createdAt,
+        }
+      })
       .from(downloads)
+      .innerJoin(notes, eq(downloads.noteId, notes.id))
       .where(eq(downloads.studentId, studentId))
       .orderBy(desc(downloads.downloadedAt));
   }

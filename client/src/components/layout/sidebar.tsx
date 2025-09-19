@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   BookOpen, 
   Download, 
@@ -11,7 +12,9 @@ import {
   ClipboardList, 
   Users, 
   Settings,
-  Crown
+  Crown,
+  User,
+  LogOut
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -24,10 +27,22 @@ export default function Sidebar() {
 
   const isActive = (path: string) => location === path;
 
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Fallback - redirect anyway
+      window.location.href = '/';
+    }
+  };
+
   const studentLinks = [
     { path: "/catalog", icon: BookOpen, label: "Browse Notes", active: isActive("/catalog") || isActive("/") },
     { path: "/downloads", icon: Download, label: "My Downloads", active: isActive("/downloads") },
     { path: "/following", icon: Heart, label: "Following", active: isActive("/following") },
+    { path: "/profile", icon: User, label: "My Profile", active: isActive("/profile") },
   ];
 
   const topperLinks = [
@@ -172,6 +187,18 @@ export default function Sidebar() {
                 {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
               </Badge>
             </div>
+            
+            {/* Sign Out Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="mt-3 w-full flex items-center space-x-2 text-muted-foreground hover:text-foreground border-border hover:border-red-300 hover:bg-red-50"
+              data-testid="button-sign-out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </Button>
           </div>
         </div>
       </div>

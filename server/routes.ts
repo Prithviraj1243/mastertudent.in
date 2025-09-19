@@ -185,6 +185,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Get user's subscription
+  app.get("/api/subscription", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const subscription = await storage.getActiveSubscription(userId);
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  // Get user's downloads
+  app.get("/api/downloads", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const downloads = await storage.getDownloadHistory(userId);
+      res.json({ downloads });
+    } catch (error) {
+      console.error("Error fetching downloads:", error);
+      res.status(500).json({ message: "Failed to fetch downloads" });
+    }
+  });
+
   // Notes routes
   app.get("/api/notes", async (req, res) => {
     try {

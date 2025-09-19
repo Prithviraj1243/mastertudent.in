@@ -21,6 +21,7 @@ import Forum from "@/pages/forum";
 import Leaderboard from "@/pages/leaderboard";
 import CoinDashboard from "@/pages/coin-dashboard";
 import UploaderProfile from "@/pages/uploader-profile";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/notes/:id" component={NoteDetail} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/uploader-profile" component={UploaderProfile} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
