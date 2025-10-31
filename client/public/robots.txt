@@ -1,0 +1,50 @@
+User-agent: *
+Allow: /
+
+# Allow all educational content
+Allow: /catalog
+Allow: /notes/
+Allow: /category/
+Allow: /search
+
+# Allow static assets
+Allow: /assets/
+Allow: /images/
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+
+# Disallow private/admin areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /upload
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /settings
+Disallow: /coin-dashboard
+Disallow: /onboarding
+
+# Disallow authentication pages
+Disallow: /login
+Disallow: /signup
+Disallow: /auth/
+
+# Allow crawling of educational categories and subjects
+Allow: /cbse/
+Allow: /icse/
+Allow: /jee/
+Allow: /neet/
+Allow: /upsc/
+Allow: /engineering/
+Allow: /medical/
+
+# Sitemap location
+Sitemap: https://masterstudent.in/sitemap.xml
+
+# Crawl delay (be respectful to server resources)
+Crawl-delay: 1

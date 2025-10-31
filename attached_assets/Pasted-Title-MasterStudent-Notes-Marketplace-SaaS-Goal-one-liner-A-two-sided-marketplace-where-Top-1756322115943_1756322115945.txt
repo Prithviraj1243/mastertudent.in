@@ -1,0 +1,227 @@
+Title: MasterStudent – Notes Marketplace (SaaS)
+
+Goal (one-liner): A two-sided marketplace where Topper Students upload their study notes → internal Review Team checks & approves → paying Students (Subscribers) can browse/download them. Customers pay monthly (₹59) or yearly (₹499) subscription; toppers earn payouts based on ratings & feedback.
+
+User Roles & Permissions
+
+Student (Subscriber):
+
+Sign up, buy subscription (monthly ₹59 / yearly ₹499).
+
+Browse approved/published notes.
+
+Filter/search by subject, topic, class, rating, date.
+
+View detail page, download files (if subscribed).
+
+Rate (1–5) and leave feedback on notes.
+
+Follow toppers, see download history.
+
+Topper (Uploader):
+
+Create profile (bio, subjects expertise, achievements, photo).
+
+Upload notes (details below).
+
+Save drafts, submit for review.
+
+See review comments, re-submit.
+
+Analytics: downloads, ratings, followers, earnings estimate.
+
+Reviewer (Internal Team):
+
+See review queue of submitted notes.
+
+Open & preview files, check quality.
+
+Comment, request changes, approve/reject.
+
+Schedule publish, mark featured.
+
+Admin:
+
+Full control: pricing, coupons, approve/reject notes, manage payouts.
+
+User management, suspend users, export data.
+
+See dashboards: subscriptions, churn, top toppers, most popular notes.
+
+Core Pages
+
+Landing/Home – USP, pricing, call to action.
+
+Auth – login, signup, reset, 2FA optional.
+
+Student Portal
+
+Catalog: approved notes with filters (Subject, Topic, Class/Grade, Date, Rating, Toppers).
+
+Note Detail Page: description, preview, ratings, feedback, “Download” (only if subscribed).
+
+Ratings form, follow topper, report issue.
+
+Topper Studio
+
+New/Edit Note form.
+
+My Notes (Draft, Submitted, Approved, Rejected, Published, Archived).
+
+Analytics: downloads, avg rating, followers, estimated earnings.
+
+Review Console
+
+Queue (Submitted notes).
+
+Review screen: file preview, checklist, comments, approve/reject/request changes, schedule publish.
+
+Admin Dashboard
+
+KPIs: Monthly Recurring Revenue (MRR), active subscriptions, churn, approval SLA, top toppers, most downloaded notes.
+
+Manage users, payouts, coupons, settings.
+
+Static Pages: Terms, Privacy, Disclaimer (academic-use only).
+
+Data Types (Bubble Tables)
+
+User: role (Student/Topper/Reviewer/Admin), name, email, phone, avatar, is_active, followed_toppers (list), subscription_status, subscription_renewal_date.
+
+TopperProfile: linked to User, bio, subjects, achievements, rating_avg, followers_count, total_downloads.
+
+Note: title, subject, topic, class/grade, description (rich text), attachments (files/PDF/images), status (Draft/Submitted/Approved/Published/Rejected/Archived), version, slug, topper (User), reviewer (User), published_at, featured (boolean), downloads_count.
+
+ReviewTask: note, reviewer, status (Open/Changes Requested/Approved/Rejected), comments (list of text), decided_at.
+
+Feedback: note, student, rating (1–5), comment, created_at.
+
+Subscription: student, plan (monthly/yearly), start_date, renewal_date, status, gateway (Stripe/Razorpay), gateway_customer_id, gateway_sub_id.
+
+Transaction: user, type (charge/refund/payout), amount, currency, gateway, gateway_ref, status, created_at.
+
+Payout: topper, period_start, period_end, gross_pool_share, adjustments, final_amount, status (pending/approved/paid), paid_at, method (RazorpayX/Manual).
+
+Notification: user, type, title, body, read?, link.
+
+AuditLog: actor, action, subject_type, subject_id, meta (JSON), created_at.
+
+Option Sets: Role, NoteStatus, Subjects, Classes/Grades, ReviewStatus.
+
+Key Workflows
+
+Topper Upload → Submit for Review
+
+Validate fields.
+
+Create ReviewTask, set Note.status=Submitted.
+
+Notify Reviewer.
+
+Reviewer Actions
+
+Approve → set status Approved; option to publish now/schedule.
+
+Request changes → return to Draft, notify topper.
+
+Reject → must give reason, notify topper.
+
+Publish
+
+On publish: set Published, push notification to Students & followers.
+
+Download Gating
+
+Only Students with active subscription.
+
+Increment downloads_count.
+
+Apply watermark with student email/order ID/date on notes.
+
+Feedback & Ratings
+
+One feedback per student per note.
+
+Update topper’s average rating.
+
+Payments
+
+Students: Subscription (₹59 monthly, ₹499 yearly) via Stripe/Razorpay.
+
+Webhooks → update subscription_status.
+
+Toppers: Monthly payout job calculates share based on downloads + ratings.
+
+Store in Payout; Admin approves & pays (manual or RazorpayX).
+
+Notifications
+
+Email + in-app for approvals, new notes, feedback, subscription expiry.
+
+Security/Privacy Rules
+
+Draft notes → only owner topper + reviewer/admin.
+
+Students → only Published notes.
+
+Payouts → only relevant topper + admin.
+
+Files & Watermarking
+
+Store uploaded notes (PDF/images).
+
+On download → stamp watermark with student’s name/email/subscription ID.
+
+Analytics
+
+Admin:
+
+MRR, active subs, churn, ARPU, approval SLA, top toppers, most downloaded notes.
+
+Topper:
+
+Downloads/day, avg rating, estimated earnings, followers growth.
+
+Nice-to-Have (Phase 2)
+
+Comments/Q&A thread on notes.
+
+Collections (group of notes by subject).
+
+Referral program.
+
+Rate-limits (max N downloads/day per student).
+
+Mobile app wrapper.
+
+Tech/Plugins to Use
+
+Stripe plugin (or Razorpay Subscriptions plugin for INR).
+
+API Connector (for RazorpayX payouts).
+
+PDF viewer + watermark plugin.
+
+SEO slugs.
+
+Toast/alerts, icon sets, date picker.
+
+Branding
+
+Clean, educational, modern UI.
+
+Light/dark mode.
+
+Card + list view of notes.
+
+Filter sidebar, easy navigation.
+
+Deliverables
+
+Fully functional Bubble app with above pages, data types, workflows, responsive design.
+
+Payment integration for subscription.
+
+Test data (2 toppers, 5 notes, 1 reviewer, 10 students).
+
+Admin guide + Loom walkthrough.

@@ -1,0 +1,46 @@
+PHYSICS NOTES - KINEMATICS
+==========================
+
+Chapter 1: Motion in One Dimension
+
+1. BASIC CONCEPTS
+   - Position: Location of an object in space
+   - Displacement: Change in position (vector quantity)
+   - Distance: Total path traveled (scalar quantity)
+   - Velocity: Rate of change of displacement
+   - Speed: Rate of change of distance
+
+2. EQUATIONS OF MOTION
+   For constant acceleration:
+   
+   v = u + at
+   s = ut + (1/2)at²
+   v² = u² + 2as
+   
+   Where:
+   - u = initial velocity
+   - v = final velocity
+   - a = acceleration
+   - t = time
+   - s = displacement
+
+3. GRAPHICAL ANALYSIS
+   - Position-time graphs
+   - Velocity-time graphs
+   - Acceleration-time graphs
+
+4. EXAMPLES
+   Example 1: A car accelerates from rest at 2 m/s² for 10 seconds.
+   Find: Final velocity and distance traveled
+   
+   Solution:
+   u = 0 m/s, a = 2 m/s², t = 10 s
+   v = u + at = 0 + 2(10) = 20 m/s
+   s = ut + (1/2)at² = 0 + (1/2)(2)(10)² = 100 m
+
+5. PRACTICE PROBLEMS
+   1. A ball is thrown upward with initial velocity 20 m/s. Find maximum height.
+   2. A train decelerates from 30 m/s to rest in 15 seconds. Find deceleration.
+   3. An object falls from height 45 m. Find time to reach ground.
+
+Note: These are fundamental concepts in physics that form the basis for more advanced topics.

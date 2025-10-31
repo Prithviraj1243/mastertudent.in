@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(255, 107, 53, 0.3);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .profile-header {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 2rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .profile-info h2 {
+            color: #fff;
+            margin-bottom: 0.5rem;
+            font-size: 1.8rem;
+        }
+
+        .profile-meta {
+            color: #888;
+            margin-bottom: 1rem;
+        }
+
+        .profile-stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            color: #ff6b35;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.875rem;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .content-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #333;
+        }
+
+        .section-title {
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .activity-item {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #444;
+        }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .activity-title {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .activity-time {
+            color: #888;
+            font-size: 0.875rem;
+        }
+
+        .activity-description {
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .note-card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #444;
+            transition: all 0.3s ease;
+        }
+
+        .note-card:hover {
+            border-color: #ff6b35;
+            transform: translateY(-2px);
+        }
+
+        .note-title {
+            color: #fff;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .note-meta {
+            color: #888;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .note-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-approved {
+            background: #10b981;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fbbf24;
+            color: #92400e;
+        }
+
+        .status-rejected {
+            background: #ef4444;
+            color: #991b1b;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .profile-stats {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👤 User Profile</h1>
+        <a href="/admin" class="back-btn">← Back to Dashboard</a>
+    </div>
+
+    <div class="container">
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <div class="profile-avatar" id="profileAvatar">
+                ?
+            </div>
+            <div class="profile-info">
+                <h2 id="userName">Loading...</h2>
+                <div class="profile-meta">
+                    <p id="userEmail">Loading...</p>
+                    <p id="userRole">Loading...</p>
+                    <p id="joinDate">Loading...</p>
+                </div>
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalNotes">0</div>
+                        <div class="stat-label">Notes</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalDownloads">0</div>
+                        <div class="stat-label">Downloads</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="reputation">0</div>
+                        <div class="stat-label">Reputation</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="coinBalance">0</div>
+                        <div class="stat-label">Coins</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Uploaded Notes -->
+            <div class="content-section">
+                <h3 class="section-title">📚 Uploaded Notes</h3>
+                <div id="uploadedNotes">
+                    <div class="loading">Loading notes...</div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="content-section">
+                <h3 class="section-title">⚡ Recent Activity</h3>
+                <div id="recentActivity">
+                    <div class="loading">Loading activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download History -->
+        <div class="content-section">
+            <h3 class="section-title">⬇️ Download History</h3>
+            <div id="downloadHistory">
+                <div class="loading">Loading downloads...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+        const adminToken = localStorage.getItem('adminToken');
+
+        if (!userId) {
+            document.body.innerHTML = '<div class="error">No user ID provided</div>';
+        }
+
+        if (!adminToken) {
+            window.location.href = '/admin/login';
+        }
+
+        let userProfile = null;
+
+        // Load user profile
+        async function loadUserProfile() {
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load user profile');
+                }
+
+                userProfile = await response.json();
+                renderProfile();
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                document.querySelector('.container').innerHTML = `<div class="error">Error loading profile: ${error.message}</div>`;
+            }
+        }
+
+        // Render profile data
+        function renderProfile() {
+            if (!userProfile) return;
+
+            const user = userProfile.user;
+            const summary = userProfile.summary;
+
+            // Profile header
+            document.getElementById('profileAvatar').textContent = getInitials(user.displayName);
+            document.getElementById('userName').textContent = user.displayName;
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userRole').textContent = `Role: ${user.role} • Status: ${user.isActive ? 'Active' : 'Inactive'}`;
+            document.getElementById('joinDate').textContent = `Joined: ${new Date(user.createdAt).toLocaleDateString()}`;
+
+            // Stats
+            document.getElementById('totalNotes').textContent = summary.totalNotesUploaded || 0;
+            document.getElementById('totalDownloads').textContent = summary.totalDownloads || 0;
+            document.getElementById('reputation').textContent = user.reputation || 0;
+            document.getElementById('coinBalance').textContent = user.coinBalance || 0;
+
+            // Uploaded notes
+            renderUploadedNotes();
+            
+            // Recent activity
+            renderRecentActivity();
+            
+            // Download history
+            renderDownloadHistory();
+        }
+
+        // Render uploaded notes
+        function renderUploadedNotes() {
+            const container = document.getElementById('uploadedNotes');
+            const notes = userProfile.uploadedNotes || [];
+
+            if (notes.length === 0) {
+                container.innerHTML = '<div class="loading">No notes uploaded</div>';
+                return;
+            }
+
+            container.innerHTML = notes.slice(0, 5).map(note => `
+                <div class="note-card">
+                    <div class="note-title">${note.title}</div>
+                    <div class="note-meta">📚 ${note.subject} • 📅 ${new Date(note.createdAt).toLocaleDateString()}</div>
+                    <div class="note-stats">
+                        <span>👁️ ${note.viewsCount} views</span>
+                        <span>⬇️ ${note.downloadsCount} downloads</span>
+                        <span>❤️ ${note.likesCount} likes</span>
+                        <span class="status-badge status-${note.status}">${note.status}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            if (notes.length > 5) {
+                container.innerHTML += `<p style="text-align: center; color: #888; margin-top: 1rem;">And ${notes.length - 5} more notes...</p>`;
+            }
+        }
+
+        // Render recent activity
+        function renderRecentActivity() {
+            const container = document.getElementById('recentActivity');
+            const activities = userProfile.activityTimeline || [];
+
+            if (activities.length === 0) {
+                container.innerHTML = '<div class="loading">No recent activity</div>';
+                return;
+            }
+
+            container.innerHTML = activities.slice(0, 10).map(activity => `
+                <div class="activity-item">
+                    <div class="activity-header">
+                        <div class="activity-title">${activity.title}</div>
+                        <div class="activity-time">${formatTimeAgo(activity.timestamp)}</div>
+                    </div>
+                    <div class="activity-description">${activity.description}</div>
+                </div>
+            `).join('');
+        }
+
+        // Render download history
+        function renderDownloadHistory() {
+            const container = document.getElementById('downloadHistory');
+            const downloads = userProfile.downloadHistory || [];
+
+            if (downloads.length === 0) {
+                container.innerHTML = '<div class="loading">No downloads yet</div>';
+                return;
+            }
+
+            container.innerHTML = downloads.slice(0, 10).map(download => `
+                <div class="activity-item">
+                    <div class="activity-header">
+                        <div class="activity-title">${download.noteTitle}</div>
+                        <div class="activity-time">${new Date(download.downloadedAt).toLocaleDateString()}</div>
+                    </div>
+                    <div class="activity-description">📚 ${download.noteSubject} • 👤 by ${download.noteAuthor}</div>
+                </div>
+            `).join('');
+
+            if (downloads.length > 10) {
+                container.innerHTML += `<p style="text-align: center; color: #888; margin-top: 1rem;">And ${downloads.length - 10} more downloads...</p>`;
+            }
+        }
+
+        // Utility functions
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ')
+                .map(word => word.charAt(0))
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+        }
+
+        function formatTimeAgo(timestamp) {
+            const now = new Date();
+            const time = new Date(timestamp);
+            const diff = now.getTime() - time.getTime();
+            
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+
+        // Initialize
+        if (userId && adminToken) {
+            loadUserProfile();
+        }
+    </script>
+</body>
+</html>
