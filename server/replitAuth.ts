@@ -235,17 +235,13 @@ export async function setupAuth(app: Express) {
   // Google OAuth endpoint
   app.post("/api/auth/google", async (req, res) => {
     try {
-      console.log('Google OAuth request received:', { body: req.body });
-      
       const { credential, role } = req.body;
       
       if (!credential) {
-        console.error('No credential provided');
         return res.status(400).json({ message: 'Google credential is required' });
       }
       
       if (!role || (role !== 'student' && role !== 'topper')) {
-        console.error('Invalid role:', role);
         return res.status(400).json({ message: 'Valid role is required' });
       }
       
@@ -253,16 +249,12 @@ export async function setupAuth(app: Express) {
       const payload = decodeGoogleJWT(credential);
       
       if (!payload) {
-        console.error('Failed to decode Google JWT');
         return res.status(400).json({ message: 'Invalid Google credential' });
       }
       
-      console.log('Decoded Google payload:', { email: payload.email, aud: payload.aud });
-      
       // Verify the audience matches your client ID
-      const expectedClientId = process.env.GOOGLE_CLIENT_ID || "914859639485-t5pjjuir3bmauq2t51nb60v1l1gm4ud8.apps.googleusercontent.com";
+      const expectedClientId = "914859639485-t5pjjuir3bmauq2t51nb60v1l1gm4ud8.apps.googleusercontent.com";
       if (payload.aud !== expectedClientId) {
-        console.error('Client ID mismatch:', { expected: expectedClientId, received: payload.aud });
         return res.status(400).json({ message: 'Invalid client ID' });
       }
       
@@ -339,11 +331,7 @@ export async function setupAuth(app: Express) {
       
     } catch (error) {
       console.error('Google OAuth error:', error);
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      return res.status(500).json({ 
-        message: 'Authentication error',
-        error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
-      });
+      return res.status(500).json({ message: 'Authentication error' });
     }
   });
 

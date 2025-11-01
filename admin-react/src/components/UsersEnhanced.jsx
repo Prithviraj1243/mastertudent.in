@@ -59,7 +59,13 @@ const UsersEnhanced = () => {
     const matchesSearch = user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.id?.toLowerCase().includes(searchTerm.toLowerCase());
+                         user.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.phoneNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.education?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.institution?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.course?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.state?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesRole = roleFilter === 'all' || 
                        (roleFilter === 'student' && (user.role === 'student' || !user.role)) ||
@@ -169,7 +175,7 @@ const UsersEnhanced = () => {
           <div className="search-icon">🔍</div>
           <input
             type="text"
-            placeholder="Search by name, email, or ID..."
+            placeholder="Search by name, email, phone, education, institution, city..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -269,6 +275,56 @@ const UsersEnhanced = () => {
                 <div className="meta-item">
                   <span className="meta-label">Last Login:</span>
                   <span className="meta-value">{formatDate(user.lastLogin)}</span>
+                </div>
+              )}
+              {user.phoneNumber && (
+                <div className="meta-item">
+                  <span className="meta-label">Phone:</span>
+                  <span className="meta-value">{user.phoneNumber}</span>
+                </div>
+              )}
+              {user.education && (
+                <div className="meta-item">
+                  <span className="meta-label">Education:</span>
+                  <span className="meta-value">{user.education}</span>
+                </div>
+              )}
+              {user.institution && (
+                <div className="meta-item">
+                  <span className="meta-label">Institution:</span>
+                  <span className="meta-value">{user.institution}</span>
+                </div>
+              )}
+              {user.course && (
+                <div className="meta-item">
+                  <span className="meta-label">Course:</span>
+                  <span className="meta-value">{user.course}</span>
+                </div>
+              )}
+              {user.year && (
+                <div className="meta-item">
+                  <span className="meta-label">Year:</span>
+                  <span className="meta-value">{user.year}</span>
+                </div>
+              )}
+              {user.city && (
+                <div className="meta-item">
+                  <span className="meta-label">City:</span>
+                  <span className="meta-value">{user.city}</span>
+                </div>
+              )}
+              {user.state && (
+                <div className="meta-item">
+                  <span className="meta-label">State:</span>
+                  <span className="meta-value">{user.state}</span>
+                </div>
+              )}
+              {user.registrationType && (
+                <div className="meta-item">
+                  <span className="meta-label">Registration:</span>
+                  <span className={`meta-value ${user.registrationType === 'google' ? 'google-signup' : 'manual-signup'}`}>
+                    {user.registrationType === 'google' ? '🔗 Google' : '📝 Manual'}
+                  </span>
                 </div>
               )}
             </div>
@@ -583,6 +639,16 @@ const UsersEnhanced = () => {
         .user-id {
           font-family: monospace;
           font-size: 0.8rem;
+        }
+
+        .google-signup {
+          color: #4285f4 !important;
+          font-weight: 600;
+        }
+
+        .manual-signup {
+          color: #2ecc71 !important;
+          font-weight: 600;
         }
 
         .user-actions {

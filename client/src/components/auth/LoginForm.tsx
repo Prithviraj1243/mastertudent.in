@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Mail, Loader2, Download, Upload, Lock } from "lucide-react";
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { handleGoogleOAuthForDeployedSite } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -42,44 +43,57 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     }
 
     try {
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          credential: credentialResponse.credential,
-          role: selectedRole 
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        // Invalidate auth cache to trigger re-fetch and proper routing
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      console.log('🔥 Processing Google OAuth login...');
+      
+      // Use Firebase-based Google OAuth (works on deployed website)
+      const result = await handleGoogleOAuthForDeployedSite(credentialResponse.credential, selectedRole);
+      
+      if (result.success && result.user) {
+        console.log('✅ Google OAuth login successful:', result.user);
         
+        // Clear any existing data
+        queryClient.clear();
+        
+        // Set authentication flags
+        sessionStorage.setItem('directAuth', 'true');
+        sessionStorage.setItem('userEmail', result.user.email);
+        sessionStorage.setItem('userName', `${result.user.firstName} ${result.user.lastName}`);
+        sessionStorage.setItem('authUser', JSON.stringify({
+          id: result.user.id,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          name: result.user.name,
+          picture: result.user.picture,
+          role: result.user.role,
+          provider: 'google',
+          onboardingCompleted: true
+        }));
+        
+        toast({
+          title: "Welcome!",
+          description: `Successfully signed in as ${result.user.firstName} ${result.user.lastName}`,
+        });
+        
+        console.log('✅ User data saved to Firebase and will appear in admin panel!');
+        
+        // Redirect based on role
         setTimeout(() => {
           if (onSuccess) {
             onSuccess();
           } else {
-            setLocation("/");
+            setLocation('/');
           }
-        }, 500);
+        }, 1000);
       } else {
-        console.error('Google Sign-In Error:', data);
-        toast({
-          title: "Google Sign-In Failed",
-          description: data.message || data.error || "Please try again",
-          variant: "destructive",
-        });
+        throw new Error(result.error || 'Google OAuth failed');
       }
     } catch (error) {
+      console.error('Google OAuth error:', error);
       toast({
-        title: "Google Sign-In Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
+        title: "Authentication Failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive"
       });
     }
   };

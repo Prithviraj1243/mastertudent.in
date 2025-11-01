@@ -222,7 +222,22 @@ server.get('/admin', (req, res) => {
                 <h3>📊 Available API Endpoints</h3>
                 
                 <div class="endpoint">
-                    <strong>GET /admin/users</strong> - Get all users from Firebase
+                    <strong>GET /admin/users</strong> - Get all users with comprehensive data
+                    <span class="badge">Firebase</span>
+                </div>
+                
+                <div class="endpoint">
+                    <strong>GET /admin/users/:userId</strong> - Get detailed user information
+                    <span class="badge">Firebase</span>
+                </div>
+                
+                <div class="endpoint">
+                    <strong>POST /admin/register-user</strong> - Register user with education details
+                    <span class="badge">Firebase</span>
+                </div>
+                
+                <div class="endpoint">
+                    <strong>PUT /admin/users/:userId</strong> - Update user information
                     <span class="badge">Firebase</span>
                 </div>
                 
@@ -400,6 +415,162 @@ server.post('/admin/upload', authenticateAdmin, upload.single('file'), async (re
   } catch (error) {
     console.error('Error uploading file:', error);
     res.status(500).json({ error: 'Failed to upload file', details: error.message });
+  }
+});
+
+// Create comprehensive user registration endpoint
+server.post('/admin/register-user', authenticateAdmin, async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      email,
+      phoneNumber,
+      education,
+      institution,
+      course,
+      year,
+      city,
+      state,
+      country,
+      registrationType = 'manual',
+      role = 'student'
+    } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        required: ['firstName', 'lastName', 'email'] 
+      });
+    }
+
+    // Check if user already exists
+    const existingUserQuery = query(collection(db, COLLECTIONS.USERS), where("email", "==", email));
+    const existingUserSnap = await getDocs(existingUserQuery);
+    
+    if (!existingUserSnap.empty) {
+      return res.status(409).json({ error: 'User with this email already exists' });
+    }
+
+    // Create comprehensive user document
+    const userData = {
+      firstName,
+      lastName,
+      email,
+      phoneNumber: phoneNumber || null,
+      education: education || null,
+      institution: institution || null,
+      course: course || null,
+      year: year || null,
+      city: city || null,
+      state: state || null,
+      country: country || 'India',
+      registrationType,
+      role,
+      coins: 0,
+      notesUploaded: 0,
+      notesDownloaded: 0,
+      rating: 0,
+      isActive: true,
+      isVerified: false,
+      profileImageUrl: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastLogin: null
+    };
+
+    const docRef = await addDoc(collection(db, COLLECTIONS.USERS), userData);
+    
+    await logAdminAction('CREATE_USER', `Created user: ${firstName} ${lastName} (${email})`);
+
+    res.json({
+      success: true,
+      message: 'User registered successfully',
+      userId: docRef.id,
+      userData: { id: docRef.id, ...userData }
+    });
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({ error: 'Failed to register user', details: error.message });
+  }
+});
+
+// Get detailed user information
+server.get('/admin/users/:userId', authenticateAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, userId));
+    
+    if (!userDoc.exists()) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = { id: userDoc.id, ...userDoc.data() };
+    
+    // Get user's notes
+    const notesQuery = query(collection(db, COLLECTIONS.NOTES), where("userId", "==", userId));
+    const notesSnap = await getDocs(notesQuery);
+    const userNotes = notesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Get user's payments
+    const paymentsQuery = query(collection(db, COLLECTIONS.PAYMENTS), where("userId", "==", userId));
+    const paymentsSnap = await getDocs(paymentsQuery);
+    const userPayments = paymentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Get user's downloads
+    const downloadsQuery = query(collection(db, COLLECTIONS.DOWNLOADS), where("userId", "==", userId));
+    const downloadsSnap = await getDocs(downloadsQuery);
+    const userDownloads = downloadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    await logAdminAction('VIEW_USER_DETAILS', `Viewed details for user: ${userData.email}`);
+
+    res.json({
+      success: true,
+      user: userData,
+      notes: userNotes,
+      payments: userPayments,
+      downloads: userDownloads,
+      summary: {
+        totalNotes: userNotes.length,
+        totalPayments: userPayments.length,
+        totalDownloads: userDownloads.length,
+        totalEarnings: userPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ error: 'Failed to fetch user details', details: error.message });
+  }
+});
+
+// Update user information
+server.put('/admin/users/:userId', authenticateAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updateData = { ...req.body };
+    
+    // Add updatedAt timestamp
+    updateData.updatedAt = serverTimestamp();
+    
+    // Remove fields that shouldn't be updated directly
+    delete updateData.id;
+    delete updateData.createdAt;
+    
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, updateData);
+    
+    await logAdminAction('UPDATE_USER', `Updated user: ${userId}`);
+    
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      userId
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user', details: error.message });
   }
 });
 

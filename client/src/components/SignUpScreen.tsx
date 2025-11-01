@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { handleGoogleOAuthForDeployedSite } from "@/lib/firebase";
 import { 
   GraduationCap, 
   User, 
@@ -156,35 +157,42 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
     }
 
     try {
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          credential: credentialResponse.credential,
-          role: 'student' // Default role for signup page
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
+      console.log('🔥 Processing Google OAuth...');
+      
+      // Use Firebase-based Google OAuth (works on deployed website)
+      const result = await handleGoogleOAuthForDeployedSite(credentialResponse.credential, 'student');
+      
+      if (result.success && result.user) {
+        console.log('✅ Google OAuth successful:', result.user);
+        
         // Set authentication flags
         sessionStorage.setItem('directAuth', 'true');
-        sessionStorage.setItem('userEmail', data.user.email);
-        sessionStorage.setItem('userName', `${data.user.firstName} ${data.user.lastName}`);
+        sessionStorage.setItem('userEmail', result.user.email);
+        sessionStorage.setItem('userName', `${result.user.firstName} ${result.user.lastName}`);
+        sessionStorage.setItem('authUser', JSON.stringify({
+          id: result.user.id,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          name: result.user.name,
+          picture: result.user.picture,
+          role: result.user.role,
+          provider: 'google',
+          onboardingCompleted: true
+        }));
+        
+        console.log('✅ User data saved to Firebase and will appear in admin panel!');
         
         // Redirect to home page
         setTimeout(() => {
           window.location.href = "/";
         }, 1000);
       } else {
-        alert(`Google Sign-In Failed: ${data.message || 'Please try again'}`);
+        throw new Error(result.error || 'Google OAuth failed');
       }
     } catch (error) {
       console.error('Google OAuth error:', error);
-      alert('Google Sign-In Error: Something went wrong. Please try again.');
+      alert(`Google Sign-In Error: ${error instanceof Error ? error.message : 'Network error'}`);
     }
   };
 
