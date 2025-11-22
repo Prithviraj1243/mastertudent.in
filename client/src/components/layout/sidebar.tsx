@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useUserStats } from "@/hooks/useUserStats";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,8 @@ import {
   Bookmark,
   UserPlus,
   History,
-  Star
+  Star,
+  Upload
 } from "lucide-react";
 
 interface SidebarProps {
@@ -41,6 +43,7 @@ declare global {
 
 export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
   const { user } = useAuth();
+  const { stats } = useUserStats();
   const [location] = useLocation();
 
   if (!user) {
@@ -79,8 +82,7 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
 
 
   const myActivityLinks = [
-    { path: "/downloads", icon: Download, label: "My Downloads", active: isActive("/downloads"), badge: "0" },
-    { path: "/bookmarks", icon: Bookmark, label: "Bookmarks", active: isActive("/bookmarks"), badge: "0" },
+    { path: "/my-uploads", icon: Upload, label: "My Uploads", active: isActive("/my-uploads"), badge: stats?.notesUploaded?.toString() || "0" },
     { path: "/following", icon: UserPlus, label: "Following", active: isActive("/following"), badge: "0" },
     { path: "/history", icon: History, label: "History", active: isActive("/history"), badge: null },
   ];
@@ -198,50 +200,6 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
           </div>
 
 
-          {/* My Subjects Section */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
-              📚 My Subjects
-              <Link href="/subjects/manage" className="text-xs text-purple-400 hover:text-purple-300">
-                Manage
-              </Link>
-            </h3>
-            <div className="space-y-2">
-              {[
-                { name: "Mathematics", icon: "📐", downloads: 15, notes: 8, color: "from-blue-500 to-cyan-500" },
-                { name: "Physics", icon: "⚛️", downloads: 8, notes: 5, color: "from-purple-500 to-pink-500" },
-                { name: "Chemistry", icon: "🧪", downloads: 12, notes: 7, color: "from-green-500 to-emerald-500" },
-                { name: "Biology", icon: "🧬", downloads: 6, notes: 3, color: "from-orange-500 to-red-500" },
-                { name: "Computer Science", icon: "💻", downloads: 10, notes: 6, color: "from-indigo-500 to-purple-500" }
-              ].map((subject, index) => (
-                <Link
-                  key={subject.name}
-                  href={`/subjects/${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-black/30 text-gray-300 hover:text-white transition-all duration-300 hover:scale-105 border border-transparent hover:border-purple-500/30"
-                >
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg">{subject.icon}</span>
-                    <div>
-                      <div className="text-sm font-medium">{subject.name}</div>
-                      <div className="text-xs text-gray-400">{subject.downloads} downloads • {subject.notes} notes</div>
-                    </div>
-                  </div>
-                  <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
-                    {subject.downloads}
-                  </Badge>
-                </Link>
-              ))}
-              
-              {/* Add Subject Button */}
-              <Link
-                href="/subjects/add"
-                className="flex items-center justify-center px-4 py-3 rounded-lg border-2 border-dashed border-purple-500/30 text-gray-400 hover:text-purple-300 hover:border-purple-400/50 transition-all duration-300 hover:scale-105"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="text-sm font-medium">Add Subject</span>
-              </Link>
-            </div>
-          </div>
 
           {/* My Activity Section */}
           <div>

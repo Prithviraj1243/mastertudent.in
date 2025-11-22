@@ -71,6 +71,11 @@ const MasterStudentChatbot: React.FC<ChatbotProps> = ({ className = '' }) => {
     setIsLoading(true);
 
     try {
+      // Get user data from sessionStorage/localStorage
+      const sessionUser = sessionStorage.getItem('authUser');
+      const localUser = localStorage.getItem('userProfile');
+      const userData = sessionUser ? JSON.parse(sessionUser) : (localUser ? JSON.parse(localUser) : null);
+
       const response = await fetch('http://localhost:5001/chat', {
         method: 'POST',
         headers: {
@@ -78,6 +83,7 @@ const MasterStudentChatbot: React.FC<ChatbotProps> = ({ className = '' }) => {
         },
         body: JSON.stringify({
           message: text,
+          user: userData,
           history: messages.slice(-10).map(msg => ({
             role: msg.sender === 'user' ? 'user' : 'assistant',
             content: msg.text

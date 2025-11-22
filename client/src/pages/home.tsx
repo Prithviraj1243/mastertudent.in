@@ -233,7 +233,11 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-3 shadow-lg floating-orb">
                     <Upload className="h-5 w-5 md:h-6 md:w-6 text-white wiggle" />
                   </div>
-                  <div className="text-green-400 text-sm font-bold bounce-in">+15.2%</div>
+                  {stats.notesUploaded > 0 ? (
+                    <div className="text-green-400 text-sm font-bold bounce-in">Active</div>
+                  ) : (
+                    <div className="text-slate-400 text-sm font-bold">New</div>
+                  )}
                 </div>
                 <div className="text-xl md:text-2xl font-bold text-white mb-1 text-glow">{stats.notesUploaded.toLocaleString()}</div>
                 <div className="text-slate-300 font-medium text-sm md:text-base">Notes Uploaded</div>
@@ -247,7 +251,11 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl p-3 shadow-lg particle-float">
                     <Coins className="h-5 w-5 md:h-6 md:w-6 text-white floating-orb" />
                   </div>
-                  <div className="text-yellow-400 text-sm font-bold bounce-in">+28.9%</div>
+                  {stats.totalEarnings > 0 ? (
+                    <div className="text-yellow-400 text-sm font-bold bounce-in">Earning</div>
+                  ) : (
+                    <div className="text-slate-400 text-sm font-bold">₹0</div>
+                  )}
                 </div>
                 <div className="text-xl md:text-2xl font-bold text-white mb-1 text-glow">₹{stats.totalEarnings.toLocaleString()}</div>
                 <div className="text-slate-300 font-medium text-sm md:text-base">Total Earnings</div>
@@ -261,7 +269,11 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-3 shadow-lg">
                     <Download className="h-5 w-5 md:h-6 md:w-6 text-white" />
                   </div>
-                  <div className="text-purple-400 text-sm font-bold">+32.1%</div>
+                  {stats.totalDownloads > 0 ? (
+                    <div className="text-purple-400 text-sm font-bold">Popular</div>
+                  ) : (
+                    <div className="text-slate-400 text-sm font-bold">0</div>
+                  )}
                 </div>
                 <div className="text-xl md:text-2xl font-bold text-white mb-1">{stats.totalDownloads.toLocaleString()}</div>
                 <div className="text-slate-300 font-medium text-sm md:text-base">Downloads</div>
@@ -275,7 +287,11 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-3 shadow-lg">
                     <Star className="h-5 w-5 md:h-6 md:w-6 text-white" />
                   </div>
-                  <div className="text-blue-400 text-sm font-bold">+5.7%</div>
+                  {stats.averageRating > 0 ? (
+                    <div className="text-blue-400 text-sm font-bold">⭐{stats.averageRating.toFixed(1)}</div>
+                  ) : (
+                    <div className="text-slate-400 text-sm font-bold">No Rating</div>
+                  )}
                 </div>
                 <div className="text-xl md:text-2xl font-bold text-white mb-1">{stats.averageRating > 0 ? stats.averageRating.toFixed(1) : '0.0'}</div>
                 <div className="text-slate-300 font-medium text-sm md:text-base">Average Rating</div>
@@ -443,15 +459,15 @@ export default function Home() {
                       <div className="space-y-3">
                         <div className="flex justify-between items-center">
                           <span className="text-slate-300">Total Earnings:</span>
-                          <span className="text-emerald-400 font-bold">₹2,450</span>
+                          <span className="text-emerald-400 font-bold">₹{stats.totalEarnings.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-slate-300">This Month:</span>
-                          <span className="text-green-400 font-bold">₹680</span>
+                          <span className="text-green-400 font-bold">₹{stats.monthlyEarnings.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-slate-300">Downloads:</span>
-                          <span className="text-cyan-400 font-bold">156</span>
+                          <span className="text-cyan-400 font-bold">{stats.totalDownloads.toLocaleString()}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -515,78 +531,6 @@ export default function Home() {
             </section>
           )}
 
-          {/* Subject Categories - Upload Focused */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-3xl font-bold text-white">📚 Upload by Subject</h2>
-              <div className="flex gap-2">
-                <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2">
-                  💰 High Demand
-                </Badge>
-                <Button asChild className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500">
-                  <Link href="/upload">
-                    <FolderPlus className="mr-2 h-4 w-4" />
-                    Add New Subject
-                  </Link>
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-6">
-              {[
-                { name: "Mathematics", icon: "📐", demand: "🔥 High", color: "from-blue-500 to-cyan-500" },
-                { name: "Physics", icon: "⚛️", demand: "⭐ Medium", color: "from-purple-500 to-pink-500" },
-                { name: "Chemistry", icon: "🧪", demand: "📈 Rising", color: "from-green-500 to-emerald-500" },
-                { name: "Biology", icon: "🧬", demand: "💎 Stable", color: "from-orange-500 to-red-500" },
-                { name: "Computer Science", icon: "💻", demand: "🚀 Trending", color: "from-indigo-500 to-purple-500" },
-                { name: "English", icon: "📚", demand: "📖 Steady", color: "from-pink-500 to-rose-500" }
-              ].map((category, index) => {
-                const subjectStat = subjectStats.find(s => s.subject === category.name);
-                const earnings = subjectStat ? `₹${subjectStat.earnings}/month` : '₹0/month';
-                const notesCount = subjectStat ? `${subjectStat.notesCount} notes` : '0 notes';
-                
-                return (
-                <Link key={category.name} href={`/upload?subject=${encodeURIComponent(category.name)}`}>
-                  <Card 
-                    className="hover-lift cursor-pointer border border-slate-600/50 hover:border-slate-500/70 transition-all duration-300 bg-slate-800/60 backdrop-blur-md shadow-lg hover:shadow-xl group h-44 md:h-52 flex flex-col"
-                    style={{animationDelay: `${index * 0.1}s`}}
-                  >
-                    <CardContent className="p-4 md:p-6 text-center relative overflow-hidden flex-1 flex flex-col justify-between">
-                      {/* Background gradient */}
-                      <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
-                      
-                      <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div className="flex flex-col items-center">
-                          <div className="text-3xl md:text-4xl mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300">
-                            {category.icon}
-                          </div>
-                          <div className="font-bold text-white text-sm mb-2 group-hover:text-orange-400 transition-colors leading-tight">
-                            {category.name}
-                          </div>
-                          <div className="text-xs text-slate-300 mb-2 md:mb-3 font-medium">{earnings}</div>
-                        </div>
-                        <div className="space-y-2">
-                          <Badge 
-                            className={`text-xs bg-gradient-to-r ${category.color} text-white px-2 py-1`}
-                          >
-                            {category.demand}
-                          </Badge>
-                          <div className="text-xs text-green-400 font-semibold">Click to Upload</div>
-                        </div>
-                      </div>
-                      
-                      {/* Upload icon overlay */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className={`bg-gradient-to-r ${category.color} p-2 rounded-full`}>
-                          <Upload className="h-3 w-3 md:h-4 md:w-4 text-white" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-                );
-              })}
-            </div>
-          </div>
 
           {/* Trending This Week - Enhanced */}
           <div className="mb-12">
