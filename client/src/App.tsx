@@ -15,6 +15,7 @@ import MasterLanding from "@/pages/master-landing";
 import PurposeSelection from "@/pages/purpose-selection";
 import CreateAccount from "@/pages/create-account";
 import DownloadNotes from "@/pages/download-notes";
+import DownloadNotesEnhanced from "@/pages/download-notes-enhanced";
 import UploadNotes from "@/pages/upload-notes";
 import Subscribe from "@/pages/subscribe";
 import Catalog from "@/pages/catalog";
@@ -22,10 +23,7 @@ import CategorySelection from "@/pages/category-selection";
 import ExamSelection from "@/pages/exam-selection";
 import Upload from "@/pages/upload";
 import ReviewQueue from "@/pages/review-queue";
-import AdminDashboard from "@/pages/admin-dashboard";
-import AdminLogin from "@/pages/admin-login";
-import RealAdminDashboard from "@/pages/real-admin-dashboard";
-import EnhancedAdminDashboard from "@/pages/enhanced-admin-dashboard";
+import BecomeTopper from "@/pages/become-topper";
 import NoteDetail from "@/pages/note-detail";
 import Analytics from "@/pages/analytics";
 import Forum from "@/pages/forum";
@@ -52,10 +50,7 @@ function Router() {
   // Check for direct authentication bypass
   const isDirectAuth = typeof window !== 'undefined' && sessionStorage.getItem('directAuth') === 'true';
   
-  // Check for admin authentication bypass
-  const isAdminAuth = typeof window !== 'undefined' && sessionStorage.getItem('adminAuth') === 'true';
-
-  if (isLoading && !isDirectAuth && !isAdminAuth) {
+  if (isLoading && !isDirectAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -63,8 +58,8 @@ function Router() {
     );
   }
 
-  // If directly authenticated, admin authenticated, or normal authentication, show main app
-  if (isAuthenticated || isDirectAuth || isAdminAuth) {
+  // If directly authenticated or normal authentication, show main app
+  if (isAuthenticated || isDirectAuth) {
     return (
       <>
         <Switch>
@@ -72,7 +67,7 @@ function Router() {
           <Route path="/home" component={Home} />
           <Route path="/purpose-selection" component={PurposeSelection} />
           <Route path="/create-account" component={CreateAccount} />
-          <Route path="/download-notes" component={DownloadNotes} />
+          <Route path="/download-notes" component={DownloadNotesEnhanced} />
           <Route path="/upload-notes" component={UploadNotes} />
           <Route path="/categories" component={CategorySelection} />
           <Route path="/exam-selection" component={ExamSelection} />
@@ -83,10 +78,7 @@ function Router() {
           <Route path="/coin-dashboard" component={CoinDashboard} />
           <Route path="/upload" component={Upload} />
           <Route path="/review-queue" component={ReviewQueue} />
-          <Route path="/admin" component={AdminDashboard} />
-          <Route path="/admin-login" component={AdminLogin} />
-          <Route path="/admin-dashboard" component={RealAdminDashboard} />
-          <Route path="/admin/enhanced" component={EnhancedAdminDashboard} />
+          <Route path="/become-topper" component={BecomeTopper} />
           <Route path="/notes/:id" component={NoteDetail} />
           <Route path="/analytics" component={Analytics} />
           <Route path="/uploader-profile" component={UploaderProfile} />
@@ -111,7 +103,6 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/create-account" component={CreateAccount} />
-      <Route path="/admin-login" component={AdminLogin} />
       <Route component={Landing} />
     </Switch>
   );

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from "wouter";
 import SubscriptionModal from "@/components/subscription-modal";
+import DodoPaymentGateway from "@/components/dodo-payment-gateway";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
@@ -61,6 +62,7 @@ export default function DownloadNotes() {
   const [selectedSubject, setSelectedSubject] = useState('All');
   const [sortBy, setSortBy] = useState('popular');
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [dodoPaymentOpen, setDodoPaymentOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [userStatus, setUserStatus] = useState<'free' | 'trial' | 'premium'>(() => {
     if (typeof window !== 'undefined') {
@@ -137,6 +139,10 @@ export default function DownloadNotes() {
       const newCount = trialDownloads + 1;
       setTrialDownloads(newCount);
       localStorage.setItem('trialDownloads', newCount.toString());
+    } else if (note.price > 0) {
+      // Show Dodo payment gateway for paid notes
+      setSelectedNote(note);
+      setDodoPaymentOpen(true);
     } else {
       // Show subscription modal for free users or trial users who exceeded limit
       setSelectedNote(note);
@@ -527,6 +533,33 @@ export default function DownloadNotes() {
         onStartTrial={handleStartTrial}
         noteTitle={selectedNote?.title || ''}
       />
+
+      {/* Dodo Payment Gateway Modal */}
+      {dodoPaymentOpen && selectedNote && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+          <div className="h-full overflow-y-auto">
+            <DodoPaymentGateway
+              noteId={selectedNote.id.toString()}
+              noteTitle={selectedNote.title}
+              notePrice={selectedNote.price}
+              onBack={() => {
+                setDodoPaymentOpen(false);
+                setSelectedNote(null);
+              }}
+              onSuccess={() => {
+                setDodoPaymentOpen(false);
+                setSelectedNote(null);
+                toast({
+                  title: "Payment Successful!",
+                  description: `"${selectedNote.title}" is now available for download.`,
+                });
+                // Refresh notes list
+                fetchNotes();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

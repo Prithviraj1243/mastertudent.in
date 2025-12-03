@@ -332,7 +332,7 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
 
         {/* Glowing Orbs */}
         <motion.div
-          className="absolute top-1/4 left-1/6 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-r from-orange-400/20 to-red-500/20 rounded-full blur-xl"
+          className="absolute top-1/4 left-1/6 w-32 h-32 bg-gradient-to-r from-orange-400/20 to-red-500/20 rounded-full blur-xl"
           animate={{
             scale: [1, 1.3, 1],
             opacity: [0.3, 0.7, 0.3],
@@ -340,7 +340,7 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
           transition={{ duration: 4, repeat: Infinity }}
         />
         <motion.div
-          className="absolute bottom-1/4 right-1/6 w-24 h-24 sm:w-40 sm:h-40 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-xl"
+          className="absolute bottom-1/4 right-1/6 w-40 h-40 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-xl"
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.4, 0.8, 0.4],
@@ -369,8 +369,8 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
         </motion.header>
 
         {/* Content Area */}
-        <div className="flex-1 flex items-center justify-center p-3 sm:p-4 md:p-6">
-          <div className="w-full max-w-7xl">
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-6xl">
             <AnimatePresence mode="wait">
               {currentStep === 0 && (
                 <motion.div
@@ -380,7 +380,7 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                     {/* Sign Up Form */}
                     <motion.div
                       initial={{ opacity: 0, x: -50 }}
@@ -388,12 +388,12 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                       transition={{ delay: 0.2, duration: 0.8 }}
                     >
                       <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-lg">
-                        <CardContent className="p-4 sm:p-6 md:p-8">
-                          <div className="text-center mb-6 sm:mb-8">
-                            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
+                        <CardContent className="p-8">
+                          <div className="text-center mb-8">
+                            <h2 className="text-3xl font-bold text-white mb-2">
                               Register with your Email ID / phone number
                             </h2>
-                            <p className="text-sm sm:text-base text-slate-300">
+                            <p className="text-slate-300">
                               Enter your phone number to get started
                             </p>
                           </div>
@@ -404,18 +404,18 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                               <label className="text-slate-300 text-sm">Phone Number</label>
                               <div className="flex space-x-2">
                                 {/* Country Code Box */}
-                                <div className="relative w-16 sm:w-20">
+                                <div className="relative w-20">
                                   <input
                                     type="text"
                                     value="+91"
                                     readOnly
-                                    className="w-full px-2 sm:px-3 py-3 sm:py-4 bg-slate-600/50 border border-slate-500 rounded-lg text-white text-center text-sm sm:text-lg font-medium cursor-not-allowed"
+                                    className="w-full px-3 py-4 bg-slate-600/50 border border-slate-500 rounded-lg text-white text-center text-lg font-medium cursor-not-allowed"
                                   />
                                 </div>
                                 
                                 {/* Phone Number Box */}
                                 <div className="relative flex-1">
-                                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
+                                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                                   <input
                                     type="tel"
                                     placeholder="Enter 10 digit number"
@@ -427,7 +427,7 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                                         handleInputChange('phone', value);
                                       }
                                     }}
-                                    className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-4 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-lg"
+                                    className="w-full pl-10 pr-4 py-4 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
                                     maxLength={10}
                                     inputMode="numeric"
                                     pattern="[0-9]*"
@@ -439,9 +439,9 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                             {/* Send OTP Button */}
                             <Button 
                               onClick={handlePhoneSubmit}
-                              className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white font-semibold py-3 sm:py-4 text-base sm:text-lg"
+                              className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white font-semibold py-4 text-lg"
                             >
-                              Send OTP <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
+                              Send OTP <ArrowRight className="ml-2 w-5 h-5" />
                             </Button>
 
                             {/* OTP Fields - Show after phone submission */}
@@ -454,7 +454,7 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                                 </div>
                                 
                                 {/* OTP Input Fields */}
-                                <div className="flex justify-center space-x-2 sm:space-x-3">
+                                <div className="flex justify-center space-x-3">
                                   {otp.map((digit, index) => (
                                     <input
                                       key={index}
@@ -462,7 +462,7 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                                       type="text"
                                       value={digit}
                                       onChange={(e) => handleOtpChange(index, e.target.value)}
-                                      className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-center text-lg sm:text-xl font-bold focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                      className="w-14 h-14 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                       maxLength={1}
                                       inputMode="numeric"
                                       pattern="[0-9]*"
@@ -567,10 +567,10 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                       className="space-y-8"
                     >
                       <div className="text-center lg:text-left">
-                        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
+                        <h3 className="text-4xl font-bold text-white mb-4">
                           Why Choose Master Student?
                         </h3>
-                        <p className="text-base sm:text-lg lg:text-xl text-slate-300">
+                        <p className="text-xl text-slate-300">
                           Join the platform that's revolutionizing education in India
                         </p>
                       </div>
@@ -584,16 +584,16 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                             transition={{ delay: 0.6 + index * 0.2, duration: 0.6 }}
                           >
                             <Card className="bg-white border-gray-300 backdrop-blur-lg hover:scale-105 transition-transform duration-300 shadow-lg">
-                              <CardContent className="p-4 sm:p-6">
-                                <div className="flex items-start space-x-3 sm:space-x-4">
-                                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-r ${benefit.color} flex items-center justify-center flex-shrink-0`}>
-                                    <benefit.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                              <CardContent className="p-6">
+                                <div className="flex items-start space-x-4">
+                                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${benefit.color} flex items-center justify-center`}>
+                                    <benefit.icon className="w-6 h-6 text-white" />
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="text-base sm:text-lg font-semibold text-black mb-1 sm:mb-2">
+                                  <div>
+                                    <h4 className="text-lg font-semibold text-black mb-2">
                                       {benefit.title}
                                     </h4>
-                                    <p className="text-black text-xs sm:text-sm leading-relaxed">
+                                    <p className="text-black text-sm">
                                       {benefit.description}
                                     </p>
                                   </div>
@@ -620,16 +620,16 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.2, type: "spring", bounce: 0.6 }}
-                    className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-6 sm:mb-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center"
+                    className="w-32 h-32 mx-auto mb-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center"
                   >
-                    <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-white" />
+                    <CheckCircle className="w-16 h-16 text-white" />
                   </motion.div>
 
                   <motion.h2
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
-                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4"
+                    className="text-4xl font-bold text-white mb-4"
                   >
                     Welcome to Master Student!
                   </motion.h2>
@@ -638,7 +638,7 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
-                    className="text-base sm:text-lg md:text-xl text-slate-300 mb-6 sm:mb-8"
+                    className="text-xl text-slate-300 mb-8"
                   >
                     Your account has been created successfully. Redirecting to your dashboard...
                   </motion.p>

@@ -74,6 +74,13 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
+      
+      // Inject route context for admin panel detection
+      template = template.replace(
+        `<div id="root"></div>`,
+        `<div id="root" data-route="${url}"></div>`
+      );
+      
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {

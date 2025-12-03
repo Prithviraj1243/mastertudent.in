@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import SimplePaymentGateway from "@/components/simple-payment-gateway";
+import DodoPaymentGateway from "@/components/dodo-payment-gateway";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Crown, 
@@ -67,26 +68,25 @@ export default function SubscriptionModal({
 
   // Show payment gateway if selected
   if (showPaymentGateway && selectedPlan) {
+    const planPrice = selectedPlan === 'yearly' ? 499 : 59;
+    const planName = selectedPlan === 'yearly' ? 'Yearly Premium' : 'Monthly Premium';
+    
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent 
-          className="max-w-none w-screen h-screen max-h-none min-h-screen overflow-y-auto p-0 m-0 relative border-0"
+          className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-white p-0 m-0 relative border-0 rounded-2xl shadow-2xl"
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
-            height: '100vh',
-            maxWidth: 'none',
-            maxHeight: 'none',
-            transform: 'none',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
             zIndex: 9999
           }}
         >
-          <SimplePaymentGateway 
-            plan={selectedPlan as 'monthly' | 'yearly'}
+          <DodoPaymentGateway 
+            noteId={`subscription-${selectedPlan}`}
+            noteTitle={planName}
+            notePrice={planPrice}
             onBack={handlePaymentBack}
             onSuccess={handlePaymentSuccess}
           />

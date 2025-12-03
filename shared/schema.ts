@@ -27,7 +27,7 @@ export const sessions = pgTable(
 );
 
 // Enums
-export const roleEnum = pgEnum('role', ['student', 'topper', 'reviewer', 'admin']);
+export const roleEnum = pgEnum('role', ['student', 'topper', 'reviewer', 'admin', 'teacher']);
 export const noteStatusEnum = pgEnum('note_status', ['draft', 'submitted', 'approved', 'published', 'rejected', 'archived']);
 export const reviewStatusEnum = pgEnum('review_status', ['open', 'changes_requested', 'approved', 'rejected']);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'inactive', 'cancelled', 'past_due']);

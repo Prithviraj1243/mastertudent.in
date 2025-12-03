@@ -43,7 +43,8 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
   
   // Seed database with sample data if needed
-  await checkAndSeedDatabase();
+  // DISABLED: Only real data from actual users
+  // await checkAndSeedDatabase();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

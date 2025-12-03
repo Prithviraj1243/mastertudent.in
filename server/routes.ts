@@ -4,7 +4,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { sendWelcomeEmail } from "./sendgrid";
-import { registerAdminRoutes } from "./admin-routes";
 import { 
   syncUserToFirebase, 
   syncNoteToFirebase, 
@@ -12,6 +11,8 @@ import {
   syncSubscriptionToFirebase,
   updateUserActivity 
 } from "./firebase-sync";
+import dodoPayments from "./dodo-payments";
+import { sendChatMessage, suggestedQuestions } from "./chatbot";
 import crypto from "crypto";
 import Stripe from "stripe";
 import multer from "multer";
@@ -50,7 +51,6 @@ const upload = multer({
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
-  registerAdminRoutes(app);
   
   // Serve uploaded files
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -1732,6 +1732,266 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Dodo Payments - Initiate payment for note download
+  app.post(
+    "/api/notes/:noteId/dodo-payment",
+    isAuthenticated,
+    async (req: any, res) => {
+      const userId = getUserId(req);
+      const { noteId } = req.params;
+
+      try {
+        const user = await storage.getUser(userId);
+        const note = await storage.getNote(noteId);
+
+        if (!user || !note) {
+          return res.status(404).json({ message: "User or note not found" });
+        }
+
+        // Check if user has already downloaded this note
+        const hasDownloaded = await storage.hasUserDownloaded(userId, noteId);
+        if (hasDownloaded) {
+          return res.json({ message: "Already downloaded", downloaded: true });
+        }
+
+        // Generate unique order ID
+        const orderId = `note-${noteId}-${userId}-${Date.now()}`;
+        const amount = Math.round(note.price * 100); // Convert to paise
+
+        // Create payment request with Dodo
+        const paymentResponse = await dodoPayments.createPayment({
+          projectId: process.env.DODO_PROJECT_ID || '',
+          amount,
+          currency: 'INR',
+          orderId,
+          customerEmail: user.email || '',
+          customerPhone: user.phone || '',
+          description: `Download: ${note.title}`,
+          returnUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/download-notes?payment=success&orderId=${orderId}`,
+          notifyUrl: `${process.env.SERVER_URL || 'http://localhost:8000'}/api/dodo-webhook`
+        });
+
+        if (!paymentResponse.success) {
+          return res.status(400).json({
+            success: false,
+            error: paymentResponse.error || 'Failed to create payment'
+          });
+        }
+
+        // Store pending payment info
+        await storage.recordTransaction(
+          userId,
+          'download_pending',
+          note.price,
+          0,
+          noteId,
+          `Pending Dodo payment for note download - Order: ${orderId}`
+        );
+
+        res.json({
+          success: true,
+          paymentUrl: paymentResponse.paymentUrl,
+          transactionId: paymentResponse.transactionId,
+          orderId
+        });
+      } catch (error: any) {
+        console.error("Dodo payment error:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message || 'Payment initiation failed'
+        });
+      }
+    }
+  );
+
+  // Dodo Payments - Webhook for payment confirmation
+  app.post("/api/dodo-webhook", async (req: any, res) => {
+    try {
+      const { transactionId, orderId, status, amount, signature } = req.body;
+
+      // Verify webhook signature
+      const isValid = dodoPayments.verifyWebhookSignature(
+        {
+          transactionId,
+          orderId,
+          status,
+          amount,
+          currency: 'INR',
+          timestamp: new Date().toISOString()
+        },
+        signature
+      );
+
+      if (!isValid) {
+        console.warn('Invalid Dodo webhook signature');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      if (status === 'success') {
+        // Extract userId and noteId from orderId format: note-{noteId}-{userId}-{timestamp}
+        const parts = orderId.split('-');
+        if (parts.length >= 3) {
+          const noteId = parts[1];
+          const userId = parts[2];
+
+          const user = await storage.getUser(userId);
+          const note = await storage.getNote(noteId);
+
+          if (user && note) {
+            // Check if already downloaded
+            const hasDownloaded = await storage.hasUserDownloaded(userId, noteId);
+            if (!hasDownloaded) {
+              // Record the download
+              await storage.recordDownload(userId, noteId);
+              await storage.incrementNoteDownloads(noteId);
+
+              // Update transaction status
+              await storage.recordTransaction(
+                userId,
+                'download_paid',
+                note.price,
+                -note.price,
+                noteId,
+                `Dodo payment successful - Transaction: ${transactionId}`
+              );
+
+              // Award coins to note creator (50% of price)
+              const creatorEarnings = Math.floor(note.price * 0.5);
+              await storage.updateUserCoins(note.topperId, creatorEarnings);
+              await storage.recordTransaction(
+                note.topperId,
+                'coin_earned',
+                creatorEarnings,
+                creatorEarnings,
+                noteId,
+                'Earned from note download (Dodo payment)'
+              );
+
+              // Record activity
+              try {
+                await storage.recordUserActivity(userId, 'note_downloaded', {
+                  noteId,
+                  noteTitle: note?.title || 'Unknown Note',
+                  usedFreeDownload: false,
+                  coinsSpent: note.price,
+                  downloadType: 'paid',
+                  paymentGateway: 'dodo',
+                  transactionId
+                });
+              } catch (error) {
+                console.error('Failed to record download activity:', error);
+              }
+            }
+          }
+        }
+      } else if (status === 'failed') {
+        // Handle failed payment
+        const parts = orderId.split('-');
+        if (parts.length >= 3) {
+          const userId = parts[2];
+          await storage.recordTransaction(
+            userId,
+            'download_failed',
+            0,
+            0,
+            '',
+            `Dodo payment failed - Order: ${orderId}`
+          );
+        }
+      }
+
+      res.json({ success: true, message: 'Webhook processed' });
+    } catch (error: any) {
+      console.error('Dodo webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
+  // Verify Dodo payment status
+  app.get(
+    "/api/dodo-payment/:transactionId/status",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { transactionId } = req.params;
+
+        const result = await dodoPayments.verifyPayment(transactionId);
+
+        res.json(result);
+      } catch (error: any) {
+        console.error("Payment status check error:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message || 'Status check failed'
+        });
+      }
+    }
+  );
+
+
+  // ===== CHATBOT ROUTES =====
+  
+  // Send message to chatbot
+  app.post("/api/chatbot/chat", async (req: any, res) => {
+    try {
+      const { message } = req.body;
+      
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Use user ID if authenticated, otherwise use a guest ID
+      const userId = req.user?.id || `guest-${Date.now()}`;
+      
+      const response = await sendChatMessage(userId, message);
+      
+      res.json({
+        success: true,
+        message: response,
+        timestamp: Date.now(),
+      });
+    } catch (error: any) {
+      console.error("Chatbot error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to process message",
+      });
+    }
+  });
+
+  // Get suggested questions
+  app.get("/api/chatbot/suggestions", (req, res) => {
+    try {
+      res.json({
+        success: true,
+        suggestions: suggestedQuestions,
+      });
+    } catch (error: any) {
+      console.error("Error fetching suggestions:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch suggestions",
+      });
+    }
+  });
+
+  // Chatbot health check
+  app.get("/api/chatbot/health", (req, res) => {
+    try {
+      const hasApiKey = !!process.env.GEMINI_API_KEY;
+      res.json({
+        success: true,
+        status: "healthy",
+        geminiConfigured: hasApiKey,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        status: "unhealthy",
+      });
+    }
+  });
+
   // Serve uploaded files
   app.use("/uploads", (req, res, next) => {
     // Basic file serving - in production, use proper file storage service
@@ -1742,9 +2002,6 @@ export function registerRoutes(app: Express): Server {
       res.status(404).json({ message: "File not found" });
     }
   });
-
-  // Register admin routes
-  registerAdminRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

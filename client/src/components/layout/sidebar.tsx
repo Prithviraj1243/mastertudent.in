@@ -1,5 +1,4 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useUserStats } from "@/hooks/useUserStats";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,10 @@ import {
   UserPlus,
   History,
   Star,
-  Upload
+  CheckCircle,
+  Sparkles,
+  Flame,
+  Trophy
 } from "lucide-react";
 
 interface SidebarProps {
@@ -43,7 +45,6 @@ declare global {
 
 export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
   const { user } = useAuth();
-  const { stats } = useUserStats();
   const [location] = useLocation();
 
   if (!user) {
@@ -82,8 +83,7 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
 
 
   const myActivityLinks = [
-    { path: "/my-uploads", icon: Upload, label: "My Uploads", active: isActive("/my-uploads"), badge: stats?.notesUploaded?.toString() || "0" },
-    { path: "/following", icon: UserPlus, label: "Following", active: isActive("/following"), badge: "0" },
+    { path: "/my-uploads", icon: Download, label: "My Uploads", active: isActive("/my-uploads"), badge: "0" },
     { path: "/history", icon: History, label: "History", active: isActive("/history"), badge: null },
   ];
 
@@ -139,19 +139,26 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
                 <p className="text-sm font-bold text-white">
                   {user.firstName} {user.lastName}
                 </p>
-                <Badge 
-                  className={`text-xs mt-1 ${
-                    user.role === 'admin' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
-                    user.role === 'topper' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
-                    'bg-blue-500/20 text-blue-300 border-blue-500/30'
-                  }`}
-                  data-testid="sidebar-user-role"
-                >
-                  {user.role === 'admin' ? '👑 Admin' :
-                   user.role === 'topper' ? '⭐ Topper' :
-                   user.role === 'reviewer' ? '🔍 Reviewer' :
-                   '🎓 Student'}
-                </Badge>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  <Badge 
+                    className={`text-xs ${
+                      user.role === 'admin' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
+                      user.role === 'topper' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                      'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                    }`}
+                    data-testid="sidebar-user-role"
+                  >
+                    {user.role === 'admin' ? '👑 Admin' :
+                     user.role === 'topper' ? '⭐ Topper' :
+                     user.role === 'reviewer' ? '🔍 Reviewer' :
+                     '🎓 Student'}
+                  </Badge>
+                  {user.role === 'topper' && (
+                    <Badge className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white border-purple-500/30 animate-pulse">
+                      💎 VIP
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -200,7 +207,6 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
           </div>
 
 
-
           {/* My Activity Section */}
           <div>
             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -232,6 +238,35 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
               ))}
             </nav>
           </div>
+
+          {/* Become a Topper Section - For Students */}
+          {user.role === 'student' && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">
+                🌟 Become a Topper
+              </h3>
+              <Link
+                href="/become-topper"
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 hover:border-cyan-400/50 group relative overflow-hidden"
+                data-testid="sidebar-become-topper"
+              >
+                {/* Animated background pulse */}
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 via-cyan-400/20 to-cyan-400/0 animate-pulse"></div>
+                
+                <div className="relative flex items-center space-x-3 w-full">
+                  <div className="relative">
+                    <CheckCircle className="h-5 w-5 group-hover:animate-spin transition-transform" />
+                    <Sparkles className="h-3 w-3 absolute -top-1 -right-1 text-yellow-400 animate-pulse" />
+                  </div>
+                  <span className="text-sm font-bold">Verify to Topper</span>
+                  <div className="ml-auto">
+                    <Crown className="h-4 w-4 text-yellow-400 animate-bounce" />
+                  </div>
+                </div>
+              </Link>
+              <p className="text-xs text-gray-500 mt-2 px-4">Upload exam results → Get VIP Badge</p>
+            </div>
+          )}
 
           {/* Topper Studio */}
           {(user.role === 'topper' || user.role === 'admin') && (
@@ -312,23 +347,6 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
             </div>
           )}
 
-          {/* Enhanced Subscription Upgrade */}
-          {user.role === 'student' && (
-            <div className="pt-6 border-t border-purple-500/20">
-              <Link 
-                href="/subscribe"
-                className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-purple-500/30"
-                data-testid="sidebar-link-upgrade"
-                style={{
-                  boxShadow: '0 0 20px rgba(147, 51, 234, 0.3), 0 0 40px rgba(147, 51, 234, 0.1)',
-                  filter: 'drop-shadow(0 0 8px rgba(147, 51, 234, 0.4))'
-                }}
-              >
-                <Crown className="h-5 w-5 animate-pulse" />
-                <span className="text-sm font-bold">👑 Upgrade to Premium</span>
-              </Link>
-            </div>
-          )}
           </div>
         </div>
 
