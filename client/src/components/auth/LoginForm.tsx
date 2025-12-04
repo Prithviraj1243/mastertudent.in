@@ -42,32 +42,58 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     }
 
     try {
+      console.log('Starting Google OAuth flow...');
       const res = await fetch("/api/auth/google", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important: include cookies for session
         body: JSON.stringify({ 
           credential: credentialResponse.credential,
           role: selectedRole 
         }),
       });
 
+      console.log('Google OAuth response status:', res.status);
       const data = await res.json();
+      console.log('Google OAuth response data:', data);
 
-      if (res.ok) {
-        // Invalidate auth cache to trigger re-fetch and proper routing
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      if (res.ok && data.success) {
+        console.log('Google OAuth successful, user:', data.user);
+        toast({
+          title: "Sign-In Successful",
+          description: `Welcome ${data.user.firstName}!`,
+        });
         
-        setTimeout(() => {
+        // Clear any previous auth state and invalidate queries
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        
+        // Wait a bit for session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Refetch user to confirm session is valid
+        const userRes = await fetch("/api/auth/user", {
+          credentials: "include"
+        });
+        
+        if (userRes.ok) {
+          console.log('User session verified, redirecting...');
           if (onSuccess) {
             onSuccess();
           } else {
-            setLocation("/");
+            setLocation("/purpose-selection");
           }
-        }, 500);
+        } else {
+          console.error('User session verification failed');
+          toast({
+            title: "Session Error",
+            description: "Failed to establish session. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
+        console.error('Google OAuth failed:', data);
         toast({
           title: "Google Sign-In Failed",
           description: data.message || "Please try again",
@@ -75,9 +101,10 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         });
       }
     } catch (error) {
+      console.error('Google OAuth error:', error);
       toast({
         title: "Google Sign-In Error",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     }

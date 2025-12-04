@@ -695,7 +695,8 @@ DATABASE_URL=your_postgresql_url  # For production
 
 # Authentication
 SESSION_SECRET=your_secret_key
-GOOGLE_CLIENT_ID=your_google_client_id
+# Accepts single ID or comma separated list of allowed IDs
+GOOGLE_CLIENT_IDS=your_google_client_id,another_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 # Email
