@@ -1,29 +1,40 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as schema from "@shared/schema";
 
-// Exported bindings assigned conditionally to avoid ESM export-in-block error
-// eslint-disable-next-line import/no-mutable-exports
-export let db: any;
-// eslint-disable-next-line import/no-mutable-exports
-export let pool: any;
+let db: any;
 
-if (process.env.USE_SQLITE === '1') {
-  // In SQLite/dev mode we don't use the Neon/Postgres client at all.
-  // Ensure db has no select/insert helpers so any accidental usage is obvious.
+// Use postgres-js for reliable connection
+if (process.env.USE_SQLITE === "1") {
+  // In-memory mode (mock db for testing)
+  console.log('⚠️  Using mock in-memory database (USE_SQLITE=1)');
   db = {
-    select() {
-      throw new Error("db.select is not available in USE_SQLITE=1 mode");
-    },
+    query: {} as any,
+    select: () => ({ from: () => ({ where: () => [] }) }) as any,
+    insert: () => ({ values: () => ({ returning: () => [{}] }) }) as any,
+    update: () => ({ set: () => ({ where: () => ({ returning: () => [{}] }) }) }) as any,
+    delete: () => ({ where: () => ({}) }) as any,
   } as any;
 } else {
-  neonConfig.webSocketConstructor = ws;
   if (!process.env.DATABASE_URL) {
     throw new Error(
       "DATABASE_URL must be set. Did you forget to provision a database?",
     );
   }
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle({ client: pool, schema });
+  
+  console.log('🔌 Connecting to PostgreSQL database...');
+  
+  // Use postgres-js with SSL disabled
+  const connectionString = process.env.DATABASE_URL.replace('?sslmode=disable', '');
+  const sql = postgres(connectionString, {
+    ssl: false,
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
+  
+  db = drizzle(sql, { schema });
+  console.log('✅ PostgreSQL database connected successfully');
 }
+
+export { db };

@@ -43,7 +43,7 @@ export default function PageWrapper({
       <EnhancedHeader />
       
       <motion.div
-        className="md:ml-64 pt-24 md:pt-20 pb-12 px-6 md:px-8"
+        className="md:ml-64 pt-20 sm:pt-24 md:pt-20 pb-8 sm:pb-12 px-4 sm:px-6 md:px-8"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -59,12 +59,12 @@ export default function PageWrapper({
               )}
               <div>
                 {title && (
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     {title}
                   </h1>
                 )}
                 {subtitle && (
-                  <p className="text-blue-300 text-sm mt-1">{subtitle}</p>
+                  <p className="text-blue-300 text-xs sm:text-sm mt-1">{subtitle}</p>
                 )}
               </div>
             </div>

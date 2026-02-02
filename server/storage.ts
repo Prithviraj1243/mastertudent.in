@@ -24,6 +24,8 @@ import {
   educationalCategories,
   userEducationalPreferences,
   withdrawalRequests,
+  adminAccounts,
+  adminSessions,
   type User,
   type UpsertUser,
   type TopperProfile,
@@ -64,6 +66,7 @@ import {
   type InsertUserChallengeProgress,
   type WithdrawalRequest,
   type InsertWithdrawalRequest,
+  type AdminAccount,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, sql, count, avg, sum } from "drizzle-orm";
@@ -79,6 +82,7 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   updateUserRole(id: string, role: string): Promise<User>;
   updateUserStripeInfo(id: string, customerId: string, subscriptionId: string): Promise<User>;
+  updateUserLastSeen(id: string, isOnline: boolean): Promise<void>;
   
   // Topper profile operations
   createTopperProfile(profile: InsertTopperProfile): Promise<TopperProfile>;
@@ -101,11 +105,13 @@ export interface IStorage {
   getAllNotesForAdmin(filters?: {
     status?: string;
     subject?: string;
+    search?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ notes: any[]; total: number }>;
   updateNote(id: string, updates: Partial<InsertNote>): Promise<Note>;
   updateNoteStatus(id: string, status: string, reviewerId?: string): Promise<Note>;
+  updateNoteTeacherCredentials(noteId: string, teacherId: string, teacherPassword: string): Promise<Note>;
   
   // Review operations
   createReviewTask(task: InsertReviewTask): Promise<ReviewTask>;
@@ -130,6 +136,7 @@ export interface IStorage {
   // Download operations
   recordDownload(studentId: string, noteId: string): Promise<Download>;
   getDownloadHistory(studentId: string): Promise<Download[]>;
+  getAllDownloads(): Promise<Download[]>;
   
   // Analytics
   getTopperAnalytics(topperId: string): Promise<{
@@ -195,6 +202,9 @@ export interface IStorage {
   getUploaderStats(topperId: string): Promise<any>;
   getWithdrawalRequests(topperId: string): Promise<WithdrawalRequest[]>;
   createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest>;
+  getPendingWithdrawalsTotal(topperId: string): Promise<number>;
+  getTotalWithdrawn(topperId: string): Promise<number>;
+  getEarningTransactions(userId: string): Promise<Transaction[]>;
   
   // Admin withdrawal operations
   getAllWithdrawalRequests(): Promise<WithdrawalRequest[]>;
@@ -228,6 +238,22 @@ export interface IStorage {
     averageRating: number;
   }[]>;
   updateUserStats(userId: string, uploadData: { subject: string; noteId: string }): Promise<void>;
+  
+  // Admin Account Operations
+  getAdminByUsername(username: string): Promise<AdminAccount | undefined>;
+  getAdminById(id: string): Promise<AdminAccount | undefined>;
+  getAllAdmins(): Promise<AdminAccount[]>;
+  createAdmin(admin: { id: string; username: string; email: string; password: string; fullName: string; isActive: boolean }): Promise<AdminAccount>;
+  updateAdminLastLogin(id: string): Promise<void>;
+  updateAdminPassword(id: string, password: string): Promise<void>;
+  createAdminSession(session: { adminAccountId: string; token: string; ipAddress?: string; userAgent?: string; expiresAt: Date }): Promise<void>;
+  getAdminSession(token: string): Promise<any | undefined>;
+  updateAdminSessionActivity(token: string): Promise<void>;
+  deleteAdminSession(token: string): Promise<void>;
+  recordAdminActivity(adminId: string, action: string, targetType: string, targetId: string, metadata?: any): Promise<void>;
+  getReviewTaskByNoteId(noteId: string): Promise<ReviewTask | undefined>;
+  updateReviewTaskStatus(id: string, status: string): Promise<ReviewTask>;
+  createNotification(notification: { userId: string; type: string; title: string; body?: string; link?: string }): Promise<Notification>;
 }
 
 class InMemoryStorage implements IStorage {
@@ -327,6 +353,14 @@ class InMemoryStorage implements IStorage {
     return user;
   }
 
+  async updateUserLastSeen(id: string, isOnline: boolean): Promise<void> {
+    const user = this.users.find(u => u.id === id);
+    if (user) {
+      (user as any).lastSeen = new Date();
+      (user as any).isOnline = isOnline;
+    }
+  }
+
   async createTopperProfile(profile: InsertTopperProfile): Promise<TopperProfile> {
     const p = { id: crypto.randomUUID(), ...profile, createdAt: new Date() } as any;
     this.topperProfiles.push(p);
@@ -370,7 +404,7 @@ class InMemoryStorage implements IStorage {
     return { notes: list.slice(offset, offset + limit), total };
   }
   
-  async getAllNotesForAdmin(filters?: { status?: string; subject?: string; limit?: number; offset?: number; }): Promise<{ notes: any[]; total: number }> {
+  async getAllNotesForAdmin(filters?: { status?: string; subject?: string; search?: string; limit?: number; offset?: number; }): Promise<{ notes: any[]; total: number }> {
     let list = [...this.notes]; // Get all notes regardless of status
     if (filters?.status) list = list.filter(n => n.status === (filters.status as any));
     if (filters?.subject) list = list.filter(n => n.subject === (filters.subject as any));
@@ -419,6 +453,7 @@ class InMemoryStorage implements IStorage {
   async getFollows(studentId: string): Promise<Follow[]> { return this.followsList.filter(f => f.studentId === studentId) as any; }
   async recordDownload(studentId: string, noteId: string): Promise<Download> { const d = { id: crypto.randomUUID(), studentId, noteId, downloadedAt: new Date() } as any; const n = this.notes.find(n => n.id === noteId); if (n) (n as any).downloadsCount += 1; return d; }
   async getDownloadHistory(studentId: string): Promise<Download[]> { return [] as any; }
+  async getAllDownloads(): Promise<Download[]> { return [] as any; }
   async getTopperAnalytics(): Promise<{ totalDownloads: number; averageRating: number; followersCount: number; notesCount: number; }> { return { totalDownloads: 0, averageRating: 0, followersCount: 0, notesCount: this.notes.length }; }
   async getAdminStats(): Promise<{ totalUsers: number; totalNotes: number; activeSubscriptions: number; pendingReviews: number; }> { return { totalUsers: this.users.length, totalNotes: this.notes.length, activeSubscriptions: 0, pendingReviews: 0 }; }
   async getNote(id: string): Promise<Note | undefined> { return this.getNoteById(id); }
@@ -458,6 +493,9 @@ class InMemoryStorage implements IStorage {
   async getUploaderStats(): Promise<any> { return { totalUploads: this.notes.length, publishedNotes: this.notes.length, totalDownloads: this.notes.reduce((a, n) => a + (n.downloadsCount as any), 0), walletBalance: 0 }; }
   async getWithdrawalRequests(): Promise<WithdrawalRequest[]> { return []; }
   async createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest> { return { id: crypto.randomUUID(), ...request, status: 'pending', requestedAt: new Date() } as any; }
+  async getPendingWithdrawalsTotal(): Promise<number> { return 0; }
+  async getTotalWithdrawn(): Promise<number> { return 0; }
+  async getEarningTransactions(): Promise<Transaction[]> { return []; }
   async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> { return []; }
   async approveWithdrawalRequest(id: string, adminId: string): Promise<WithdrawalRequest> { return { id, topperId: adminId, amount: 0 as any, coins: 0, status: 'approved', requestedAt: new Date(), processedAt: new Date(), processedBy: adminId } as any; }
   async rejectWithdrawalRequest(id: string, adminId: string, reason: string): Promise<WithdrawalRequest> { return { id, topperId: adminId, amount: 0 as any, coins: 0, status: 'rejected', requestedAt: new Date(), processedAt: new Date(), processedBy: adminId, rejectionReason: reason } as any; }
@@ -669,6 +707,22 @@ class InMemoryStorage implements IStorage {
     console.log(`Updated stats for user ${userId} after uploading ${uploadData.subject} note ${uploadData.noteId}`);
   }
   
+  // Admin Account Operations (InMemoryStorage stubs)
+  async getAdminByUsername(username: string) { return undefined; }
+  async getAdminById(id: string) { return undefined; }
+  async getAllAdmins() { return []; }
+  async createAdmin(admin: any) { return admin as AdminAccount; }
+  async updateAdminLastLogin(id: string) { }
+  async updateAdminPassword(id: string, password: string) { }
+  async createAdminSession(session: any) { }
+  async getAdminSession(token: string) { return undefined; }
+  async updateAdminSessionActivity(token: string) { }
+  async deleteAdminSession(token: string) { }
+  async recordAdminActivity(adminId: string, action: string, targetType: string, targetId: string, metadata?: any) { }
+  async getReviewTaskByNoteId(noteId: string) { return undefined; }
+  async updateReviewTaskStatus(id: string, status: string) { return { id, status: status as any } as any; }
+  async createNotification(notification: any) { return { id: crypto.randomUUID(), ...notification, read: false, createdAt: new Date() } as any; }
+  
   private getActionDetails(action: string): any {
     const detailsMap: { [key: string]: any } = {
       'login': { page: '/login', sessionDuration: '2h 15m' },
@@ -745,6 +799,17 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateUserLastSeen(id: string, isOnline: boolean): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        lastSeen: new Date(),
+        isOnline: isOnline,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, id));
   }
 
   // Topper profile operations
@@ -876,17 +941,36 @@ export class DatabaseStorage implements IStorage {
   async getAllNotesForAdmin(filters?: {
     status?: string;
     subject?: string;
+    search?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ notes: any[]; total: number }> {
     const conditions = [];
     
-    if (filters?.status) {
+    // Filter by status
+    if (filters?.status && filters.status !== 'all') {
       conditions.push(eq(notes.status, filters.status as any));
     }
     
+    // Filter by subject
     if (filters?.subject) {
       conditions.push(eq(notes.subject, filters.subject as any));
+    }
+
+    // Search functionality - search in title, subject, topic, description, and uploader name/email
+    if (filters?.search && filters.search.trim()) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`LOWER(${notes.title}) LIKE ${searchTerm}`,
+          sql`LOWER(${notes.subject}) LIKE ${searchTerm}`,
+          sql`LOWER(${notes.topic}) LIKE ${searchTerm}`,
+          sql`LOWER(${notes.description}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.firstName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.lastName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.email}) LIKE ${searchTerm}`
+        )
+      );
     }
 
     const [notesResult, totalResult] = await Promise.all([
@@ -925,12 +1009,15 @@ export class DatabaseStorage implements IStorage {
       db
         .select({ count: count() })
         .from(notes)
+        .leftJoin(users, eq(notes.topperId, users.id))
         .where(conditions.length > 0 ? and(...conditions) : undefined)
     ]);
 
     // Format the results with author info
     const notesWithUsers = notesResult.map((note: any) => ({
       ...note,
+      uploaderName: `${note.authorFirstName || ''} ${note.authorLastName || ''}`.trim() || 'Unknown',
+      uploaderEmail: note.authorEmail || 'unknown@email.com',
       authorName: `${note.authorFirstName || ''} ${note.authorLastName || ''}`.trim() || 'Unknown',
       authorEmail: note.authorEmail || 'unknown@email.com',
       authorRole: note.authorRole || 'student',
@@ -969,6 +1056,19 @@ export class DatabaseStorage implements IStorage {
       .update(notes)
       .set(updateData)
       .where(eq(notes.id, id))
+      .returning();
+    return note;
+  }
+
+  async updateNoteTeacherCredentials(noteId: string, teacherId: string, teacherPassword: string): Promise<Note> {
+    const [note] = await db
+      .update(notes)
+      .set({
+        teacherId,
+        teacherPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(notes.id, noteId))
       .returning();
     return note;
   }
@@ -1117,6 +1217,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(notes, eq(downloads.noteId, notes.id))
       .where(eq(downloads.studentId, studentId))
       .orderBy(desc(downloads.downloadedAt));
+  }
+
+  async getAllDownloads(): Promise<Download[]> {
+    return await db.select().from(downloads).orderBy(desc(downloads.downloadedAt));
   }
 
   // Analytics
@@ -1818,6 +1922,46 @@ export class DatabaseStorage implements IStorage {
     return withdrawal;
   }
 
+  async getPendingWithdrawalsTotal(topperId: string): Promise<number> {
+    const result = await db
+      .select({ total: sum(withdrawalRequests.coins) })
+      .from(withdrawalRequests)
+      .where(
+        and(
+          eq(withdrawalRequests.topperId, topperId),
+          eq(withdrawalRequests.status, 'pending')
+        )
+      );
+    return Number(result[0]?.total || 0);
+  }
+
+  async getTotalWithdrawn(topperId: string): Promise<number> {
+    const result = await db
+      .select({ total: sum(withdrawalRequests.coins) })
+      .from(withdrawalRequests)
+      .where(
+        and(
+          eq(withdrawalRequests.topperId, topperId),
+          eq(withdrawalRequests.status, 'settled')
+        )
+      );
+    return Number(result[0]?.total || 0);
+  }
+
+  async getEarningTransactions(userId: string): Promise<Transaction[]> {
+    return await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'coin_earned')
+        )
+      )
+      .orderBy(desc(transactions.createdAt))
+      .limit(50);
+  }
+
   // Admin withdrawal operations
   async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> {
     return await db
@@ -2073,6 +2217,79 @@ export class DatabaseStorage implements IStorage {
     });
   }
   
+  // Admin Account Operations
+  async getAdminByUsername(username: string): Promise<AdminAccount | undefined> {
+    const [admin] = await db.select().from(adminAccounts).where(eq(adminAccounts.username, username));
+    return admin;
+  }
+
+  async getAdminById(id: string): Promise<AdminAccount | undefined> {
+    const [admin] = await db.select().from(adminAccounts).where(eq(adminAccounts.id, id));
+    return admin;
+  }
+
+  async getAllAdmins(): Promise<AdminAccount[]> {
+    const admins = await db.select().from(adminAccounts);
+    return admins;
+  }
+
+  async createAdmin(admin: { id: string; username: string; email: string; password: string; fullName: string; isActive: boolean }): Promise<AdminAccount> {
+    const [newAdmin] = await db.insert(adminAccounts).values({
+      id: admin.id,
+      username: admin.username,
+      email: admin.email,
+      password: admin.password,
+      fullName: admin.fullName,
+      isActive: admin.isActive,
+      createdAt: new Date(),
+    }).returning();
+    return newAdmin;
+  }
+
+  async updateAdminLastLogin(id: string): Promise<void> {
+    await db.update(adminAccounts).set({ lastLogin: new Date(), updatedAt: new Date() }).where(eq(adminAccounts.id, id));
+  }
+
+  async updateAdminPassword(id: string, password: string): Promise<void> {
+    await db.update(adminAccounts).set({ password, updatedAt: new Date() }).where(eq(adminAccounts.id, id));
+  }
+
+  async createAdminSession(session: any): Promise<void> {
+    await db.insert(adminSessions).values(session as any);
+  }
+
+  async getAdminSession(token: string): Promise<any | undefined> {
+    const [session] = await db.select().from(adminSessions).where(eq(adminSessions.token, token));
+    return session;
+  }
+
+  async updateAdminSessionActivity(token: string): Promise<void> {
+    await db.update(adminSessions).set({ lastActivity: new Date() }).where(eq(adminSessions.token, token));
+  }
+
+  async deleteAdminSession(token: string): Promise<void> {
+    await db.delete(adminSessions).where(eq(adminSessions.token, token));
+  }
+
+  async recordAdminActivity(adminId: string, action: string, targetType: string, targetId: string, metadata?: any): Promise<void> {
+    console.log(`Admin ${adminId} performed ${action} on ${targetType} ${targetId}`, metadata);
+  }
+
+  async getReviewTaskByNoteId(noteId: string): Promise<ReviewTask | undefined> {
+    const [task] = await db.select().from(reviewTasks).where(eq(reviewTasks.noteId, noteId));
+    return task;
+  }
+
+  async updateReviewTaskStatus(id: string, status: string): Promise<ReviewTask> {
+    const [task] = await db.update(reviewTasks).set({ status: status as any }).where(eq(reviewTasks.id, id)).returning();
+    return task;
+  }
+
+  async createNotification(notification: any): Promise<Notification> {
+    const [notif] = await db.insert(notifications).values(notification).returning();
+    return notif;
+  }
+  
   private getActionDetails(action: string): any {
     const detailsMap: { [key: string]: any } = {
       'login': { page: '/login', sessionDuration: '2h 15m' },
@@ -2087,14 +2304,14 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-const useInMemoryStorage = process.env.USE_SQLITE === '1';
+const useDatabaseStorage = process.env.USE_SQLITE !== '1';
 
-if (useInMemoryStorage) {
-  console.log('[storage] Using InMemoryStorage (USE_SQLITE=1)');
+if (useDatabaseStorage) {
+  console.log('[storage] Using DatabaseStorage (PostgreSQL)');
 } else {
-  console.log('[storage] Using DatabaseStorage');
+  console.log('[storage] Using InMemoryStorage (USE_SQLITE=1)');
 }
 
-export const storage: IStorage = useInMemoryStorage
-  ? new InMemoryStorage()
-  : new DatabaseStorage();
+export const storage: IStorage = useDatabaseStorage
+  ? new DatabaseStorage()
+  : new InMemoryStorage();

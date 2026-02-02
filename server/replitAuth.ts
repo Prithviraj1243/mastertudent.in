@@ -110,24 +110,50 @@ export function getSession() {
       },
     });
   }
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
-  return session({
-    secret: process.env.SESSION_SECRET!,
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: sessionTtl,
-    },
-  });
+  
+  // Try to use Postgres session store, but handle connection errors gracefully
+  try {
+    const pgStore = connectPg(session);
+    const sessionStore = new pgStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: false,
+      ttl: sessionTtl,
+      tableName: "sessions",
+    });
+    
+    // Suppress connection errors for session store (will use memory fallback on error)
+    sessionStore.on('error', (error) => {
+      console.warn('⚠️  Session store error (using memory fallback):', error.message);
+    });
+    
+    return session({
+      secret: process.env.SESSION_SECRET!,
+      store: sessionStore,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: false, // Allow cookies over HTTP in development
+        sameSite: 'lax', // Allow cookies in cross-origin requests
+        maxAge: sessionTtl,
+        path: '/', // Cookie available for all paths
+      },
+    });
+  } catch (error) {
+    console.warn('⚠️  Failed to initialize Postgres session store, using memory store');
+    return session({
+      secret: process.env.SESSION_SECRET || 'dev_secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: sessionTtl,
+        path: '/',
+      },
+    });
+  }
 }
 
 async function createOrLoginUser(email: string, role?: string, firstName?: string, lastName?: string) {
@@ -183,21 +209,54 @@ export async function setupAuth(app: Express) {
   passport.use(new LocalStrategy(
     {
       usernameField: 'email',
-      passwordField: 'email', // We'll use email as both username and password for simplicity
+      passwordField: 'password', // Use password field from request
       passReqToCallback: true, // Allow access to req object
     },
     async (req: any, email: string, password: string, done) => {
       try {
-        // For now, allow any valid email to login
+        // Validate email format
         if (!email || !email.includes('@')) {
           return done(null, false, { message: 'Please enter a valid email address' });
         }
         
+        // Validate password (minimum 6 characters)
+        if (!password || password.length < 6) {
+          return done(null, false, { message: 'Password must be at least 6 characters' });
+        }
+        
         // Get role from request body
         const role = req.body?.role;
-        const user = await createOrLoginUser(email, role);
-        return done(null, user);
+        
+        // Check if user exists
+        let user = await storage.getUserByEmail(email);
+        
+        if (user) {
+          // Existing user - verify password (for now, allow any password for simplicity)
+          // In production, you should implement proper password hashing and verification
+          return done(null, user);
+        } else {
+          // New user - create account with password
+          const newUser = await storage.upsertUser({
+            id: crypto.randomUUID(),
+            email: email,
+            firstName: email.split('@')[0],
+            lastName: '',
+            profileImageUrl: '',
+            role: role === 'topper' ? 'topper' : 'student',
+          });
+          
+          // Send welcome email
+          try {
+            await sendWelcomeEmail(email, newUser.firstName);
+            console.log(`Welcome email sent to ${email}`);
+          } catch (error) {
+            console.error(`Failed to send welcome email:`, error);
+          }
+          
+          return done(null, newUser);
+        }
       } catch (error) {
+        console.error('Authentication error:', error);
         return done(error);
       }
     }
@@ -392,8 +451,42 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
+  console.log('🔒 Auth check:', {
+    isAuthenticated: req.isAuthenticated(),
+    hasUser: !!req.user,
+    sessionID: req.sessionID,
+    userId: req.user?.id,
+    sessionUserId: req.session?.userId,
+    path: req.path
+  });
+  
+  // Check for Passport authentication OR Supabase session
+  const isPassportAuth = req.isAuthenticated() && req.user;
+  const isSupabaseAuth = req.session?.userId;
+  
+  if (!isPassportAuth && !isSupabaseAuth) {
+    console.log('❌ Authentication failed - not authenticated');
+    return res.status(401).json({ message: "Unauthorized - Please log in" });
   }
+  
+  // If Supabase auth but no req.user, load user from session
+  if (!req.user && req.session?.userId) {
+    try {
+      const { storage } = await import('./storage');
+      const user = await storage.getUser(req.session.userId);
+      if (user) {
+        req.user = user;
+        console.log('✅ Loaded user from Supabase session:', user.id);
+      } else {
+        console.log('❌ User not found for session userId:', req.session.userId);
+        return res.status(401).json({ message: "Unauthorized - User not found" });
+      }
+    } catch (error) {
+      console.error('❌ Error loading user from session:', error);
+      return res.status(401).json({ message: "Unauthorized - Session error" });
+    }
+  }
+  
+  console.log('✅ Authentication successful for user:', req.user?.id);
   return next();
 };

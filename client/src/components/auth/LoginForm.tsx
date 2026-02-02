@@ -4,10 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Mail, Loader2, Download, Upload, Lock } from "lucide-react";
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { supabase } from "@/lib/supabase";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -21,8 +21,8 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  // Handle Google OAuth Success
-  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+  // Handle Google OAuth with Supabase
+  const handleGoogleSignIn = async () => {
     if (!selectedRole) {
       toast({
         title: "Please Select Purpose",
@@ -32,91 +32,52 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       return;
     }
 
-    if (!credentialResponse.credential) {
-      toast({
-        title: "Google Sign-In Error",
-        description: "No credential received from Google",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      console.log('Starting Google OAuth flow...');
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      setIsLoading(true);
+      console.log('🚀 Starting Supabase Google OAuth flow...');
+      console.log('📍 Current origin:', window.location.origin);
+      console.log('🔄 Redirect URL:', `${window.location.origin}/auth/callback`);
+
+      // Store selected role in localStorage to retrieve after redirect
+      localStorage.setItem('pendingUserRole', selectedRole);
+      console.log('💾 Stored role in localStorage:', selectedRole);
+
+      // Sign in with Google using Supabase Auth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
-        credentials: "include", // Important: include cookies for session
-        body: JSON.stringify({ 
-          credential: credentialResponse.credential,
-          role: selectedRole 
-        }),
       });
 
-      console.log('Google OAuth response status:', res.status);
-      const data = await res.json();
-      console.log('Google OAuth response data:', data);
+      console.log('📦 OAuth response data:', data);
+      console.log('❌ OAuth response error:', error);
 
-      if (res.ok && data.success) {
-        console.log('Google OAuth successful, user:', data.user);
-        toast({
-          title: "Sign-In Successful",
-          description: `Welcome ${data.user.firstName}!`,
-        });
-        
-        // Clear any previous auth state and invalidate queries
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        
-        // Wait a bit for session to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Refetch user to confirm session is valid
-        const userRes = await fetch("/api/auth/user", {
-          credentials: "include"
-        });
-        
-        if (userRes.ok) {
-          console.log('User session verified, redirecting...');
-          if (onSuccess) {
-            onSuccess();
-          } else {
-            setLocation("/purpose-selection");
-          }
-        } else {
-          console.error('User session verification failed');
-          toast({
-            title: "Session Error",
-            description: "Failed to establish session. Please try again.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        console.error('Google OAuth failed:', data);
-        toast({
-          title: "Google Sign-In Failed",
-          description: data.message || "Please try again",
-          variant: "destructive",
-        });
+      if (error) {
+        console.error('❌ OAuth Error:', error);
+        setIsLoading(false);
+        throw error;
       }
-    } catch (error) {
-      console.error('Google OAuth error:', error);
+
+      // If we reach here, redirect should happen automatically
+      // Don't reset loading state - we're redirecting
+      console.log('✅ OAuth initiated, waiting for redirect...');
+      
+      // Note: Don't call setIsLoading(false) here - we're redirecting!
+
+    } catch (error: any) {
+      console.error('❌ Google Sign-In Error:', error);
+      setIsLoading(false);
       toast({
-        title: "Google Sign-In Error",
-        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        title: "Sign-In Failed",
+        description: error.message || "Failed to sign in with Google. Please check your Supabase configuration.",
         variant: "destructive",
       });
     }
-  };
-
-  // Handle Google OAuth Error
-  const handleGoogleError = () => {
-    toast({
-      title: "Google Sign-In Error",
-      description: "Failed to sign in with Google. Please try again.",
-      variant: "destructive",
-    });
   };
 
 
@@ -265,17 +226,24 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 </div>
               </div>
               
-              <div className="w-full flex justify-center">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  text="continue_with"
-                  shape="rectangular"
-                  theme="outline"
-                  size="large"
-                  width="100%"
-                />
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleSignIn}
+                disabled={!selectedRole || isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <img
+                    src="https://www.google.com/favicon.ico"
+                    alt="Google"
+                    className="mr-2 h-4 w-4"
+                  />
+                )}
+                Continue with Google
+              </Button>
               
               
               <div className="relative">

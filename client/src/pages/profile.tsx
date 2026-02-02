@@ -16,6 +16,8 @@ import {
   Settings
 } from "lucide-react";
 import { Link } from "wouter";
+import { useRealtimeCoinBalance } from "@/hooks/useRealtimeCoinBalance";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -38,6 +40,15 @@ export default function Profile() {
     enabled: !!user,
     refetchInterval: 30000,
   });
+
+  // 🚀 REAL-TIME COIN BALANCE & NOTIFICATIONS
+  const { coinBalance: realtimeCoinBalance } = useRealtimeCoinBalance(user?.id);
+  useRealtimeNotifications(user?.id);
+
+  // Use real-time coin balance if available, otherwise fall back to fetched data
+  const displayCoinBalance = realtimeCoinBalance !== null 
+    ? realtimeCoinBalance 
+    : (profileStats?.coinBalance || 0);
 
   if (!user) {
     return null;
@@ -146,7 +157,7 @@ export default function Profile() {
                   <Coins className="h-8 w-8 text-yellow-400" />
                   <div>
                     <p className="text-2xl font-bold text-yellow-300">
-                      {profileStats?.coinBalance?.toLocaleString() || '0'}
+                      {displayCoinBalance.toLocaleString()}
                     </p>
                     <p className="text-xs text-yellow-200/80 font-medium">COINS</p>
                   </div>

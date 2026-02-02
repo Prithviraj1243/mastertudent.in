@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   BookOpen, 
   Download, 
@@ -23,8 +24,18 @@ import {
   CheckCircle,
   Sparkles,
   Flame,
-  Trophy
+  Trophy,
+  X,
+  Menu,
+  Wallet
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 interface SidebarProps {
   currentMode?: 'browse' | 'upload' | 'dashboard';
@@ -46,6 +57,15 @@ declare global {
 export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
   const { user } = useAuth();
   const [location] = useLocation();
+  const isMobile = useIsMobile();
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    if (isMobile) {
+      setIsOpen(false);
+    }
+  }, [location, isMobile]);
 
   if (!user) {
     return null;
@@ -77,20 +97,20 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
   };
 
   const studentLinks = [
-    { path: "/", icon: BookOpen, label: "🏠 Home Dashboard", active: isActive("/") && currentMode === 'dashboard' },
+    { path: "/", icon: BookOpen, label: "🏠 Home", active: isActive("/") && currentMode === 'dashboard' },
     { path: "/profile", icon: User, label: "👤 My Profile", active: isActive("/profile") },
   ];
 
 
   const myActivityLinks = [
     { path: "/my-uploads", icon: Download, label: "My Uploads", active: isActive("/my-uploads"), badge: "0" },
+    { path: "/earnings", icon: Wallet, label: "💰 My Earnings", active: isActive("/earnings"), badge: null },
     { path: "/history", icon: History, label: "History", active: isActive("/history"), badge: null },
   ];
 
   const topperLinks = [
     { path: "/upload", icon: Plus, label: "Upload Notes", active: isActive("/upload") || currentMode === 'upload' },
     { path: "/my-notes", icon: FileText, label: "My Notes", active: isActive("/my-notes") },
-    { path: "/analytics", icon: BarChart3, label: "Analytics", active: isActive("/analytics") },
   ];
 
   const reviewerLinks = [
@@ -98,12 +118,14 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
   ];
 
   const adminLinks = [
-    { path: "/admin", icon: Settings, label: "Dashboard", active: isActive("/admin") },
-    { path: "/user-management", icon: Users, label: "User Management", active: isActive("/user-management") },
+    { path: "/admin", icon: Settings, label: "🛡️ Admin Dashboard", active: isActive("/admin") },
+    { path: "/admin/users", icon: Users, label: "👥 Manage Users", active: isActive("/admin/users") },
+    { path: "/admin/notes", icon: FileText, label: "📝 Manage Notes", active: isActive("/admin/notes") },
+    { path: "/admin/analytics", icon: BarChart3, label: "📊 Analytics", active: isActive("/admin/analytics") },
   ];
 
-  return (
-    <aside className="w-72 bg-gradient-to-b from-slate-900 via-indigo-900/30 to-slate-900 border-r-2 border-purple-500/30 flex-shrink-0 sidebar-transition backdrop-blur-md shadow-xl relative overflow-hidden" data-testid="sidebar">
+  const sidebarContent = (
+    <>
       {/* Background Effects */}
       <div className="absolute inset-0">
         {/* Floating Particles */}
@@ -129,17 +151,17 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
 
       <div className="relative z-10 h-full flex flex-col">
         {/* Enhanced Profile Section */}
-        <div className="p-6 border-b border-purple-500/20">
-          <div className="bg-black/20 backdrop-blur-md rounded-xl p-4 border border-purple-500/20">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
-                <User className="h-6 w-6 text-white" />
+        <div className="p-4 sm:p-6 border-b border-purple-500/20">
+          <div className="bg-black/20 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-purple-500/20">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
+                <User className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-white">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-white truncate">
                   {user.firstName} {user.lastName}
                 </p>
-                <div className="flex gap-2 mt-1 flex-wrap">
+                <div className="flex gap-1 sm:gap-2 mt-1 flex-wrap">
                   <Badge 
                     className={`text-xs ${
                       user.role === 'admin' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
@@ -189,17 +211,17 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
                 <Link 
                   key={link.path} 
                   href={link.path}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+                  className={`flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 ${
                     link.active 
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30' 
                       : 'hover:bg-black/30 text-gray-300 hover:text-white border border-transparent hover:border-purple-500/30'
                   }`}
                   data-testid={`sidebar-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  <link.icon className="h-5 w-5" />
-                  <span className="text-sm font-medium">{link.label}</span>
+                  <link.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium truncate">{link.label}</span>
                   {link.active && (
-                    <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse flex-shrink-0"></div>
                   )}
                 </Link>
               ))}
@@ -365,6 +387,45 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
           </Button>
         </div>
       </div>
+    </>
+  );
+
+  // Mobile: Render as Sheet/Drawer
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile Menu Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsOpen(true)}
+          className="fixed top-4 left-4 z-50 md:hidden bg-slate-800/90 backdrop-blur-md border border-purple-500/30 text-white hover:bg-slate-700/90"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        {/* Mobile Sidebar Sheet */}
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetContent 
+            side="left" 
+            className="w-80 p-0 bg-gradient-to-b from-slate-900 via-indigo-900/30 to-slate-900 border-r-2 border-purple-500/30 overflow-y-auto"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigation Menu</SheetTitle>
+            </SheetHeader>
+            <div className="relative h-full">
+              {sidebarContent}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
+
+  // Desktop: Render as fixed sidebar
+  return (
+    <aside className="hidden md:flex w-72 bg-gradient-to-b from-slate-900 via-indigo-900/30 to-slate-900 border-r-2 border-purple-500/30 flex-shrink-0 sidebar-transition backdrop-blur-md shadow-xl relative overflow-hidden" data-testid="sidebar">
+      {sidebarContent}
     </aside>
   );
 }

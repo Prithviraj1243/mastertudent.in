@@ -85,10 +85,8 @@ export default function DownloadNotes() {
   const fetchNotes = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/admin/notes', {
-        headers: {
-          'x-api-key': 'masterstudent_admin_2024_secure_key'
-        }
+      const response = await fetch('/api/notes', {
+        credentials: 'include'
       });
       
       const data = await response.json();
@@ -127,6 +125,33 @@ export default function DownloadNotes() {
   // Load notes on component mount
   useEffect(() => {
     fetchNotes();
+  }, []);
+
+  // Handle payment return from Razorpay
+  useEffect(() => {
+    const checkPaymentReturn = () => {
+      const returnUrl = localStorage.getItem('payment_return_url');
+      const paymentPlan = localStorage.getItem('payment_plan');
+      
+      // Check if user is returning from payment
+      if (returnUrl && window.location.href.includes('/download-notes')) {
+        // Clear the stored return URL
+        localStorage.removeItem('payment_return_url');
+        localStorage.removeItem('payment_plan');
+        
+        // Update user status to premium
+        setUserStatus('premium');
+        localStorage.setItem('userStatus', 'premium');
+        
+        toast({
+          title: "Payment Successful! 🎉",
+          description: `Your ${paymentPlan || 'monthly'} subscription is now active. Enjoy unlimited downloads!`,
+          duration: 5000,
+        });
+      }
+    };
+    
+    checkPaymentReturn();
   }, []);
 
   const handleDownloadClick = (note: Note) => {

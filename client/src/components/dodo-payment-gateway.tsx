@@ -39,52 +39,52 @@ export default function DodoPaymentGateway({
     setError(null);
 
     try {
-      // Get user data from localStorage or use defaults
-      const userEmail = localStorage.getItem('userEmail') || 'user@example.com';
-      const userPhone = localStorage.getItem('userPhone') || '9876543210';
-      const userName = localStorage.getItem('userName') || 'User';
-      
-      // Generate unique order ID
-      const orderId = `note-${noteId}-${Date.now()}`;
-      
       // Determine which checkout link to use based on plan
-      let baseCheckoutUrl = '';
+      let checkoutUrl = '';
       let planType = 'monthly';
       
-      // Check if this is a yearly plan (price > 400)
+      // Check if this is a yearly plan (price >= 400)
       if (notePrice >= 400) {
-        // Yearly plan
-        baseCheckoutUrl = 'https://checkout.dodopayments.com/buy/pdt_1d9ZylIEicJcInaytXMne';
+        // Yearly plan - use Dodo Payments
+        const userEmail = localStorage.getItem('userEmail') || 'user@example.com';
+        const userPhone = localStorage.getItem('userPhone') || '9876543210';
+        const userName = localStorage.getItem('userName') || 'User';
+        const orderId = `note-${noteId}-${Date.now()}`;
+        
+        const baseCheckoutUrl = 'https://checkout.dodopayments.com/buy/pdt_1d9ZylIEicJcInaytXMne';
         planType = 'yearly';
+        
+        const checkoutParams = new URLSearchParams({
+          quantity: '1',
+          email: userEmail,
+          phone: userPhone,
+          fullName: userName,
+          custom_order_id: orderId,
+          custom_description: `Download: ${noteTitle} (${planType})`,
+          custom_amount: total.toString(),
+          custom_return_url: `${window.location.origin}/download-notes?payment=success`,
+          custom_notify_url: `${window.location.origin}/api/dodo-webhook`
+        });
+
+        checkoutUrl = `${baseCheckoutUrl}?${checkoutParams.toString()}`;
       } else {
-        // Monthly plan
-        baseCheckoutUrl = 'https://checkout.dodopayments.com/buy/pdt_CZikJJg7rTP13neCwBqng';
+        // Monthly plan (₹59) - use Razorpay link
         planType = 'monthly';
+        checkoutUrl = 'https://rzp.io/rzp/t3Nj23ve';
+        
+        // Store return URL in localStorage so we can redirect after payment
+        localStorage.setItem('payment_return_url', `${window.location.origin}/download-notes`);
+        localStorage.setItem('payment_plan', planType);
       }
       
-      // Build complete checkout URL with all parameters
-      const checkoutParams = new URLSearchParams({
-        quantity: '1',
-        email: userEmail,
-        phone: userPhone,
-        fullName: userName,
-        custom_order_id: orderId,
-        custom_description: `Download: ${noteTitle} (${planType})`,
-        custom_amount: total.toString(),
-        custom_return_url: `${window.location.origin}/download-notes?payment=success`,
-        custom_notify_url: `${window.location.origin}/api/dodo-webhook`
-      });
-
-      const dodoCheckoutUrl = `${baseCheckoutUrl}?${checkoutParams.toString()}`;
+      console.log(`Redirecting to ${planType === 'monthly' ? 'Razorpay' : 'Dodo'} checkout (${planType}):`, checkoutUrl);
       
-      console.log(`Redirecting to Dodo checkout (${planType}):`, dodoCheckoutUrl);
-      
-      // Redirect to Dodo checkout
-      window.location.href = dodoCheckoutUrl;
+      // Redirect to checkout
+      window.location.href = checkoutUrl;
 
       toast({
-        title: "Redirecting to Dodo",
-        description: `Opening Dodo Payments checkout for ${planType} plan...`,
+        title: `Redirecting to ${planType === 'monthly' ? 'Razorpay' : 'Dodo'}`,
+        description: `Opening secure payment checkout for ${planType} plan...`,
         variant: "default"
       });
     } catch (err: any) {
@@ -136,7 +136,7 @@ export default function DodoPaymentGateway({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5 text-green-500" />
-                  Download Note with Dodo Payments
+                  {notePrice >= 400 ? 'Download Note with Dodo Payments' : 'Download Note with Razorpay'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -154,7 +154,7 @@ export default function DodoPaymentGateway({
                     Secure Payment
                   </h3>
                   <p className="text-gray-700 text-sm">
-                    You'll be redirected to Dodo Payments secure gateway to complete your payment. 
+                    You'll be redirected to {notePrice >= 400 ? 'Dodo Payments' : 'Razorpay'} secure gateway to complete your payment. 
                     Your payment information is encrypted and secure.
                   </p>
                 </div>
@@ -241,7 +241,7 @@ export default function DodoPaymentGateway({
                 </div>
 
                 <div className="text-xs text-gray-500 text-center mt-4 pt-4 border-t">
-                  <p>Powered by Dodo Payments</p>
+                  <p>Powered by {notePrice >= 400 ? 'Dodo Payments' : 'Razorpay'}</p>
                 </div>
               </CardContent>
             </Card>

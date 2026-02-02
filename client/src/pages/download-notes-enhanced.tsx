@@ -30,6 +30,9 @@ import SubscriptionModal from "@/components/subscription-modal";
 import DodoPaymentGateway from "@/components/dodo-payment-gateway";
 import { useToast } from "@/hooks/use-toast";
 import PageWrapper from "@/components/layout/page-wrapper";
+import { useAuth } from "@/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LogOut } from 'lucide-react';
 
 interface Note {
   id: number;
@@ -117,6 +120,7 @@ export default function DownloadNotesEnhanced() {
   });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const subjects = ['All', 'Chemistry', 'Computer Science', 'Mathematics', 'Biology', 'Physics', 'English'];
 
@@ -124,10 +128,8 @@ export default function DownloadNotesEnhanced() {
   const fetchNotes = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/admin/notes', {
-        headers: {
-          'x-api-key': 'masterstudent_admin_2024_secure_key'
-        }
+      const response = await fetch('/api/notes', {
+        credentials: 'include'
       });
       
       const data = await response.json();
@@ -254,6 +256,34 @@ export default function DownloadNotesEnhanced() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    
+    sessionStorage.clear();
+    localStorage.clear();
+    
+    if (window.google && window.google.accounts) {
+      window.google.accounts.id.disableAutoSelect();
+    }
+    
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+      variant: "default"
+    });
+    
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 500);
+  };
+
   return (
     <PageWrapper
       title="Download Notes"
@@ -261,6 +291,46 @@ export default function DownloadNotesEnhanced() {
       icon={<BookOpen className="h-6 w-6 text-white" />}
     >
       <div className="space-y-8">
+        {/* Profile Section */}
+        {user && (
+          <div className="bg-gradient-to-r from-slate-800/90 to-slate-900/90 backdrop-blur-md border border-blue-500/30 rounded-xl p-4 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-12 w-12 border-2 border-blue-400/50">
+                  <AvatarImage src={user.profileImageUrl} />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold">
+                    {user.firstName?.[0]}{user.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-white font-semibold text-lg">
+                    {user.firstName} {user.lastName}
+                  </h3>
+                  <p className="text-blue-300 text-sm">{user.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link href="/download-analytics">
+                  <Button
+                    variant="outline"
+                    className="bg-blue-600/20 border-blue-400/50 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    My Downloads
+                  </Button>
+                </Link>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="bg-red-600/20 border-red-400/50 text-red-300 hover:bg-red-600/30 hover:text-white transition-all duration-300"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
           {/* Search Bar */}
           <div className="relative">

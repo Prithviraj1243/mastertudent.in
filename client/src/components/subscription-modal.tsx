@@ -36,7 +36,11 @@ export default function SubscriptionModal({
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
 
   const handleSubscribe = () => {
-    if (selectedPlan) {
+    if (selectedPlan === 'monthly') {
+      // Redirect to Razorpay payment link for monthly plan
+      window.open('https://rzp.io/rzp/QvNCCVYQ', '_blank');
+      onClose();
+    } else if (selectedPlan === 'yearly') {
       setShowPaymentGateway(true);
     }
   };

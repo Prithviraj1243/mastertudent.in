@@ -19,10 +19,12 @@ import Stripe from "stripe";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { uploadMultipleToSupabase } from "./supabase-storage";
 
 // Helper function to get user ID from request
 function getUserId(req: any): string {
-  return req.user?.id || req.user?.sub || '';
+  // Try req.user first (passport), then session.userId (Supabase)
+  return req.user?.id || req.user?.sub || req.session?.userId || '';
 }
 
 // Stripe is optional - only initialize if key is provided
@@ -141,6 +143,8 @@ export function registerRoutes(app: Express): Server {
         profileImageUrl: '',
         role: 'student',
         onboardingCompleted: true, // Mark as completed since they went through our flow
+        lastSeen: new Date(),
+        isOnline: true,
       });
       
       // Store additional data if needed (goals, phone, etc.)
@@ -189,6 +193,143 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Registration error:", error);
       res.status(500).json({ message: "Registration failed: " + (error instanceof Error ? error.message : 'Unknown error') });
+    }
+  });
+
+  // Sync Supabase user with our database (NEW - Much easier!)
+  app.post("/api/auth/sync-supabase-user", async (req, res) => {
+    const { email, firstName, lastName, profileImageUrl, role, supabaseUserId } = req.body;
+
+    console.log('🔄 Sync request received:', { email, firstName, lastName, role });
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    try {
+      // Check if user exists in our database
+      console.log('📊 Checking if user exists in database...');
+      let user = await storage.getUserByEmail(email);
+      console.log('✅ Database query successful. User found:', !!user);
+
+      if (!user) {
+        console.log('➕ Creating new user from Supabase auth...');
+        const newUserData = {
+          id: crypto.randomUUID(),
+          email: email,
+          firstName: firstName || email.split('@')[0],
+          lastName: lastName || '',
+          profileImageUrl: profileImageUrl || '',
+          role: role || 'student',
+          loginProvider: 'google',
+          onboardingCompleted: true,
+        };
+        console.log('📝 New user data:', newUserData);
+        
+        user = await storage.upsertUser(newUserData);
+        console.log('✅ User created successfully:', user.id);
+      } else {
+        console.log('✅ Existing user found:', user.id);
+        // Update last_seen for existing user
+        await storage.updateUserLastSeen(user.id, true);
+      }
+
+      // Set session
+      req.session.userId = user.id;
+      req.session.supabaseUserId = supabaseUserId;
+      console.log('🔐 Session set for user:', user.id);
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Supabase user sync error:", error);
+      console.error("❌ Error details:", {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        name: error instanceof Error ? error.name : 'Unknown'
+      });
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Sync error",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Google OAuth using Supabase Auth (OLD - keeping for backwards compatibility)
+  app.post("/api/auth/google-supabase", async (req, res) => {
+    const { credential, role } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: "Missing Google credential" });
+    }
+
+    try {
+      // Decode the Google JWT token (no verification needed - Google already verified it)
+      const { default: jwt } = await import('jsonwebtoken');
+      const decoded = jwt.decode(credential) as any;
+      
+      if (!decoded || !decoded.email) {
+        return res.status(401).json({ message: "Invalid Google token" });
+      }
+
+      console.log('Google user authenticated:', decoded.email);
+      
+      const googleUser = {
+        email: decoded.email,
+        given_name: decoded.given_name || decoded.email.split('@')[0],
+        family_name: decoded.family_name || '',
+        picture: decoded.picture || '',
+      };
+      
+      // Check if user exists in our database
+      let user = await storage.getUserByEmail(googleUser.email);
+
+      if (!user) {
+        console.log('Creating new user in database...');
+        // Create new user in our database
+        user = await storage.upsertUser({
+          id: crypto.randomUUID(),
+          email: googleUser.email,
+          firstName: googleUser.given_name,
+          lastName: googleUser.family_name,
+          profileImageUrl: googleUser.picture,
+          role: role || 'student',
+          loginProvider: 'google',
+          onboardingCompleted: true,
+          lastSeen: new Date(),
+          isOnline: true,
+        });
+        console.log('User created:', user.id);
+      } else {
+        console.log('Existing user found:', user.id);
+        // Update last_seen for existing user
+        await storage.updateUserLastSeen(user.id, true);
+      }
+
+      // Set session
+      req.session.userId = user.id;
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error("Google Supabase OAuth error:", error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Authentication error" 
+      });
     }
   });
 
@@ -443,33 +584,42 @@ export function registerRoutes(app: Express): Server {
           return res.status(400).json({ message: "At least one file is required" });
         }
 
-        // Process uploaded files with better organization
-        const attachments = files.map((file) => {
-          // Create organized file path: /uploads/userId/subject/filename
-          const organizedPath = `/uploads/${userId}/${subject}/${file.filename}`;
-          
-          // Ensure directory exists
-          const uploadDir = path.join(process.cwd(), 'uploads', userId, subject);
-          if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-          }
-          
-          // Move file to organized location
-          const oldPath = file.path;
-          const newPath = path.join(process.cwd(), organizedPath.substring(1)); // Remove leading slash
-          
+        // Upload files to Supabase Storage
+        console.log('📤 Uploading files to Supabase Storage...');
+        const uploadResults = await uploadMultipleToSupabase(files, userId, subject);
+        
+        // Check for upload errors
+        const failedUploads = uploadResults.filter(r => !r.success);
+        if (failedUploads.length > 0) {
+          console.error('❌ Upload failures:', failedUploads);
+          return res.status(500).json({ 
+            message: "Failed to upload some files to storage",
+            errors: failedUploads.map(f => f.error)
+          });
+        }
+        
+        // Get file URLs from Supabase
+        const attachments = uploadResults
+          .filter(r => r.success && r.fileUrl)
+          .map(r => r.fileUrl!);
+        
+        console.log('✅ Files uploaded to Supabase:', attachments.length);
+        
+        // Clean up temporary local files
+        files.forEach(file => {
           try {
-            fs.renameSync(oldPath, newPath);
+            fs.unlinkSync(file.path);
           } catch (err) {
-            console.error('Error moving file:', err);
-            // If move fails, keep original path
-            return `/uploads/${file.filename}`;
+            console.error('Error deleting temp file:', err);
           }
-          
-          return organizedPath;
         });
 
         // Create note with submitted status (ready for review)
+        // Only use categoryId if it's not a fallback/emergency category
+        const validCategoryId = categoryId && !categoryId.startsWith('emergency-') && !categoryId.startsWith('fallback-') 
+          ? categoryId 
+          : null;
+        
         const note = await storage.createNote({
           title,
           subject,
@@ -479,21 +629,10 @@ export function registerRoutes(app: Express): Server {
           attachments,
           topperId: userId, // All users can upload, but we keep this field for compatibility
           status: "submitted", // Submit directly for review
-          categoryId: categoryId || null,
+          categoryId: validCategoryId,
         });
 
-        // Award 20 coins immediately for upload
-        await storage.updateUserCoins(userId, 20);
-        
-        // Record transaction
-        await storage.recordTransaction(
-          userId,
-          "upload_reward",
-          20,
-          20,
-          note.id,
-          "Earned 20 coins for uploading notes"
-        );
+        // NO COINS YET - User will get 20 coins ONLY after admin approval
 
         // Create review task for admin approval
         await storage.createReviewTask({
@@ -511,7 +650,7 @@ export function registerRoutes(app: Express): Server {
             noteTitle: title,
             subject,
             classGrade,
-            coinsEarned: 20,
+            coinsEarned: 0, // No coins yet - will get after approval
             fileCount: files.length
           });
         } catch (error) {
@@ -544,8 +683,8 @@ export function registerRoutes(app: Express): Server {
 
         res.json({
           ...note,
-          coinsEarned: 20,
-          message: "Notes uploaded successfully! You earned 20 coins."
+          coinsEarned: 0,
+          message: "Notes uploaded successfully! You'll earn 20 coins after admin approval."
         });
       } catch (error) {
         console.error("Error creating note:", error);
@@ -1755,6 +1894,35 @@ export function registerRoutes(app: Express): Server {
   });
 
   // ===== ADMIN ROUTES =====
+  // Review queue route for toppers/reviewers
+  app.get("/api/review/queue", isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+
+    try {
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Only toppers and admins can access review queue
+      if (user.role !== "topper" && user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied - Topper or Admin only" });
+      }
+
+      // Get notes pending review
+      const { notes } = await storage.getAllNotesForAdmin({
+        status: "submitted",
+        limit: 50,
+        offset: 0,
+      });
+
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching review queue:", error);
+      res.status(500).json({ message: "Failed to fetch review queue" });
+    }
+  });
+
   // Admin routes - protected by authentication and admin role check
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
@@ -1773,18 +1941,140 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get all users for admin
-  app.get("/api/admin/users", isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-
+  // Admin dashboard stats endpoint (no auth check - uses admin session)
+  app.get("/api/admin/dashboard-stats", async (req: any, res) => {
     try {
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      // Check admin session
+      const isAdminAuthenticated = req.session?.adminAccountId && req.session?.isAdmin;
+      
+      if (!isAdminAuthenticated) {
+        return res.status(403).json({ message: "Access denied - Admin only" });
+      }
+
+      // Get all stats
+      const allUsers = await storage.getAllUsers();
+      const allNotesResult = await storage.getAllNotesForAdmin({ limit: 10000 });
+      const allNotes = allNotesResult.notes;
+      const allDownloads = await storage.getAllDownloads();
+      
+      // Calculate stats
+      const totalUsers = allUsers.length;
+      const totalNotes = allNotes.length;
+      const totalDownloads = allDownloads.length;
+      const approvedNotes = allNotes.filter((n: any) => n.status === 'approved').length;
+      const rejectedNotes = allNotes.filter((n: any) => n.status === 'rejected').length;
+      const pendingApprovals = allNotes.filter((n: any) => n.status === 'submitted').length;
+      const activeUsers = allUsers.filter((u: any) => u.isOnline).length;
+      
+      // Calculate total revenue (sum of all coins earned)
+      const totalRevenue = allUsers.reduce((sum: number, u: any) => sum + (u.totalEarned || 0), 0);
+
+      // Get recent activity (last 10 activities)
+      const recentNotes = allNotes
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5)
+        .map((note: any) => {
+          const uploader = allUsers.find((u: any) => u.id === note.uploaderId);
+          return {
+            id: note.id,
+            type: 'note_upload',
+            title: note.title,
+            user: uploader ? `${uploader.firstName} ${uploader.lastName}`.trim() || uploader.email : 'Unknown User',
+            time: note.createdAt,
+            status: note.status
+          };
+        });
+
+      const recentDownloads = allDownloads
+        .sort((a: any, b: any) => new Date(b.downloadedAt).getTime() - new Date(a.downloadedAt).getTime())
+        .slice(0, 5)
+        .map((download: any) => {
+          const note = allNotes.find((n: any) => n.id === download.noteId);
+          const user = allUsers.find((u: any) => u.id === download.userId);
+          return {
+            id: download.id,
+            type: 'download',
+            title: note?.title || 'Unknown Note',
+            user: user ? `${user.firstName} ${user.lastName}`.trim() || user.email : 'Unknown User',
+            time: download.downloadedAt,
+          };
+        });
+
+      // Merge and sort recent activity
+      const recentActivity = [...recentNotes, ...recentDownloads]
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+        .slice(0, 10);
+
+      // Get top performing notes (by download count)
+      const noteDownloadCounts = allDownloads.reduce((acc: any, download: any) => {
+        acc[download.noteId] = (acc[download.noteId] || 0) + 1;
+        return acc;
+      }, {});
+
+      const topNotes = allNotes
+        .filter((note: any) => note.status === 'approved')
+        .map((note: any) => ({
+          id: note.id,
+          title: note.title,
+          subject: note.subject,
+          downloads: noteDownloadCounts[note.id] || 0,
+          uploader: allUsers.find((u: any) => u.id === note.uploaderId)?.firstName || 'Unknown',
+          rating: note.rating || 0,
+        }))
+        .sort((a, b) => b.downloads - a.downloads)
+        .slice(0, 5);
+
+      res.json({
+        totalUsers,
+        totalNotes,
+        approvedNotes,
+        rejectedNotes,
+        totalDownloads,
+        totalRevenue,
+        pendingApprovals,
+        activeUsers,
+        recentActivity,
+        topNotes
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Get all users for admin
+  app.get("/api/admin/users", async (req: any, res) => {
+    try {
+      // Check if admin is authenticated (using separate admin session)
+      console.log('Admin session check:', { 
+        adminAccountId: req.session?.adminAccountId, 
+        isAdmin: req.session?.isAdmin,
+        session: req.session 
+      });
+      const isAdminAuthenticated = req.session?.adminAccountId && req.session?.isAdmin;
+      
+      if (!isAdminAuthenticated) {
         return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
       const allUsers = await storage.getAllUsers();
-      res.json(allUsers);
+      
+      // Enrich user data with stats
+      const enrichedUsers = await Promise.all(
+        allUsers.map(async (user: any) => {
+          const userNotes = await storage.getNotesByUser(user.id);
+          const downloads = await storage.getDownloadHistory(user.id);
+          
+          return {
+            ...user,
+            totalUploads: userNotes.length,
+            totalDownloads: downloads.length,
+            status: user.status || 'active',
+          };
+        })
+      );
+      
+      res.json(enrichedUsers);
     } catch (error) {
       console.error("Error fetching admin users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -1792,24 +2082,29 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Get all notes for admin (including pending reviews)
-  app.get("/api/admin/notes", isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
-
+  app.get("/api/admin/notes", async (req: any, res) => {
     try {
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      // Check if admin is authenticated (using session)
+      const isAdmin = req.session?.adminAccountId && req.session?.isAdmin;
+      
+      if (!isAdmin) {
         return res.status(403).json({ message: "Access denied - Admin only" });
       }
 
-      const { status, subject, page = "1", limit = "20" } = req.query;
+      const { status, subject, search, page = "1", limit = "20" } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+      console.log(`📋 Admin fetching notes - Status: ${status}, Search: "${search}", Page: ${page}`);
 
       const { notes, total } = await storage.getAllNotesForAdmin({
         status: status as string,
         subject: subject as string,
+        search: search as string,
         limit: parseInt(limit as string),
         offset,
       });
+
+      console.log(`✅ Fetched ${notes.length} notes out of ${total} total`);
 
       res.json({
         notes,
@@ -1818,8 +2113,277 @@ export function registerRoutes(app: Express): Server {
         limit: parseInt(limit as string),
       });
     } catch (error) {
-      console.error("Error fetching admin notes:", error);
+      console.error("❌ Error fetching admin notes:", error);
       res.status(500).json({ message: "Failed to fetch notes" });
+    }
+  });
+
+  // ========== EARNINGS & WITHDRAWAL ROUTES ==========
+  
+  // Get earnings stats
+  app.get("/api/earnings/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get pending withdrawals total
+      const pendingWithdrawals = await storage.getPendingWithdrawalsTotal(userId);
+      const totalWithdrawn = await storage.getTotalWithdrawn(userId);
+
+      res.json({
+        coinBalance: user.coinBalance || 0,
+        totalEarned: user.totalEarned || 0,
+        pendingWithdrawals,
+        totalWithdrawn,
+        availableForWithdrawal: Math.max(0, (user.coinBalance || 0) - pendingWithdrawals),
+      });
+    } catch (error) {
+      console.error("Error fetching earnings stats:", error);
+      res.status(500).json({ message: "Failed to fetch earnings stats" });
+    }
+  });
+
+  // Get withdrawal requests
+  app.get("/api/earnings/withdrawals", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const withdrawals = await storage.getWithdrawalRequests(userId);
+      res.json(withdrawals);
+    } catch (error) {
+      console.error("Error fetching withdrawals:", error);
+      res.status(500).json({ message: "Failed to fetch withdrawals" });
+    }
+  });
+
+  // Get earning transactions
+  app.get("/api/earnings/transactions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const transactions = await storage.getEarningTransactions(userId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  // Request withdrawal
+  app.post("/api/earnings/withdraw", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { coins, amount, upiId, bankDetails } = req.body;
+
+      // Validate minimum withdrawal
+      const MINIMUM_WITHDRAWAL_COINS = 100;
+      if (coins < MINIMUM_WITHDRAWAL_COINS) {
+        return res.status(400).json({ 
+          message: `Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} coins` 
+        });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check available balance (excluding pending withdrawals)
+      const pendingWithdrawals = await storage.getPendingWithdrawalsTotal(userId);
+      const availableBalance = (user.coinBalance || 0) - pendingWithdrawals;
+
+      if (coins > availableBalance) {
+        return res.status(400).json({ 
+          message: "Insufficient balance. You have pending withdrawal requests." 
+        });
+      }
+
+      if (!upiId && !bankDetails) {
+        return res.status(400).json({ 
+          message: "Please provide either UPI ID or bank details" 
+        });
+      }
+
+      // Create withdrawal request
+      const withdrawal = await storage.createWithdrawalRequest({
+        topperId: userId,
+        amount,
+        coins,
+        upiId: upiId || undefined,
+        bankDetails: bankDetails ? JSON.parse(bankDetails) : undefined,
+        status: 'pending',
+      });
+
+      // Create notification
+      await storage.createNotification({
+        userId,
+        type: "withdrawal_requested",
+        title: "Withdrawal Request Submitted",
+        body: `Your request to withdraw ₹${amount} (${coins} coins) is being processed.`,
+        link: `/earnings`,
+      });
+
+      res.json({
+        success: true,
+        withdrawal,
+        message: "Withdrawal request submitted successfully",
+      });
+    } catch (error) {
+      console.error("Error creating withdrawal:", error);
+      res.status(500).json({ message: "Failed to create withdrawal request" });
+    }
+  });
+
+  // Approve note (admin only) - Awards 20 coins to uploader
+  app.post("/api/admin/notes/:noteId/approve", async (req: any, res) => {
+    try {
+      // Check if admin is authenticated (using session)
+      const isAdmin = req.session?.adminAccountId && req.session?.isAdmin;
+      
+      if (!isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const note = await storage.getNoteById(req.params.noteId);
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      // Update note status to approved
+      const updatedNote = await storage.updateNoteStatus(req.params.noteId, "approved");
+
+      // Award 20 coins to the uploader for approved note
+      await storage.updateUserCoins(note.topperId, 20);
+      
+      // Record transaction
+      await storage.recordTransaction(
+        note.topperId,
+        "coin_earned",
+        20,
+        20,
+        note.id,
+        "Earned 20 coins for note approval"
+      );
+
+      // Create notification for uploader
+      await storage.createNotification({
+        userId: note.topperId,
+        type: "note_approved",
+        title: "Note Approved! 🎉",
+        body: `Your note "${note.title}" has been approved! You earned 20 coins.`,
+        link: `/note-detail/${note.id}`,
+      });
+
+      // Update review task status
+      const reviewTask = await storage.getReviewTaskByNoteId(req.params.noteId);
+      if (reviewTask) {
+        await storage.updateReviewTaskStatus(reviewTask.id, "approved");
+      }
+
+      // Log admin activity
+      try {
+        await storage.recordAdminActivity(userId, 'note_approved', 'note', req.params.noteId, {
+          noteTitle: note.title,
+          uploader: note.topperId,
+          coinsAwarded: 20
+        });
+      } catch (error) {
+        console.error('Failed to log admin activity:', error);
+      }
+
+      res.json({ 
+        success: true, 
+        note: updatedNote,
+        message: "Note approved successfully! User awarded 20 coins.",
+        coinsAwarded: 20
+      });
+    } catch (error) {
+      console.error("Error approving note:", error);
+      res.status(500).json({ message: "Failed to approve note" });
+    }
+  });
+
+  // Reject note (admin only)
+  app.post("/api/admin/notes/:noteId/reject", async (req: any, res) => {
+    const { reason } = req.body;
+
+    try {
+      // Check if admin is authenticated (using session)
+      const isAdmin = req.session?.adminAccountId && req.session?.isAdmin;
+      
+      if (!isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const note = await storage.getNoteById(req.params.noteId);
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      // Update note status to rejected
+      const updatedNote = await storage.updateNoteStatus(req.params.noteId, "rejected");
+
+      // Create notification for uploader
+      await storage.createNotification({
+        userId: note.topperId,
+        type: "note_rejected",
+        title: "Note Rejected",
+        body: `Your note "${note.title}" was rejected. Reason: ${reason || "Quality standards not met"}`,
+        link: `/upload-notes`,
+      });
+
+      // Update review task status
+      const reviewTask = await storage.getReviewTaskByNoteId(req.params.noteId);
+      if (reviewTask) {
+        await storage.updateReviewTaskStatus(reviewTask.id, "rejected");
+      }
+
+      // Log admin activity
+      try {
+        await storage.recordAdminActivity(userId, 'note_rejected', 'note', req.params.noteId, {
+          noteTitle: note.title,
+          uploader: note.topperId,
+          reason: reason || "Not specified"
+        });
+      } catch (error) {
+        console.error('Failed to log admin activity:', error);
+      }
+
+      res.json({ 
+        success: true, 
+        note: updatedNote,
+        message: "Note rejected successfully."
+      });
+    } catch (error) {
+      console.error("Error rejecting note:", error);
+      res.status(500).json({ message: "Failed to reject note" });
+    }
+  });
+
+  // Update teacher credentials for a note (admin only)
+  app.put("/api/admin/notes/:noteId/teacher-credentials", isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+    const { noteId } = req.params;
+    const { teacherId, teacherPassword } = req.body;
+
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied - Admin only" });
+      }
+
+      const updatedNote = await storage.updateNoteTeacherCredentials(noteId, teacherId, teacherPassword);
+      
+      res.json({
+        success: true,
+        message: "Teacher credentials updated successfully",
+        note: updatedNote
+      });
+    } catch (error) {
+      console.error("Error updating teacher credentials:", error);
+      res.status(500).json({ message: "Failed to update teacher credentials" });
     }
   });
 
@@ -1869,7 +2433,107 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Make current user admin (for first-time setup only)
+  // Secure Admin Promotion - Requires Admin ID + Password (NO AUTH REQUIRED - Uses email)
+  app.post("/api/admin/promote-to-admin", async (req: any, res) => {
+    const { adminPromotionId, adminPromotionPassword, userEmail } = req.body;
+
+    try {
+      // Validate input
+      if (!adminPromotionId || !adminPromotionPassword) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Admin Promotion ID and Password are required" 
+        });
+      }
+
+      if (!userEmail) {
+        return res.status(400).json({ 
+          success: false,
+          message: "User email is required" 
+        });
+      }
+
+      // Get secure credentials from environment
+      const ADMIN_PROMOTION_ID = process.env.ADMIN_PROMOTION_ID || 'MASTER_ADMIN_2025';
+      const ADMIN_PROMOTION_PASSWORD = process.env.ADMIN_PROMOTION_PASSWORD || 'SecureAdmin@2025';
+
+      // Debug logging
+      console.log('🔍 Admin promotion attempt:', {
+        userEmail,
+        providedId: adminPromotionId,
+        providedPassword: adminPromotionPassword,
+        expectedId: ADMIN_PROMOTION_ID,
+        expectedPassword: ADMIN_PROMOTION_PASSWORD,
+        idMatch: adminPromotionId === ADMIN_PROMOTION_ID,
+        passwordMatch: adminPromotionPassword === ADMIN_PROMOTION_PASSWORD
+      });
+
+      // Verify credentials
+      if (adminPromotionId !== ADMIN_PROMOTION_ID || adminPromotionPassword !== ADMIN_PROMOTION_PASSWORD) {
+        console.log('❌ Failed admin promotion attempt:', { 
+          userEmail, 
+          providedId: adminPromotionId,
+          idMatch: adminPromotionId === ADMIN_PROMOTION_ID,
+          passwordMatch: adminPromotionPassword === ADMIN_PROMOTION_PASSWORD
+        });
+        return res.status(401).json({ 
+          success: false,
+          message: "Invalid Admin Promotion credentials. Access denied." 
+        });
+      }
+
+      // Get user by email
+      const user = await storage.getUserByEmail(userEmail);
+      if (!user) {
+        return res.status(404).json({ 
+          success: false,
+          message: "User not found with this email" 
+        });
+      }
+
+      // Check if user is already an admin
+      if (user.role === "admin") {
+        return res.json({ 
+          success: true,
+          message: "You are already an admin!",
+          user 
+        });
+      }
+
+      // Promote user to admin
+      const updatedUser = await storage.updateUserRole(user.id, "admin");
+      
+      console.log('✅ User promoted to admin:', {
+        userId: updatedUser.id,
+        email: updatedUser.email,
+        name: `${updatedUser.firstName} ${updatedUser.lastName}`
+      });
+
+      // Set session for user
+      req.session.userId = updatedUser.id;
+      req.session.isAdmin = true;
+
+      res.json({ 
+        success: true, 
+        message: "Congratulations! You are now an admin with full access.",
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          role: updatedUser.role
+        }
+      });
+    } catch (error) {
+      console.error("Error promoting user to admin:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to promote user to admin: " + (error instanceof Error ? error.message : 'Unknown error')
+      });
+    }
+  });
+
+  // Make current user admin (for first-time setup only - DEPRECATED)
   app.post("/api/admin/make-me-admin", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
 
@@ -1879,10 +2543,10 @@ export function registerRoutes(app: Express): Server {
       const hasAdmin = allUsers.some(u => u.role === "admin");
       
       if (hasAdmin) {
-        return res.status(403).json({ message: "Admin already exists. Contact existing admin." });
+        return res.status(403).json({ message: "Admin already exists. Use /api/admin/promote-to-admin with proper credentials." });
       }
 
-      // Make current user admin
+      // Make current user admin (only works if no admin exists)
       const updatedUser = await storage.updateUserRole(userId, "admin");
       res.json({ 
         success: true, 
@@ -1892,6 +2556,326 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error making user admin:", error);
       res.status(500).json({ message: "Failed to make user admin" });
+    }
+  });
+
+  // Admin Login Endpoint (Separate authentication from main website)
+  app.post("/api/admin/login", async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Username and password are required" 
+      });
+    }
+
+    try {
+      // Get admin account from admin_accounts table
+      const adminAccount = await storage.getAdminByUsername(username);
+      
+      if (!adminAccount) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid admin credentials",
+        });
+      }
+
+      // Check if account is active
+      if (!adminAccount.isActive) {
+        return res.status(403).json({
+          success: false,
+          message: "Admin account is deactivated",
+        });
+      }
+
+      // Verify password
+      const bcrypt = await import('bcryptjs');
+      const isValidPassword = await bcrypt.default.compare(password, adminAccount.password);
+      
+      if (!isValidPassword) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid admin credentials",
+        });
+      }
+
+      // Update last login
+      await storage.updateAdminLastLogin(adminAccount.id);
+
+      // Create admin session token
+      const sessionToken = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session
+
+      await storage.createAdminSession({
+        adminAccountId: adminAccount.id,
+        token: sessionToken,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'] || '',
+        expiresAt,
+      });
+
+      // Set separate admin session (doesn't affect main website session)
+      req.session.adminAccountId = adminAccount.id;
+      req.session.adminToken = sessionToken;
+      req.session.isAdmin = true;
+
+      console.log('✅ Admin logged in:', { username, id: adminAccount.id });
+
+      // Save session before sending response
+      req.session.save((err: any) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).json({ success: false, message: "Session save failed" });
+        }
+        
+        res.json({
+          success: true,
+          message: "Admin login successful",
+          token: sessionToken,
+          admin: {
+            id: adminAccount.id,
+            username: adminAccount.username,
+            email: adminAccount.email,
+            fullName: adminAccount.fullName,
+          },
+        });
+      });
+    } catch (error) {
+      console.error("Admin login error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Admin login failed" 
+      });
+    }
+  });
+
+  // Admin Logout Endpoint (Separate from main website)
+  app.post("/api/admin/logout", async (req, res) => {
+    try {
+      const adminToken = req.session.adminToken;
+      
+      if (adminToken) {
+        // Invalidate admin session
+        await storage.deleteAdminSession(adminToken);
+      }
+
+      // Clear only admin session data (keeps main website session intact)
+      delete req.session.adminAccountId;
+      delete req.session.adminToken;
+      delete req.session.isAdmin;
+
+      res.json({
+        success: true,
+        message: "Admin logged out successfully",
+      });
+    } catch (error) {
+      console.error("Admin logout error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Admin logout failed" 
+      });
+    }
+  });
+
+  // Setup first admin account (one-time setup endpoint)
+  app.post("/api/admin/setup-first-admin", async (req, res) => {
+    try {
+      // Check if any admin accounts exist
+      const existingAdmins = await storage.getAllAdmins();
+      
+      if (existingAdmins && existingAdmins.length > 0) {
+        return res.status(403).json({
+          success: false,
+          message: "Admin accounts already exist. Use /api/admin/reset-default-admin to reset password."
+        });
+      }
+
+      // Create first admin account
+      const bcrypt = await import('bcryptjs');
+      const hashedPassword = await bcrypt.default.hash('Admin@123', 10);
+      
+      const adminId = crypto.randomUUID();
+      await storage.createAdmin({
+        id: adminId,
+        username: 'admin',
+        email: 'admin@masterstudent.in',
+        password: hashedPassword,
+        fullName: 'System Administrator',
+        isActive: true,
+      });
+
+      res.json({
+        success: true,
+        message: "First admin account created successfully",
+        credentials: {
+          username: "admin",
+          password: "Admin@123",
+          note: "Please change this password after first login"
+        }
+      });
+    } catch (error) {
+      console.error("Setup admin error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to create admin account" 
+      });
+    }
+  });
+
+  // Reset default admin password (for development/testing)
+  app.post("/api/admin/reset-default-admin", async (req, res) => {
+    try {
+      const adminAccount = await storage.getAdminByUsername('admin');
+      
+      if (!adminAccount) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin account 'admin' not found"
+        });
+      }
+
+      // Reset password to default
+      const bcrypt = await import('bcryptjs');
+      const hashedPassword = await bcrypt.default.hash('Admin@123', 10);
+      
+      await storage.updateAdminPassword(adminAccount.id, hashedPassword);
+
+      res.json({
+        success: true,
+        message: "Admin password reset successfully",
+        credentials: {
+          username: "admin",
+          password: "Admin@123"
+        }
+      });
+    } catch (error) {
+      console.error("Reset admin error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to reset admin password" 
+      });
+    }
+  });
+
+  // Admin Session Check
+  app.get("/api/admin/check-session", async (req, res) => {
+    try {
+      const adminToken = req.session.adminToken;
+      
+      if (!adminToken) {
+        return res.json({ authenticated: false });
+      }
+
+      const session = await storage.getAdminSession(adminToken);
+      
+      if (!session || new Date() > new Date(session.expiresAt)) {
+        // Session expired
+        delete req.session.adminAccountId;
+        delete req.session.adminToken;
+        delete req.session.isAdmin;
+        return res.json({ authenticated: false });
+      }
+
+      // Get admin account
+      const adminAccount = await storage.getAdminById(session.adminAccountId);
+      
+      if (!adminAccount || !adminAccount.isActive) {
+        return res.json({ authenticated: false });
+      }
+
+      // Update last activity
+      await storage.updateAdminSessionActivity(adminToken);
+
+      res.json({
+        authenticated: true,
+        admin: {
+          id: adminAccount.id,
+          username: adminAccount.username,
+          email: adminAccount.email,
+          fullName: adminAccount.fullName,
+        },
+      });
+    } catch (error) {
+      console.error("Admin session check error:", error);
+      res.json({ authenticated: false });
+    }
+  });
+
+  // Force admin (for development - remove in production!)
+  app.post("/api/admin/force-admin", isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+
+    try {
+      // Make current user admin (bypasses the "admin exists" check)
+      const updatedUser = await storage.updateUserRole(userId, "admin");
+      res.json({ 
+        success: true, 
+        message: "You are now an admin!",
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error("Error making user admin:", error);
+      res.status(500).json({ message: "Failed to make user admin" });
+    }
+  });
+
+  // Seed test notes (for development - remove in production!)
+  app.post("/api/admin/seed-notes", isAuthenticated, async (req: any, res) => {
+    const userId = getUserId(req);
+
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied - Admin only" });
+      }
+
+      // Create test notes
+      const testNotes = [
+        {
+          title: "Physics Chapter 1 - Motion",
+          subject: "physics" as const,
+          description: "Complete notes on motion and kinematics for Class 11",
+          status: "published" as const,
+          topperId: userId,
+          categoryId: "general",
+          attachments: ["sample-physics-notes.pdf"],
+        },
+        {
+          title: "Mathematics - Calculus Basics",
+          subject: "mathematics" as const,
+          description: "Introduction to derivatives and integrals",
+          status: "published" as const,
+          topperId: userId,
+          categoryId: "general",
+          attachments: ["sample-1.pdf"],
+        },
+        {
+          title: "Chemistry - Organic Chemistry",
+          subject: "chemistry" as const,
+          description: "Organic chemistry fundamentals and reactions",
+          status: "published" as const,
+          topperId: userId,
+          categoryId: "general",
+          attachments: ["sample-2.pdf"],
+        },
+      ];
+
+      const createdNotes = [];
+      for (const noteData of testNotes) {
+        const note = await storage.createNote(noteData as any);
+        createdNotes.push(note);
+      }
+
+      res.json({
+        success: true,
+        message: `Created ${createdNotes.length} test notes!`,
+        notes: createdNotes,
+      });
+    } catch (error) {
+      console.error("Error seeding notes:", error);
+      res.status(500).json({ message: "Failed to seed notes" });
     }
   });
 

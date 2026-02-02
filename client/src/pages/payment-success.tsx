@@ -13,11 +13,28 @@ import { Link, useLocation } from "wouter";
 
 export default function PaymentSuccess() {
   const [, setLocation] = useLocation();
+  const [countdown, setCountdown] = React.useState(5);
 
   useEffect(() => {
     // Update user status to premium
     localStorage.setItem('userStatus', 'premium');
     localStorage.removeItem('trialDownloads'); // Clear trial data
+    
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Auto-redirect to download-notes after 5 seconds
+    const redirectTimer = setTimeout(() => {
+      setLocation('/download-notes');
+    }, 5000);
     
     // Confetti effect
     const duration = 3000;
@@ -41,8 +58,12 @@ export default function PaymentSuccess() {
       // In a real app, you'd use a library like canvas-confetti
     }, 250);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      clearInterval(countdownInterval);
+      clearTimeout(redirectTimer);
+    };
+  }, [setLocation]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden flex items-center justify-center p-6">
@@ -162,6 +183,13 @@ export default function PaymentSuccess() {
               </p>
             </div>
 
+            {/* Auto-redirect Message */}
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-gray-700 text-sm">
+                Redirecting to download page in <span className="font-bold text-blue-600 text-lg">{countdown}</span> seconds...
+              </p>
+            </div>
+
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -170,7 +198,7 @@ export default function PaymentSuccess() {
               >
                 <Link href="/download-notes">
                   <Download className="mr-2 h-5 w-5" />
-                  Start Downloading
+                  Start Downloading Now
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>

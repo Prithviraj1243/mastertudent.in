@@ -1,6 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import ProfileIcon from "@/components/profile-icon";
 import { 
   GraduationCap, 
   Activity
@@ -19,19 +18,19 @@ export default function Header() {
     <header className="bg-slate-900/95 border-b border-slate-700/50 sticky top-0 z-50 backdrop-blur-md">
       <div className="absolute inset-0 bg-gradient-to-r from-slate-800/30 via-gray-800/20 to-slate-700/30 animate-study-pulse"></div>
       <div className="relative max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           
           {/* Left - Logo with Text */}
           <div className="flex items-center -ml-2">
-            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 group transition-all duration-300">
-              <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transform group-hover:scale-105 transition-transform duration-300 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
-                <GraduationCap className="w-7 h-7 text-white drop-shadow-lg" />
+            <Link href="/" className="flex items-center space-x-1 sm:space-x-2 hover:opacity-80 group transition-all duration-300">
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl transform group-hover:scale-105 transition-transform duration-300 bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
+                <GraduationCap className="w-5 h-5 sm:w-7 sm:h-7 text-white drop-shadow-lg" />
               </div>
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent group-hover:from-orange-300 group-hover:via-red-300 group-hover:to-pink-300 transition-all duration-300">
+              <div className="hidden xs:block">
+                <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent group-hover:from-orange-300 group-hover:via-red-300 group-hover:to-pink-300 transition-all duration-300">
                   MasterStudent
                 </span>
-                <div className="text-xs text-orange-300 font-medium tracking-wider uppercase">
+                <div className="text-[10px] sm:text-xs text-orange-300 font-medium tracking-wider uppercase">
                   ⚡ Learn • Share • Excel
                 </div>
               </div>
@@ -39,16 +38,16 @@ export default function Header() {
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             
             {/* User Activity Link */}
             <Link href="/my-activity">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-300"
+                className="text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-300 h-9 w-9 sm:h-10 sm:w-10 p-0"
               >
-                <Activity className="h-5 w-5" />
+                <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </Link>
             
@@ -56,13 +55,10 @@ export default function Header() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-300"
+              className="text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-300 h-9 w-9 sm:h-10 sm:w-10 p-0"
             >
               <ActivityNotificationBell />
             </Button>
-
-            {/* Profile Icon */}
-            <ProfileIcon />
 
           </div>
         </div>

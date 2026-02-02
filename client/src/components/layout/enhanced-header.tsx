@@ -41,7 +41,7 @@ export default function EnhancedHeader({ onMenuToggle }: EnhancedHeaderProps) {
     <>
       {/* Top Navigation Bar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 border-b border-blue-500/20 backdrop-blur-md">
-        <div className="px-6 py-4">
+        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             {/* Logo Section */}
             <Link href="/">
@@ -59,19 +59,19 @@ export default function EnhancedHeader({ onMenuToggle }: EnhancedHeaderProps) {
             </Link>
 
             {/* Center Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-md mx-8">
+            <div className="hidden lg:flex flex-1 max-w-md mx-4 lg:mx-8">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-blue-400" />
                 <input
                   type="text"
                   placeholder="Search notes..."
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-blue-500/30 rounded-lg text-blue-100 placeholder:text-blue-400/50 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 transition-all duration-300"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-blue-500/30 rounded-lg text-blue-100 placeholder:text-blue-400/50 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 transition-all duration-300 text-sm"
                 />
               </div>
             </div>
 
             {/* Right Section */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
               {/* Notifications */}
               <button className="relative p-2 hover:bg-blue-500/10 rounded-lg transition-all duration-300 group">
                 <Bell className="h-5 w-5 text-blue-400 group-hover:text-blue-300" />
@@ -125,7 +125,8 @@ export default function EnhancedHeader({ onMenuToggle }: EnhancedHeaderProps) {
               {/* Mobile Menu Toggle */}
               <button
                 onClick={toggleMenu}
-                className="md:hidden p-2 hover:bg-blue-500/10 rounded-lg transition-all duration-300"
+                className="lg:hidden p-2 hover:bg-blue-500/10 rounded-lg transition-all duration-300"
+                aria-label="Toggle menu"
               >
                 {isMenuOpen ? (
                   <X className="h-5 w-5 text-blue-400" />
@@ -138,7 +139,7 @@ export default function EnhancedHeader({ onMenuToggle }: EnhancedHeaderProps) {
 
           {/* Mobile Menu */}
           {isMenuOpen && (
-            <div className="md:hidden mt-4 pt-4 border-t border-blue-500/20 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="lg:hidden mt-4 pt-4 border-t border-blue-500/20 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
               {menuItems.map((item) => (
                 <Link key={item.href} href={item.href}>
                   <a className="flex items-center gap-3 px-4 py-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-blue-300 hover:text-blue-200">
@@ -153,7 +154,7 @@ export default function EnhancedHeader({ onMenuToggle }: EnhancedHeaderProps) {
       </nav>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:fixed md:left-0 md:top-20 md:w-64 md:h-[calc(100vh-80px)] md:bg-gradient-to-b md:from-slate-900 md:to-slate-900/50 md:border-r md:border-blue-500/20 md:backdrop-blur-md md:overflow-y-auto md:z-40 md:flex md:flex-col md:pt-6">
+      <aside className="hidden lg:fixed lg:left-0 lg:top-[73px] lg:w-64 lg:h-[calc(100vh-73px)] lg:bg-gradient-to-b lg:from-slate-900 lg:to-slate-900/50 lg:border-r lg:border-blue-500/20 lg:backdrop-blur-md lg:overflow-y-auto lg:z-40 lg:flex lg:flex-col lg:pt-6">
         <nav className="space-y-2 px-4">
           {menuItems.map((item) => (
             <Link key={item.href} href={item.href}>

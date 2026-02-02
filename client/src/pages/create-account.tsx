@@ -64,37 +64,86 @@ export default function CreateAccount() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate account creation
-    setTimeout(() => {
-      // Store user data in localStorage
-      const userData = {
-        id: Date.now(),
-        firstName: formData.name.split(' ')[0] || formData.name,
-        lastName: formData.name.split(' ').slice(1).join(' ') || '',
-        email: formData.email,
-        gender: formData.gender,
-        school: formData.school,
-        class: formData.class,
-        competitiveExam: formData.competitiveExam,
-        bio: formData.bio,
-        picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`,
-        onboardingCompleted: true,
-        role: 'student',
-        createdAt: new Date().toISOString()
-      };
-
-      // Set authentication
-      sessionStorage.setItem('directAuth', 'true');
-      sessionStorage.setItem('authUser', JSON.stringify(userData));
-      localStorage.setItem('userProfile', JSON.stringify(userData));
-
-      setCurrentStep(1);
+    try {
+      // Real API call to create account in PostgreSQL database
+      const firstName = formData.name.split(' ')[0] || formData.name;
+      const lastName = formData.name.split(' ').slice(1).join(' ') || 'User';
+      const tempPassword = 'TempPass' + Math.random().toString(36).slice(2, 10);
       
-      // Redirect to home page after success animation
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 3000);
-    }, 2000);
+      console.log('Sending registration data:', {
+        firstName,
+        lastName,
+        email: formData.email,
+        hasPassword: !!tempPassword
+      });
+      
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          firstName: firstName,
+          lastName: lastName,
+          email: formData.email,
+          password: tempPassword, // Temporary password (user can change later)
+          phone: '',
+          role: 'student',
+          onboardingCompleted: true,
+          selectedGoals: [],
+          // Additional profile data
+          profileData: {
+            gender: formData.gender,
+            school: formData.school,
+            class: formData.class,
+            competitiveExam: formData.competitiveExam,
+            bio: formData.bio,
+          }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success! Account created in PostgreSQL database
+        const userData = {
+          id: data.user.id,
+          firstName: data.user.firstName,
+          lastName: data.user.lastName,
+          email: data.user.email,
+          gender: formData.gender,
+          school: formData.school,
+          class: formData.class,
+          competitiveExam: formData.competitiveExam,
+          bio: formData.bio,
+          picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`,
+          onboardingCompleted: true,
+          role: 'student',
+          createdAt: new Date().toISOString()
+        };
+
+        // Set authentication
+        sessionStorage.setItem('directAuth', 'true');
+        sessionStorage.setItem('authUser', JSON.stringify(userData));
+        localStorage.setItem('userProfile', JSON.stringify(userData));
+
+        setCurrentStep(1);
+        
+        // Redirect to home page after success animation
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
+      } else {
+        // Handle errors
+        setIsLoading(false);
+        alert(data.message || 'Registration failed. Email might already be registered.');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setIsLoading(false);
+      alert('Network error. Could not connect to server. Please try again.');
+    }
   };
 
   const isFormValid = () => {
