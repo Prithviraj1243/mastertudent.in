@@ -36,8 +36,16 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 
 // Configure multer for file uploads
+// Use /tmp directory for Render deployment (persistent uploads/ doesn't work on Render)
+const uploadDir = process.env.NODE_ENV === 'production' ? '/tmp/uploads' : 'uploads/';
+
+// Ensure upload directory exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const upload = multer({
-  dest: "uploads/",
+  dest: uploadDir,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB
   },
