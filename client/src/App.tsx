@@ -18,7 +18,6 @@ import CreateAccount from "@/pages/create-account";
 import DownloadNotes from "@/pages/download-notes";
 import DownloadNotesEnhanced from "@/pages/download-notes-enhanced";
 import DownloadAnalytics from "@/pages/download-analytics";
-import UploadNotes from "@/pages/upload-notes";
 import Subscribe from "@/pages/subscribe";
 import Catalog from "@/pages/catalog";
 import CategorySelection from "@/pages/category-selection";
@@ -115,7 +114,7 @@ function AppRouter() {
           
           <Route path="/download-notes" component={DownloadNotesEnhanced} />
           <Route path="/download-analytics" component={DownloadAnalytics} />
-          <Route path="/upload-notes" component={UploadNotes} />
+          <Route path="/upload-notes" component={Upload} />
           <Route path="/categories" component={CategorySelection} />
           <Route path="/exam-selection" component={ExamSelection} />
           <Route path="/subscribe" component={Subscribe} />

@@ -738,6 +738,32 @@ class InMemoryStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private async syncMissingApprovalCoins(userId: string): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return;
+
+    const [approvedNotesResult] = await db
+      .select({ count: count(notes.id) })
+      .from(notes)
+      .where(and(eq(notes.topperId, userId), eq(notes.status, "approved")));
+
+    const approvedNotesCount = Number(approvedNotesResult?.count || 0);
+    const expectedApprovalCoins = approvedNotesCount * 20;
+    const currentEarned = Number(user.totalEarned || 0);
+
+    if (currentEarned >= expectedApprovalCoins) return;
+
+    const missingCoins = expectedApprovalCoins - currentEarned;
+    await db
+      .update(users)
+      .set({
+        totalEarned: sql`${users.totalEarned} + ${missingCoins}`,
+        coinBalance: sql`${users.coinBalance} + ${missingCoins}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
   // User operations (required for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     // When running in SQLite/dev mode, fall back to in-memory behaviour
@@ -2126,6 +2152,9 @@ export class DatabaseStorage implements IStorage {
     activeNotes: number;
     pendingReviews: number;
   }> {
+    // Backfill legacy users who missed coin credits before approval-only flow fix.
+    await this.syncMissingApprovalCoins(userId);
+
     // Get user data
     const [user] = await db.select().from(users).where(eq(users.id, userId));
     
@@ -2197,24 +2226,14 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateUserStats(userId: string, uploadData: { subject: string; noteId: string }): Promise<void> {
-    // Update user's total earned coins (simulate earning 20 coins per upload)
+    // Keep this endpoint as a lightweight stats-touch hook only.
+    // Coins are awarded on admin approval, not on upload submission.
     await db
       .update(users)
       .set({
-        totalEarned: sql`${users.totalEarned} + 20`,
         updatedAt: new Date()
       })
       .where(eq(users.id, userId));
-    
-    // Record transaction for the upload
-    await db.insert(transactions).values({
-      userId,
-      type: 'coin_earned',
-      amount: 20,
-      coinChange: 20,
-      noteId: uploadData.noteId,
-      description: `Earned 20 coins for uploading ${uploadData.subject} note`,
-    });
   }
   
   // Admin Account Operations

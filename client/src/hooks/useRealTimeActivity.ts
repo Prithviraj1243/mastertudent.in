@@ -18,56 +18,41 @@ export function useRealTimeActivity() {
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-
-  const simulateRealTimeUpdate = useCallback(() => {
-    // Simulate receiving a new activity update
-    const newActivity: ActivityUpdate = {
-      id: `activity-${Date.now()}`,
-      userId: 'current-user',
-      userName: 'Current User',
-      userEmail: 'user@example.com',
-      action: ['login', 'download', 'upload', 'view_note', 'like_note'][Math.floor(Math.random() * 5)],
-      details: { noteTitle: 'Sample Note', noteId: `note-${Date.now()}` },
-      timestamp: new Date().toISOString(),
-      ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      location: 'Mumbai, India'
-    };
-
-    // Update the query cache with the new activity
-    queryClient.setQueryData(['/api/user/my-activity'], (oldData: ActivityUpdate[] = []) => {
-      return [newActivity, ...oldData.slice(0, 19)]; // Keep only latest 20 activities
-    });
-
-    // Also update admin activity if user is admin
-    queryClient.setQueryData(['/api/admin/user-activity'], (oldData: ActivityUpdate[] = []) => {
-      return [newActivity, ...oldData.slice(0, 19)]; // Keep only latest 20 activities
-    });
-
+  const refreshActivity = useCallback(async () => {
+    await Promise.allSettled([
+      queryClient.invalidateQueries({ queryKey: ['/api/user/my-activity'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/user-activity'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard-stats'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/notes'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/review/queue'] }),
+    ]);
     setLastUpdate(new Date());
   }, [queryClient]);
 
   useEffect(() => {
-    // Simulate WebSocket connection
     setIsConnected(true);
-    
-    // Simulate periodic updates (every 10-30 seconds)
+
+    // Poll server-backed activity so it works in local and production.
     const interval = setInterval(() => {
-      if (Math.random() > 0.7) { // 30% chance of update
-        simulateRealTimeUpdate();
-      }
-    }, 10000 + Math.random() * 20000); // Random interval between 10-30 seconds
+      refreshActivity();
+    }, 15000);
+
+    const onFocus = () => refreshActivity();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
       setIsConnected(false);
     };
-  }, [simulateRealTimeUpdate]);
+  }, [refreshActivity]);
 
   return {
     isConnected,
     lastUpdate,
-    simulateUpdate: simulateRealTimeUpdate
+    refreshActivity
   };
 }
 

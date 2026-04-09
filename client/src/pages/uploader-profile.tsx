@@ -18,6 +18,9 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { useState } from "react";
 import { motion } from "framer-motion";
 
+const COINS_PER_RUPEE = 20;
+const MIN_WITHDRAWAL_RUPEES = 200;
+
 export default function UploaderProfile() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -34,20 +37,23 @@ export default function UploaderProfile() {
     accountHolderName: "",
   });
 
-  // Mock withdrawal requests for now
-  const withdrawalRequests: any[] = [];
+  const { data: withdrawalRequests = [] } = useQuery<any[]>({
+    queryKey: ["/api/earnings/withdrawals"],
+    refetchInterval: 15000,
+  });
 
   const withdrawalMutation = useMutation({
     mutationFn: async (withdrawalData: any) => {
-      await apiRequest("POST", "/api/withdrawals/request", withdrawalData);
+      await apiRequest("POST", "/api/earnings/withdraw", withdrawalData);
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Withdrawal request submitted successfully!",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/withdrawals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/uploader/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/earnings/withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/earnings/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
       setWithdrawalDialogOpen(false);
       setWithdrawalAmount("");
       setUpiId("");
@@ -80,20 +86,22 @@ export default function UploaderProfile() {
 
   const handleWithdrawalSubmit = () => {
     const amount = parseFloat(withdrawalAmount);
+    const availableCoins = stats.totalEarnings || 0;
+    const requestedCoins = Math.floor(amount * COINS_PER_RUPEE);
     
-    if (!amount || amount < 200) {
+    if (!amount || amount < MIN_WITHDRAWAL_RUPEES) {
       toast({
         title: "Error",
-        description: "Minimum withdrawal amount is ₹200",
+        description: `Minimum withdrawal amount is ₹${MIN_WITHDRAWAL_RUPEES}`,
         variant: "destructive",
       });
       return;
     }
 
-    if (amount > stats.totalEarnings) {
+    if (requestedCoins > availableCoins) {
       toast({
         title: "Error",
-        description: "Insufficient wallet balance",
+        description: "Insufficient coin balance",
         variant: "destructive",
       });
       return;
@@ -101,7 +109,7 @@ export default function UploaderProfile() {
 
     const withdrawalData: any = {
       amount,
-      coins: Math.floor(amount * 20), // Assuming 1 rupee = 20 coins
+      coins: requestedCoins,
     };
 
     if (paymentMethod === "upi") {
@@ -123,7 +131,7 @@ export default function UploaderProfile() {
         });
         return;
       }
-      withdrawalData.bankDetails = bankDetails;
+      withdrawalData.bankDetails = JSON.stringify(bankDetails);
     }
 
     withdrawalMutation.mutate(withdrawalData);
@@ -337,8 +345,8 @@ export default function UploaderProfile() {
                     <div>
                       <p className="text-sm font-medium text-gray-300">Wallet Balance</p>
                       <p className="text-3xl font-bold text-emerald-400 flex items-center font-mono">
-                        <IndianRupee className="h-6 w-6 mr-1 group-hover:animate-spin" />
                         {stats.totalEarnings.toLocaleString()}
+                        <span className="ml-2 text-base font-semibold">coins</span>
                       </p>
                     </div>
                     <div className="relative">
@@ -374,7 +382,7 @@ export default function UploaderProfile() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-gray-300 mb-6">
-                    Minimum withdrawal: ₹200 | Current balance: ₹{stats.totalEarnings.toLocaleString()}
+                    Minimum withdrawal: ₹{MIN_WITHDRAWAL_RUPEES} | Current balance: {stats.totalEarnings.toLocaleString()} coins
                   </p>
                   
                   <Dialog open={withdrawalDialogOpen} onOpenChange={setWithdrawalDialogOpen}>
@@ -385,7 +393,7 @@ export default function UploaderProfile() {
                       >
                         <Button 
                           className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold py-3 shadow-lg hover:shadow-emerald-500/50"
-                          disabled={stats.totalEarnings < 200}
+                          disabled={stats.totalEarnings < MIN_WITHDRAWAL_RUPEES * COINS_PER_RUPEE}
                           data-testid="button-request-withdrawal"
                         >
                           <IndianRupee className="h-5 w-5 mr-2" />
@@ -441,13 +449,13 @@ export default function UploaderProfile() {
                               placeholder="Enter amount"
                               className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg placeholder-white/60 focus:border-emerald-400 focus:ring-emerald-400/30 focus:bg-white/20 pl-12 py-4 rounded-xl shadow-lg"
                               min="200"
-                              max={stats.totalEarnings}
+                                  max={Math.floor((stats.totalEarnings || 0) / COINS_PER_RUPEE)}
                               data-testid="input-withdrawal-amount"
                             />
                             <IndianRupee className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-emerald-400" />
                           </div>
                           <p className="text-sm text-white/70 bg-emerald-500/20 px-3 py-2 rounded-lg backdrop-blur-sm">
-                            💰 Available Balance: ₹{stats.totalEarnings.toLocaleString()}
+                            💰 Available Balance: {stats.totalEarnings.toLocaleString()} coins (₹{Math.floor((stats.totalEarnings || 0) / COINS_PER_RUPEE)})
                           </p>
                         </motion.div>
                         

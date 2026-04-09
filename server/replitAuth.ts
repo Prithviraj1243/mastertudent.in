@@ -97,17 +97,23 @@ function verifyPassword(password: string, hash: string): boolean {
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const isProduction = process.env.NODE_ENV === "production";
+  const cookieOptions: session.CookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: sessionTtl,
+    path: "/",
+  };
+
   // In dev SQLite mode, avoid Postgres session store
   if (process.env.USE_SQLITE === '1') {
     return session({
       secret: process.env.SESSION_SECRET || 'dev_secret',
       resave: false,
       saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: sessionTtl,
-      },
+      proxy: isProduction,
+      cookie: cookieOptions,
     });
   }
   
@@ -131,13 +137,8 @@ export function getSession() {
       store: sessionStore,
       resave: false,
       saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        secure: false, // Allow cookies over HTTP in development
-        sameSite: 'lax', // Allow cookies in cross-origin requests
-        maxAge: sessionTtl,
-        path: '/', // Cookie available for all paths
-      },
+      proxy: isProduction,
+      cookie: cookieOptions,
     });
   } catch (error) {
     console.warn('⚠️  Failed to initialize Postgres session store, using memory store');
@@ -145,13 +146,8 @@ export function getSession() {
       secret: process.env.SESSION_SECRET || 'dev_secret',
       resave: false,
       saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: sessionTtl,
-        path: '/',
-      },
+      proxy: isProduction,
+      cookie: cookieOptions,
     });
   }
 }

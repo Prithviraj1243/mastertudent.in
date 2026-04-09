@@ -98,12 +98,6 @@ export function registerRoutes(app: Express): Server {
     });
   });
 
-  // Serve uploaded files statically
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-  // Auth middleware
-  setupAuth(app);
-
   // Version endpoint for cache busting
   app.get("/api/version", (req, res) => {
     res.json({ version: serverStartTime, timestamp: Date.now() });
@@ -2233,6 +2227,25 @@ export function registerRoutes(app: Express): Server {
         link: `/earnings`,
       });
 
+      // Notify all admins so request is visible in admin workflows.
+      try {
+        const allUsers = await storage.getAllUsers();
+        const admins = allUsers.filter((u: any) => u.role === "admin");
+        await Promise.all(
+          admins.map((admin: any) =>
+            storage.createNotification({
+              userId: admin.id,
+              type: "admin_withdrawal_request",
+              title: "New Withdrawal Request",
+              body: `${user.email || "A user"} requested withdrawal of ₹${amount} (${coins} coins).`,
+              link: `/admin/coins`,
+            })
+          )
+        );
+      } catch (notifyError) {
+        console.error("Failed to create admin withdrawal notifications:", notifyError);
+      }
+
       res.json({
         success: true,
         withdrawal,
@@ -2257,6 +2270,13 @@ export function registerRoutes(app: Express): Server {
       const note = await storage.getNoteById(req.params.noteId);
       if (!note) {
         return res.status(404).json({ message: "Note not found" });
+      }
+
+      // Prevent duplicate rewards/approvals for already processed notes
+      if (note.status !== "submitted") {
+        return res.status(400).json({
+          message: `Only submitted notes can be approved. Current status: ${note.status}`,
+        });
       }
 
       // Update note status to approved

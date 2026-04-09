@@ -106,6 +106,8 @@ export default function NotesManagementEnhanced() {
 
       return res.json();
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   // Approve note mutation

@@ -48,7 +48,8 @@ export default function AdminDashboard() {
   const { data: stats, isLoading, refetch } = useQuery<DashboardStats>({
     queryKey: ['/api/admin/dashboard-stats'],
     retry: false,
-    refetchInterval: 30000, // Auto-refetch every 30 seconds
+    refetchInterval: 10000, // Keep admin dashboard live on deploy too
+    refetchOnWindowFocus: true,
   });
 
   // Real-time subscriptions for instant updates

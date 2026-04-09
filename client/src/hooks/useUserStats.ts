@@ -62,6 +62,8 @@ export function useUserStats() {
       }
     },
     enabled: !!user,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch subject-wise stats
@@ -87,6 +89,8 @@ export function useUserStats() {
       }
     },
     enabled: !!user,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   });
 
   // Update stats after upload

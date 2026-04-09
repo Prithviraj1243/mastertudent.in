@@ -139,7 +139,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           if (onSuccess) {
             onSuccess();
           } else {
-            setLocation("/");
+            setLocation("/home");
           }
         }, 500);
       } else {

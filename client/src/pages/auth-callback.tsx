@@ -82,17 +82,17 @@ export default function AuthCallback() {
             localStorage.removeItem('pendingUserRole');
           }
           
-          // Redirect to home page
+          // Redirect authenticated users to home page
           console.log('🚀 Redirecting to home');
-          setLocation('/');
+          setLocation('/home');
         } else {
-          // No session, redirect to home
-          setLocation('/');
+          // No session found, return to login
+          setLocation('/login');
         }
       } catch (error) {
         console.error('Callback error:', error);
         alert('Authentication error');
-        setLocation('/');
+        setLocation('/login');
       }
     };
 

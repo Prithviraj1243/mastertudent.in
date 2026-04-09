@@ -169,9 +169,9 @@ export default function Home() {
                         </span>
                       </div>
                       <div className="text-2xl font-bold text-yellow-300">
-                        ₹{stats.totalEarnings.toLocaleString()}
+                        {stats.totalEarnings.toLocaleString()} coins
                       </div>
-                      <div className="text-xs text-white/80">Total Earned</div>
+                      <div className="text-xs text-white/80">Total Coins Earned</div>
                     </div>
                   </div>
                 </header>
@@ -249,9 +249,9 @@ export default function Home() {
                   </div>
                   <div className="text-yellow-400 text-sm font-bold bounce-in">+28.9%</div>
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-white mb-1 text-glow">₹{stats.totalEarnings.toLocaleString()}</div>
-                <div className="text-slate-300 font-medium text-sm md:text-base">Total Earnings</div>
-                <div className="text-xs text-yellow-400 mt-1 font-medium wiggle">💰 This Month: ₹{stats.monthlyEarnings}</div>
+                <div className="text-xl md:text-2xl font-bold text-white mb-1 text-glow">{stats.totalEarnings.toLocaleString()} coins</div>
+                <div className="text-slate-300 font-medium text-sm md:text-base">Total Coins Earned</div>
+                <div className="text-xs text-yellow-400 mt-1 font-medium wiggle">💰 This Month: {stats.monthlyEarnings} coins</div>
               </CardContent>
             </Card>
             
