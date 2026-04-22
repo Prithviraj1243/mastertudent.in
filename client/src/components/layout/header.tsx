@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { ActivityNotificationBell } from "@/components/activity-notifications";
+import ProfileIcon from "@/components/profile-icon";
 
 export default function Header() {
   const { user, isAuthenticated } = useAuth();
@@ -59,6 +60,9 @@ export default function Header() {
             >
               <ActivityNotificationBell />
             </Button>
+
+            {/* Profile */}
+            <ProfileIcon />
 
           </div>
         </div>

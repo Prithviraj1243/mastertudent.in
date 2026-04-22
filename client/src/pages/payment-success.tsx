@@ -13,12 +13,20 @@ import { Link, useLocation } from "wouter";
 
 export default function PaymentSuccess() {
   const [, setLocation] = useLocation();
-  const [countdown, setCountdown] = React.useState(5);
+  const [countdown, setCountdown] = React.useState(1);
 
   useEffect(() => {
     // Update user status to premium
     localStorage.setItem('userStatus', 'premium');
     localStorage.removeItem('trialDownloads'); // Clear trial data
+    const paymentPlan = localStorage.getItem('payment_plan');
+    if (paymentPlan) {
+      localStorage.setItem('subscriptionPlan', paymentPlan);
+    }
+
+    // Prefer a stored absolute return URL (set before redirecting to Razorpay)
+    const returnUrl =
+      localStorage.getItem('payment_return_url') || `${window.location.origin}/download-notes`;
     
     // Countdown timer
     const countdownInterval = setInterval(() => {
@@ -31,10 +39,11 @@ export default function PaymentSuccess() {
       });
     }, 1000);
     
-    // Auto-redirect to download-notes after 5 seconds
+    // Auto-redirect back to download-notes quickly
     const redirectTimer = setTimeout(() => {
-      setLocation('/download-notes');
-    }, 5000);
+      // Use hard navigation so absolute URLs work (e.g. http://localhost:8000/download-notes)
+      window.location.href = returnUrl;
+    }, 1000);
     
     // Confetti effect
     const duration = 3000;

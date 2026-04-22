@@ -37,11 +37,19 @@ export default function SubscriptionModal({
 
   const handleSubscribe = () => {
     if (selectedPlan === 'monthly') {
-      // Redirect to Razorpay payment link for monthly plan
-      window.open('https://rzp.io/rzp/QvNCCVYQ', '_blank');
+      // Redirect to Razorpay subscription link for monthly plan
+      // Store return info so `/download-notes` can unlock premium on return.
+      localStorage.setItem('payment_return_url', `${window.location.origin}/download-notes`);
+      localStorage.setItem('payment_plan', 'monthly');
+      window.location.href = 'https://rzp.io/rzp/jtfXFz1';
       onClose();
     } else if (selectedPlan === 'yearly') {
-      setShowPaymentGateway(true);
+      // Redirect to Razorpay subscription link for yearly plan
+      // Store return info so `/download-notes` can unlock premium on return.
+      localStorage.setItem('payment_return_url', `${window.location.origin}/download-notes`);
+      localStorage.setItem('payment_plan', 'yearly');
+      window.location.href = 'https://rzp.io/rzp/73206D6';
+      onClose();
     }
   };
 

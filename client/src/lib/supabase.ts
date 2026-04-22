@@ -1,19 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing Supabase environment variables!');
   console.error('VITE_SUPABASE_URL:', supabaseUrl);
-  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Present' : 'Missing');
+  console.error(
+    'Supabase key:',
+    import.meta.env.VITE_SUPABASE_ANON_KEY
+      ? 'VITE_SUPABASE_ANON_KEY present'
+      : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+        ? 'VITE_SUPABASE_PUBLISHABLE_KEY present'
+        : 'Missing'
+  );
   throw new Error('Missing Supabase environment variables');
 }
 
 console.log('🔧 Initializing Supabase client...');
 console.log('📍 Supabase URL:', supabaseUrl);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -34,7 +43,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Log connection status
-supabase.realtime.setAuth(supabaseAnonKey);
+supabase.realtime.setAuth(supabaseKey);
 
 console.log('✅ Supabase client initialized');
 

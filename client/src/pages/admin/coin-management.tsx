@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/admin-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,13 @@ import {
   Gift,
   DollarSign,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  CheckCircle,
+  XCircle,
+  Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 interface Transaction {
   id: string;
@@ -46,8 +50,21 @@ interface CoinStats {
   averageBalance: number;
 }
 
+interface AdminWithdrawal {
+  id: string;
+  topperId: string;
+  amount: string | number;
+  coins: number;
+  status: 'pending' | 'approved' | 'rejected' | 'settled';
+  upiId?: string | null;
+  requestedAt: string;
+  processedAt?: string | null;
+  rejectionReason?: string | null;
+}
+
 export default function CoinManagement() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
@@ -59,6 +76,50 @@ export default function CoinManagement() {
   const { data: transactions, isLoading } = useQuery<Transaction[]>({
     queryKey: ['/api/admin/transactions'],
     retry: false,
+  });
+
+  const { data: withdrawals = [], isLoading: withdrawalsLoading } = useQuery<AdminWithdrawal[]>({
+    queryKey: ['/api/admin/withdrawals'],
+    retry: false,
+    refetchInterval: 10000,
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/withdrawals/${id}/approve`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to approve withdrawal');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Withdrawal approved', description: 'User will receive payout update within 24 hours.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/withdrawals'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Approval failed', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (payload: { id: string; reason: string }) => {
+      const res = await fetch(`/api/admin/withdrawals/${payload.id}/reject`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: payload.reason }),
+      });
+      if (!res.ok) throw new Error('Failed to reject withdrawal');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Withdrawal rejected' });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/withdrawals'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Rejection failed', description: error.message, variant: 'destructive' });
+    },
   });
 
   const filteredTransactions = transactions?.filter((tx) => {
@@ -96,6 +157,13 @@ export default function CoinManagement() {
       default:
         return null;
     }
+  };
+
+  const getWithdrawalStatusBadge = (status: string) => {
+    if (status === 'pending') return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+    if (status === 'approved') return <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
+    if (status === 'settled') return <Badge className="bg-green-500/10 text-green-400 border-green-500/20"><CheckCircle className="w-3 h-3 mr-1" />Settled</Badge>;
+    return <Badge className="bg-red-500/10 text-red-400 border-red-500/20"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
   };
 
   return (
@@ -332,6 +400,75 @@ export default function CoinManagement() {
                       <TableCell className="text-slate-300">{tx.balanceBefore}</TableCell>
                       <TableCell className="text-slate-300">{tx.balanceAfter}</TableCell>
                       <TableCell className="text-slate-300">{tx.timestamp}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Withdrawal Requests */}
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader>
+            <CardTitle className="text-white">Withdrawal Requests</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-800 hover:bg-slate-800/50">
+                  <TableHead className="text-slate-400">Amount</TableHead>
+                  <TableHead className="text-slate-400">Coins</TableHead>
+                  <TableHead className="text-slate-400">UPI</TableHead>
+                  <TableHead className="text-slate-400">Requested</TableHead>
+                  <TableHead className="text-slate-400">Status</TableHead>
+                  <TableHead className="text-slate-400 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {withdrawalsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-slate-400 py-8">Loading requests...</TableCell>
+                  </TableRow>
+                ) : withdrawals.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-slate-400 py-8">No withdrawal requests</TableCell>
+                  </TableRow>
+                ) : (
+                  withdrawals.map((w) => (
+                    <TableRow key={w.id} className="border-slate-800 hover:bg-slate-800/50">
+                      <TableCell className="text-white font-semibold">₹{Number(w.amount).toFixed(2)}</TableCell>
+                      <TableCell className="text-slate-300">{w.coins}</TableCell>
+                      <TableCell className="text-slate-300">{w.upiId || '-'}</TableCell>
+                      <TableCell className="text-slate-300">{formatDistanceToNow(new Date(w.requestedAt), { addSuffix: true })}</TableCell>
+                      <TableCell>{getWithdrawalStatusBadge(w.status)}</TableCell>
+                      <TableCell className="text-right">
+                        {w.status === 'pending' ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => approveMutation.mutate(w.id)}
+                              disabled={approveMutation.isPending || rejectMutation.isPending}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                const reason = window.prompt('Reason for rejection:', 'Invalid payment details') || 'Rejected by admin';
+                                rejectMutation.mutate({ id: w.id, reason });
+                              }}
+                              disabled={approveMutation.isPending || rejectMutation.isPending}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-500">Processed</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

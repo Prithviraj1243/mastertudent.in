@@ -1,4 +1,4 @@
-import { Switch, Route, Router } from "wouter";
+import { Switch, Route, Router, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -60,9 +60,17 @@ import { useBrowserLocation } from "wouter/use-browser-location";
 
 function AppRouter() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
   
   // Initialize real-time activity monitoring
   useRealTimeActivity();
+
+  // Always allow the OAuth callback route to render.
+  // Otherwise the app can get stuck on loading/landing before the callback code
+  // has a chance to read the Supabase session and redirect.
+  if (location.startsWith("/auth/callback")) {
+    return <AuthCallback />;
+  }
 
   // Check for direct authentication bypass
   const isDirectAuth = typeof window !== 'undefined' && sessionStorage.getItem('directAuth') === 'true';
@@ -155,6 +163,7 @@ function AppRouter() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/create-account" component={CreateAccount} />
+      <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route component={Landing} />
     </Switch>

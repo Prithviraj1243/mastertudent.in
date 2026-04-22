@@ -23,6 +23,7 @@ import DodoPaymentGateway from "@/components/dodo-payment-gateway";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
+import { supabase } from "@/lib/supabase";
 
 interface Note {
   id: number;
@@ -127,6 +128,27 @@ export default function DownloadNotes() {
     fetchNotes();
   }, []);
 
+  // Realtime refresh when notes change (approved uploads, edits, deletes)
+  useEffect(() => {
+    let isMounted = true;
+    const channel = supabase
+      .channel('download-notes-refresh')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notes' },
+        async () => {
+          if (!isMounted) return;
+          await fetchNotes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      channel.unsubscribe();
+    };
+  }, []);
+
   // Handle payment return from Razorpay
   useEffect(() => {
     const checkPaymentReturn = () => {
@@ -142,6 +164,9 @@ export default function DownloadNotes() {
         // Update user status to premium
         setUserStatus('premium');
         localStorage.setItem('userStatus', 'premium');
+        if (paymentPlan) {
+          localStorage.setItem('subscriptionPlan', paymentPlan);
+        }
         
         toast({
           title: "Payment Successful! 🎉",
@@ -302,6 +327,9 @@ export default function DownloadNotes() {
                       <span className="font-bold text-purple-400">PREMIUM MEMBER</span>
                     </div>
                     <div className="text-lg font-bold text-white">Unlimited Downloads</div>
+                    <div className="text-sm text-purple-200/80 mt-1">
+                      Plan: {(localStorage.getItem('subscriptionPlan') || 'monthly') === 'yearly' ? 'Yearly' : 'Monthly'}
+                    </div>
                   </div>
                 )}
               </div>

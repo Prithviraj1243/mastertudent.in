@@ -70,7 +70,7 @@ export default function DodoPaymentGateway({
       } else {
         // Monthly plan (₹59) - use Razorpay link
         planType = 'monthly';
-        checkoutUrl = 'https://rzp.io/rzp/t3Nj23ve';
+        checkoutUrl = 'https://rzp.io/rzp/jtfXFz1';
         
         // Store return URL in localStorage so we can redirect after payment
         localStorage.setItem('payment_return_url', `${window.location.origin}/download-notes`);

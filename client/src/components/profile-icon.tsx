@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +7,6 @@ import {
   LogOut, 
   Settings, 
   Crown,
-  Mail,
-  Phone,
   ChevronDown,
   Sparkles,
   Coins,
@@ -16,14 +14,7 @@ import {
   Star
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface GoogleUser {
-  name: string;
-  email: string;
-  picture?: string;
-  given_name?: string;
-  family_name?: string;
-}
+import { useAuth } from "@/hooks/useAuth";
 
 // Extend Window interface for Google API
 declare global {
@@ -40,55 +31,36 @@ declare global {
 
 export default function ProfileIcon() {
   const [isOpen, setIsOpen] = useState(false);
-  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
-  const [isGoogleAuth, setIsGoogleAuth] = useState(false);
+  const { user, supabaseUser, signOut } = useAuth();
 
-  useEffect(() => {
-    // Check for Google user data in sessionStorage
-    const googleEmail = sessionStorage.getItem('userEmail');
-    const googleName = sessionStorage.getItem('userName');
-    const googlePicture = sessionStorage.getItem('userPicture');
-    
-    if (googleEmail && googleName) {
-      setGoogleUser({
-        name: googleName,
-        email: googleEmail,
-        picture: googlePicture || undefined,
-        given_name: googleName.split(' ')[0],
-        family_name: googleName.split(' ').slice(1).join(' ')
-      });
-      setIsGoogleAuth(true);
-    } else {
-      // Fallback to default user
-      setGoogleUser({
-        name: 'Student User',
-        email: 'student@masterstudent.com'
-      });
-      setIsGoogleAuth(false);
-    }
-  }, []);
+  const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+    supabaseUser?.user_metadata?.full_name ||
+    supabaseUser?.email ||
+    'User';
+
+  const email = user?.email || supabaseUser?.email || '';
+  const picture =
+    user?.profileImageUrl ||
+    (supabaseUser?.user_metadata?.avatar_url as string | undefined) ||
+    (supabaseUser?.user_metadata?.picture as string | undefined);
+
+  const isGoogleAuth =
+    (supabaseUser?.app_metadata as any)?.provider === 'google' ||
+    (supabaseUser?.identities || []).some((i: any) => i?.provider === 'google');
+
+  const getSubscriptionLabel = () => {
+    const status = localStorage.getItem('userStatus');
+    if (status !== 'premium') return null;
+    const plan =
+      localStorage.getItem('subscriptionPlan') ||
+      localStorage.getItem('payment_plan') ||
+      'monthly';
+    return plan === 'yearly' ? 'Yearly' : 'Monthly';
+  };
 
   const handleLogout = async () => {
-    try {
-      // Call the logout API endpoint
-      await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error('Logout API error:', error);
-    }
-    
-    // Clear all session data
-    sessionStorage.clear();
-    localStorage.clear();
-    
-    // Clear any Google authentication
-    if (window.google && window.google.accounts) {
-      window.google.accounts.id.disableAutoSelect();
-    }
-    
-    // Redirect to landing page
+    await signOut();
     window.location.href = '/';
   };
 
@@ -101,7 +73,8 @@ export default function ProfileIcon() {
       .slice(0, 2);
   };
 
-  if (!googleUser) return null;
+  if (!user && !supabaseUser) return null;
+  const subscriptionLabel = getSubscriptionLabel();
 
   return (
     <div className="relative">
@@ -112,15 +85,15 @@ export default function ProfileIcon() {
         onClick={() => setIsOpen(!isOpen)}
       >
         <Avatar className="h-9 w-9 border-2 border-purple-500/30 hover:border-purple-400/50 transition-all duration-300">
-          {googleUser.picture && (
+          {picture && (
             <AvatarImage 
-              src={googleUser.picture} 
-              alt={googleUser.name}
+              src={picture} 
+              alt={displayName}
               className="object-cover"
             />
           )}
           <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold">
-            {getInitials(googleUser.name)}
+            {getInitials(displayName)}
           </AvatarFallback>
         </Avatar>
         
@@ -162,32 +135,37 @@ export default function ProfileIcon() {
               <div className="p-6 border-b border-slate-600/50">
                 <div className="flex items-center space-x-4">
                   <Avatar className="h-14 w-14 border-2 border-purple-500/30">
-                    {googleUser.picture && (
+                    {picture && (
                       <AvatarImage 
-                        src={googleUser.picture} 
-                        alt={googleUser.name}
+                        src={picture} 
+                        alt={displayName}
                         className="object-cover"
                       />
                     )}
                     <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-bold">
-                      {getInitials(googleUser.name)}
+                      {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-lg font-semibold text-white">
-                        {googleUser.name}
+                        {displayName}
                       </h3>
                       {isGoogleAuth && (
                         <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
-                          <Mail className="h-3 w-3 mr-1" />
                           Google
+                        </Badge>
+                      )}
+                      {subscriptionLabel && (
+                        <Badge className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-200 border-purple-500/30 text-xs">
+                          <Crown className="h-3 w-3 mr-1 text-yellow-400" />
+                          {subscriptionLabel}
                         </Badge>
                       )}
                     </div>
                     <p className="text-sm text-slate-300 flex items-center gap-2">
-                      {googleUser.email}
+                      {email}
                       {isGoogleAuth && (
                         <span className="text-green-400">✓</span>
                       )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,10 +30,14 @@ import { formatDistanceToNow } from "date-fns";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeCoinBalance } from "@/hooks/useRealtimeCoinBalance";
+import { supabase } from "@/lib/supabase";
 
-// Conversion rate: 2 coins = 1 rupee
-const COINS_PER_RUPEE = 2;
-const MINIMUM_WITHDRAWAL_COINS = 100; // Minimum 100 coins (50 rupees)
+// Conversion rate: 20 coins = 1 rupee
+const COINS_PER_RUPEE = 20;
+const MINIMUM_WITHDRAWAL_COINS = 200;
+const MINIMUM_WITHDRAWAL_RUPEES = MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE;
 
 interface EarningsStats {
   coinBalance: number;
@@ -72,11 +76,13 @@ export default function EarningsPage() {
   const [bankDetails, setBankDetails] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { coinBalance: realtimeCoinBalance, totalEarned: realtimeTotalEarned } =
+    useRealtimeCoinBalance(user?.id);
 
   // Fetch earnings stats
   const { data: stats, isLoading: statsLoading } = useQuery<EarningsStats>({
     queryKey: ['/api/earnings/stats'],
-    refetchInterval: 30000,
   });
 
   // Fetch withdrawal requests
@@ -121,7 +127,7 @@ export default function EarningsPage() {
     if (!coins || coins < MINIMUM_WITHDRAWAL_COINS) {
       toast({
         title: "Invalid Amount",
-        description: `Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} coins (₹${MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE})`,
+        description: `Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} coins (₹${MINIMUM_WITHDRAWAL_RUPEES})`,
         variant: "destructive",
       });
       return;
@@ -150,7 +156,7 @@ export default function EarningsPage() {
       coins,
       amount,
       upiId: upiId || undefined,
-      bankDetails: bankDetails || undefined,
+      bankDetails: bankDetails ? JSON.stringify({ text: bankDetails }) : undefined,
     });
   };
 
@@ -174,7 +180,44 @@ export default function EarningsPage() {
     );
   };
 
-  const rupeesAmount = coinsToRedeem ? coinsToRupees(parseInt(coinsToRedeem) || 0) : 0;
+  const rupeesAmount = useMemo(
+    () => (coinsToRedeem ? coinsToRupees(parseInt(coinsToRedeem) || 0) : 0),
+    [coinsToRedeem]
+  );
+
+  // Realtime: refresh queries when related tables change
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/earnings/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/earnings/withdrawals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/earnings/transactions'] });
+    };
+
+    const channel = supabase
+      .channel(`earnings-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'withdrawal_requests', filter: `topper_id=eq.${user.id}` },
+        invalidate
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
+        invalidate
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${user.id}` },
+        invalidate
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [queryClient, user?.id]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
@@ -196,7 +239,7 @@ export default function EarningsPage() {
           <Alert className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
             <Coins className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800">
-              <strong>Conversion Rate:</strong> 2 Coins = ₹1 Rupee | Minimum withdrawal: {MINIMUM_WITHDRAWAL_COINS} coins (₹{MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE})
+              <strong>Conversion Rate:</strong> {COINS_PER_RUPEE} Coins = ₹1 Rupee | Minimum withdrawal: {MINIMUM_WITHDRAWAL_COINS} coins (₹{MINIMUM_WITHDRAWAL_RUPEES})
             </AlertDescription>
           </Alert>
 
@@ -209,10 +252,10 @@ export default function EarningsPage() {
                   <Coins className="h-8 w-8 text-yellow-500" />
                 </div>
                 <p className="text-3xl font-bold text-yellow-700">
-                  {statsLoading ? '...' : stats?.coinBalance?.toLocaleString() || '0'}
+                  {statsLoading ? '...' : (realtimeCoinBalance ?? stats?.coinBalance ?? 0).toLocaleString()}
                 </p>
                 <p className="text-sm text-yellow-600 mt-1">
-                  ≈ ₹{statsLoading ? '...' : coinsToRupees(stats?.coinBalance || 0).toFixed(2)}
+                  ≈ ₹{statsLoading ? '...' : coinsToRupees(realtimeCoinBalance ?? stats?.coinBalance ?? 0).toFixed(2)}
                 </p>
               </CardContent>
             </Card>
@@ -224,10 +267,10 @@ export default function EarningsPage() {
                   <TrendingUp className="h-8 w-8 text-green-500" />
                 </div>
                 <p className="text-3xl font-bold text-green-700">
-                  {statsLoading ? '...' : stats?.totalEarned?.toLocaleString() || '0'}
+                  {statsLoading ? '...' : (realtimeTotalEarned ?? stats?.totalEarned ?? 0).toLocaleString()}
                 </p>
                 <p className="text-sm text-green-600 mt-1">
-                  ≈ ₹{statsLoading ? '...' : coinsToRupees(stats?.totalEarned || 0).toFixed(2)}
+                  ≈ ₹{statsLoading ? '...' : coinsToRupees(realtimeTotalEarned ?? stats?.totalEarned ?? 0).toFixed(2)}
                 </p>
               </CardContent>
             </Card>
@@ -269,7 +312,7 @@ export default function EarningsPage() {
               <Banknote className="h-16 w-16 mx-auto mb-4 animate-bounce" />
               <h2 className="text-2xl font-bold mb-2">Ready to Redeem Your Coins?</h2>
               <p className="mb-6 text-emerald-50">
-                Convert your coins to rupees and withdraw to your UPI or bank account
+                Convert your coins to rupees and request withdrawal to UPI/bank. Admin approves and payout is processed within 24 hours.
               </p>
               <Button
                 size="lg"
@@ -278,7 +321,7 @@ export default function EarningsPage() {
                 className="bg-white text-emerald-600 hover:bg-emerald-50 font-bold"
               >
                 <Wallet className="mr-2 h-5 w-5" />
-                Redeem Coins for Cash
+                Request Withdrawal
               </Button>
               {(stats?.availableForWithdrawal || 0) < MINIMUM_WITHDRAWAL_COINS && (
                 <p className="text-sm text-emerald-100 mt-3">
@@ -445,7 +488,7 @@ export default function EarningsPage() {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Withdrawals are processed within 2-3 business days. You'll receive a notification once approved.
+                    Admin reviews requests quickly. Once approved, your payout is processed within 24 hours.
                   </AlertDescription>
                 </Alert>
               </div>
