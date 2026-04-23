@@ -98,10 +98,17 @@ function verifyPassword(password: string, hash: string): boolean {
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const isProduction = process.env.NODE_ENV === "production";
+  const sessionSecret = process.env.SESSION_SECRET || "dev_secret";
+  const sessionSameSite =
+    (process.env.SESSION_SAME_SITE as "lax" | "strict" | "none" | undefined) ||
+    "lax";
+  const useSecureCookies =
+    isProduction && process.env.SESSION_SECURE !== "false";
+
   const cookieOptions: session.CookieOptions = {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    secure: useSecureCookies,
+    sameSite: sessionSameSite,
     maxAge: sessionTtl,
     path: "/",
   };
@@ -109,11 +116,13 @@ export function getSession() {
   // Dev: always use MemoryStore unless explicitly opted into Postgres sessions.
   // This avoids noisy/crashy startup when DATABASE_URL points to an unreachable host.
   const usePostgresSessionStore =
-    isProduction || process.env.USE_PG_SESSION_STORE === "1";
+    (isProduction || process.env.USE_PG_SESSION_STORE === "1") &&
+    !!process.env.DATABASE_URL;
 
   if (!usePostgresSessionStore) {
+    console.warn("⚠️ Using in-memory session store");
     return session({
-      secret: process.env.SESSION_SECRET || "dev_secret",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       proxy: isProduction,
@@ -126,7 +135,7 @@ export function getSession() {
     const pgStore = connectPg(session);
     const sessionStore = new pgStore({
       conString: process.env.DATABASE_URL,
-      createTableIfMissing: false,
+      createTableIfMissing: true,
       ttl: sessionTtl,
       tableName: "sessions",
     });
@@ -137,7 +146,7 @@ export function getSession() {
     });
     
     return session({
-      secret: process.env.SESSION_SECRET!,
+      secret: sessionSecret,
       store: sessionStore,
       resave: false,
       saveUninitialized: false,
@@ -147,7 +156,7 @@ export function getSession() {
   } catch (error) {
     console.warn('⚠️  Failed to initialize Postgres session store, using memory store');
     return session({
-      secret: process.env.SESSION_SECRET || "dev_secret",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       proxy: isProduction,
