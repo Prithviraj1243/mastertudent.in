@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserStats, useSubjectContent } from "@/hooks/useUserStats";
+import { supabase } from "@/lib/supabase";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,27 +77,72 @@ export default function Upload() {
   // Get subject content (chapters and units)
   const subjectContent = useSubjectContent(selectedSubject);
 
+  const syncBackendSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      throw new Error("No active login session found. Please log in again.");
+    }
+
+    const syncResponse = await fetch("/api/auth/sync-supabase-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        email: session.user.email,
+        firstName:
+          session.user.user_metadata?.given_name ||
+          session.user.email?.split("@")[0],
+        lastName: session.user.user_metadata?.family_name || "",
+        profileImageUrl:
+          session.user.user_metadata?.avatar_url ||
+          session.user.user_metadata?.picture ||
+          "",
+        role: "student",
+        supabaseUserId: session.user.id,
+      }),
+    });
+
+    if (!syncResponse.ok) {
+      const syncErrorText = await syncResponse.text();
+      throw new Error(syncErrorText || "Failed to restore login session");
+    }
+  };
+
 
   const uploadMutation = useMutation({
     mutationFn: async (data: UploadFormData) => {
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        // Convert "none" categoryId to empty string
-        if (key === 'categoryId' && value === 'none') {
-          formData.append(key, '');
-        } else {
-          formData.append(key, value);
-        }
-      });
-      files.forEach(file => {
-        formData.append('files', file);
-      });
+      const attemptUpload = async () => {
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+          // Convert "none" categoryId to empty string
+          if (key === 'categoryId' && value === 'none') {
+            formData.append(key, '');
+          } else {
+            formData.append(key, value);
+          }
+        });
+        files.forEach(file => {
+          formData.append('files', file);
+        });
 
-      const response = await fetch('/api/notes', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+        return fetch('/api/notes', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+      };
+
+      let response = await attemptUpload();
+      if (response.status === 401) {
+        await syncBackendSession();
+        response = await attemptUpload();
+      }
+
+      if (response.status === 401) {
+        throw new Error("401: Unauthorized - Please log in");
+      }
 
       if (!response.ok) {
         const error = await response.text();
@@ -143,7 +189,7 @@ export default function Upload() {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          description: "Session expired on server. Please log in again.",
           variant: "destructive",
         });
         setTimeout(() => {
