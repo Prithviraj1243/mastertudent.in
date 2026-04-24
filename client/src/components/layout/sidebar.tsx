@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useUserStats } from "@/hooks/useUserStats";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,9 +57,13 @@ declare global {
 
 export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
   const { user } = useAuth();
+  const { stats } = useUserStats();
   const [location] = useLocation();
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
+
+  // 20 coins = ₹1
+  const coinsToRupees = (coins: number) => (coins / 20).toFixed(2);
 
   // Close mobile sidebar when route changes
   useEffect(() => {
@@ -103,7 +108,7 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
 
 
   const myActivityLinks = [
-    { path: "/my-uploads", icon: Download, label: "My Uploads", active: isActive("/my-uploads"), badge: "0" },
+    { path: "/my-uploads", icon: Download, label: "My Uploads", active: isActive("/my-uploads"), badge: stats.notesUploaded > 0 ? String(stats.notesUploaded) : null },
     { path: "/earnings", icon: Wallet, label: "💰 My Earnings", active: isActive("/earnings"), badge: null },
     { path: "/history", icon: History, label: "History", active: isActive("/history"), badge: null },
   ];
@@ -188,11 +193,12 @@ export default function Sidebar({ currentMode = 'dashboard' }: SidebarProps) {
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="bg-purple-500/10 rounded-lg p-2">
                 <div className="text-xs text-purple-300 font-medium">Notes</div>
-                <div className="text-sm font-bold text-white">0</div>
+                <div className="text-sm font-bold text-white">{stats.notesUploaded}</div>
               </div>
               <div className="bg-cyan-500/10 rounded-lg p-2">
-                <div className="text-xs text-cyan-300 font-medium">Points</div>
-                <div className="text-sm font-bold text-white">0</div>
+                <div className="text-xs text-cyan-300 font-medium">🪙 Coins</div>
+                <div className="text-sm font-bold text-yellow-300">{stats.coinBalance ?? stats.totalEarnings}</div>
+                <div className="text-xs text-green-400">₹{((stats.coinBalance ?? stats.totalEarnings) / 20).toFixed(2)}</div>
               </div>
             </div>
           </div>

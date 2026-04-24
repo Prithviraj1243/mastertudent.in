@@ -37,6 +37,7 @@ import ProfileUpdate from "@/pages/profile-update";
 import ProfileEdit from "@/pages/profile-edit";
 import PaymentSuccess from "@/pages/payment-success";
 import MyActivity from "@/pages/my-activity";
+import MyUploads from "@/pages/my-uploads";
 import BrowseNotes from "@/pages/browse";
 import TrendingNotes from "@/pages/trending";
 import CategoriesPage from "@/pages/categories";
@@ -142,6 +143,7 @@ function AppRouter() {
           <Route path="/profile/edit" component={ProfileEdit} />
           <Route path="/payment-success" component={PaymentSuccess} />
           <Route path="/my-activity" component={MyActivity} />
+          <Route path="/my-uploads" component={MyUploads} />
           <Route path="/browse" component={BrowseNotes} />
           <Route path="/trending" component={TrendingNotes} />
           <Route path="/categories" component={CategoriesPage} />

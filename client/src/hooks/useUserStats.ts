@@ -12,6 +12,7 @@ interface UserStats {
   totalViews: number;
   activeNotes: number;
   pendingReviews: number;
+  coinBalance?: number;
 }
 
 interface SubjectStats {
@@ -32,7 +33,32 @@ const defaultStats: UserStats = {
   totalViews: 0,
   activeNotes: 0,
   pendingReviews: 0,
+  coinBalance: 0,
 };
+
+// Helper: build auth headers from Supabase session
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['x-supabase-token'] = session.access_token;
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    if (session?.user?.id) {
+      headers['x-user-id'] = session.user.id;
+    }
+  } catch { /* ignore */ }
+  // Fallback from sessionStorage
+  if (!headers['x-user-id']) {
+    try {
+      const raw = sessionStorage.getItem('authUser');
+      const u = raw ? JSON.parse(raw) : null;
+      if (u?.id) headers['x-user-id'] = u.id;
+    } catch { /* ignore */ }
+  }
+  return headers;
+}
 
 export function useUserStats() {
   const { user } = useAuth();
@@ -50,20 +76,19 @@ export function useUserStats() {
       : undefined;
   const effectiveUserId = user?.id || fallbackUserId;
 
-  // Fetch user stats
+  // Fetch user stats — always sends JWT token
   const { data: stats, isLoading } = useQuery<UserStats>({
     queryKey: ['/api/user/stats', effectiveUserId || "guest"],
     queryFn: async () => {
       try {
+        const authHeaders = await getAuthHeaders();
         const response = await fetch('/api/user/stats', {
           credentials: 'include',
+          headers: authHeaders,
         });
         
         if (!response.ok) {
-          // If user stats don't exist, return default stats
-          if (response.status === 404) {
-            return defaultStats;
-          }
+          if (response.status === 404) return defaultStats;
           throw new Error('Failed to fetch stats');
         }
         
@@ -74,17 +99,20 @@ export function useUserStats() {
       }
     },
     enabled: true,
-    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchInterval: 20000,
     refetchOnWindowFocus: true,
   });
 
-  // Fetch subject-wise stats
+  // Fetch subject-wise stats — always sends JWT token
   const { data: subjectStats } = useQuery<SubjectStats[]>({
     queryKey: ['/api/user/subject-stats', effectiveUserId || "guest"],
     queryFn: async () => {
       try {
+        const authHeaders = await getAuthHeaders();
         const response = await fetch('/api/user/subject-stats', {
           credentials: 'include',
+          headers: authHeaders,
         });
         
         if (!response.ok) {
@@ -99,13 +127,21 @@ export function useUserStats() {
       }
     },
     enabled: true,
-    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchInterval: 20000,
     refetchOnWindowFocus: true,
   });
+
 
   // Realtime refresh when user's notes are inserted/updated/deleted
   useEffect(() => {
     if (!effectiveUserId) return;
+
+    const channelName = `user-stats-${effectiveUserId}`;
+
+    // Remove any existing channel with this name to prevent
+    // "cannot add postgres_changes callbacks after subscribe()" error
+    supabase.removeChannel(supabase.channel(channelName));
 
     const invalidate = () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/stats'] });
@@ -113,16 +149,21 @@ export function useUserStats() {
     };
 
     const channel = supabase
-      .channel(`user-stats-${effectiveUserId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notes', filter: `topper_id=eq.${effectiveUserId}` },
         invalidate
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          // Silently ignore realtime errors — polling will still keep data fresh
+          console.warn('Realtime channel error, falling back to polling');
+        }
+      });
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [effectiveUserId, queryClient]);
 

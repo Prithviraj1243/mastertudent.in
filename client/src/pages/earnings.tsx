@@ -31,9 +31,11 @@ import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Conversion rate: 2 coins = 1 rupee
-const COINS_PER_RUPEE = 2;
-const MINIMUM_WITHDRAWAL_COINS = 100; // Minimum 100 coins (50 rupees)
+import { supabase } from "@/lib/supabase";
+
+// Conversion rate: 20 coins = 1 rupee
+const COINS_PER_RUPEE = 20;
+const MINIMUM_WITHDRAWAL_COINS = 100; // Minimum 100 coins (₹5)
 
 interface EarningsStats {
   coinBalance: number;
@@ -73,10 +75,40 @@ export default function EarningsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch earnings stats
+  // Fetch earnings stats — direct Supabase via backend (same as /api/user/stats)
   const { data: stats, isLoading: statsLoading } = useQuery<EarningsStats>({
     queryKey: ['/api/earnings/stats'],
-    refetchInterval: 30000,
+    queryFn: async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers['x-supabase-token'] = session.access_token;
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        try {
+          const raw = sessionStorage.getItem('authUser');
+          const uid = raw ? JSON.parse(raw)?.id : null;
+          if (uid) headers['x-user-id'] = uid;
+        } catch { /* ignore */ }
+
+        const res = await fetch('/api/user/stats', { credentials: 'include', headers });
+        if (!res.ok) throw new Error('Failed');
+        const s = await res.json();
+        // Map /api/user/stats fields to EarningsStats shape
+        return {
+          coinBalance: s.coinBalance ?? s.totalEarnings ?? 0,
+          totalEarned: s.totalEarnings ?? 0,
+          pendingWithdrawals: 0,
+          totalWithdrawn: 0,
+          availableForWithdrawal: s.coinBalance ?? s.totalEarnings ?? 0,
+        } as EarningsStats;
+      } catch {
+        return { coinBalance: 0, totalEarned: 0, pendingWithdrawals: 0, totalWithdrawn: 0, availableForWithdrawal: 0 };
+      }
+    },
+    refetchInterval: 20000,
+    staleTime: 10000,
   });
 
   // Fetch withdrawal requests
@@ -196,7 +228,7 @@ export default function EarningsPage() {
           <Alert className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
             <Coins className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800">
-              <strong>Conversion Rate:</strong> 2 Coins = ₹1 Rupee | Minimum withdrawal: {MINIMUM_WITHDRAWAL_COINS} coins (₹{MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE})
+              <strong>Conversion Rate:</strong> 20 Coins = ₹1 Rupee | Minimum withdrawal: {MINIMUM_WITHDRAWAL_COINS} coins (₹{(MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE).toFixed(2)})
             </AlertDescription>
           </Alert>
 

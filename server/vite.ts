@@ -91,18 +91,25 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  // Vite builds to dist/public (configured in vite.config.ts outDir)
+  // __dirname is server/ at runtime, so we go up one level to project root
+  const distPath = path.resolve(__dirname, "..", "dist", "public");
 
-  if (!fs.existsSync(distPath)) {
+  // Fallback: some environments may place it at dist/public relative to cwd
+  const altPath = path.resolve(process.cwd(), "dist", "public");
+
+  const resolvedPath = fs.existsSync(distPath) ? distPath : fs.existsSync(altPath) ? altPath : null;
+
+  if (!resolvedPath) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find the build directory. Tried:\n  ${distPath}\n  ${altPath}\nMake sure to run 'npm run build' first.`,
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(resolvedPath));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(resolvedPath, "index.html"));
   });
 }

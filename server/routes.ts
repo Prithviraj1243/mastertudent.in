@@ -1808,7 +1808,35 @@ export function registerRoutes(app: Express): Server {
 
   // Get user stats for home page — direct Supabase REST (no pooler/ORM lag)
   app.get("/api/user/stats", isAuthenticated, async (req: any, res) => {
-    const userId = getUserId(req);
+    // Resolve internal user ID — try email from JWT first (most reliable)
+    const supaUrl2 = process.env.SUPABASE_URL!;
+    const supaKey2 = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const hLookup  = { 'apikey': supaKey2, 'Authorization': `Bearer ${supaKey2}` };
+
+    let userId = getUserId(req) || (req.headers['x-user-id'] as string) || '';
+
+    // Decode JWT email for reliable internal-ID resolution
+    const tokenRaw = (req.headers['x-supabase-token'] as string)
+      || ((req.headers['authorization'] as string || '').replace('Bearer ', ''));
+    let jwtEmail = '';
+    if (tokenRaw) {
+      try {
+        const p = tokenRaw.split('.');
+        if (p.length === 3) {
+          const pl = JSON.parse(Buffer.from(p[1], 'base64url').toString('utf8'));
+          if (pl.exp > Math.floor(Date.now() / 1000)) jwtEmail = pl.email || '';
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Resolve via email → internal DB id
+    if (jwtEmail) {
+      try {
+        const r = await fetch(`${supaUrl2}/rest/v1/users?email=eq.${encodeURIComponent(jwtEmail)}&select=id&limit=1`, { headers: hLookup });
+        if (r.ok) { const rows = await r.json(); if (rows.length > 0) userId = rows[0].id; }
+      } catch { /* ignore */ }
+    }
+
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     try {
@@ -1891,6 +1919,94 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching subject stats:", error);
       res.status(500).json({ message: "Failed to fetch subject stats" });
+    }
+  });
+
+  // ── GET user's own notes — resolves internal ID via email from JWT ──────────
+  app.get("/api/user/notes", async (req: any, res) => {
+    const supaUrl = process.env.SUPABASE_URL!;
+    const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const h = { 'apikey': supaKey, 'Authorization': `Bearer ${supaKey}`, 'Content-Type': 'application/json' };
+
+    // ── Step 1: Decode JWT to get email (most reliable identifier) ──────────
+    let jwtEmail: string = '';
+    let jwtSub: string   = '';
+    const authHeader  = (req.headers['authorization']    as string) || '';
+    const tokenHeader = (req.headers['x-supabase-token'] as string) || '';
+    const rawToken    = tokenHeader || (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '');
+
+    if (rawToken) {
+      try {
+        const parts   = rawToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+          const now     = Math.floor(Date.now() / 1000);
+          if (payload.exp > now) {
+            jwtEmail = payload.email || '';
+            jwtSub   = payload.sub   || '';
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    const headerUserId = (req.headers['x-user-id'] as string) || '';
+
+    console.log(`📋 /api/user/notes → headerUserId=${headerUserId} | jwtEmail=${jwtEmail} | jwtSub=${jwtSub}`);
+
+    // ── Step 2: Resolve internal users.id ───────────────────────────────────
+    let internalUserId = '';
+
+    // 2a. Look up by email (most reliable — email never changes)
+    if (jwtEmail) {
+      const r = await fetch(`${supaUrl}/rest/v1/users?email=eq.${encodeURIComponent(jwtEmail)}&select=id&limit=1`, { headers: h });
+      if (r.ok) {
+        const rows = await r.json();
+        if (rows.length > 0) { internalUserId = rows[0].id; console.log('✅ Resolved via email:', jwtEmail, '->', internalUserId); }
+      }
+    }
+
+    // 2b. Fallback: try headerUserId directly (might already be internal ID)
+    if (!internalUserId && headerUserId) {
+      const r = await fetch(`${supaUrl}/rest/v1/users?id=eq.${headerUserId}&select=id&limit=1`, { headers: h });
+      if (r.ok) {
+        const rows = await r.json();
+        if (rows.length > 0) { internalUserId = rows[0].id; console.log('✅ Resolved via x-user-id:', internalUserId); }
+      }
+    }
+
+    // 2c. Last resort: session userId
+    if (!internalUserId && req.session?.userId) internalUserId = req.session.userId;
+
+    if (!internalUserId) {
+      console.warn('❌ /api/user/notes — could not resolve user ID');
+      return res.status(401).json({ message: 'Unauthorized — could not identify user' });
+    }
+
+    // ── Step 3: Fetch notes ─────────────────────────────────────────────────
+    try {
+      const notesRes = await fetch(
+        `${supaUrl}/rest/v1/notes?topper_id=eq.${internalUserId}&select=id,title,subject,status,attachments,views_count,downloads_count,created_at,updated_at&order=created_at.desc`,
+        { headers: h }
+      );
+
+      if (!notesRes.ok) {
+        const err = await notesRes.text();
+        console.error('Supabase notes fetch error:', err);
+        return res.status(500).json({ message: 'Failed to fetch notes' });
+      }
+
+      const notes = await notesRes.json();
+      console.log(`✅ Returning ${notes.length} notes for user ${internalUserId}`);
+
+      const normalised = notes.map((n: any) => ({
+        ...n,
+        fileUrl: Array.isArray(n.attachments) && n.attachments.length > 0 ? n.attachments[0] : null,
+      }));
+
+      res.json(normalised);
+    } catch (error) {
+      console.error('Error fetching user notes:', error);
+      res.status(500).json({ message: 'Failed to fetch notes' });
     }
   });
 

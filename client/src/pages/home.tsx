@@ -169,9 +169,12 @@ export default function Home() {
                         </span>
                       </div>
                       <div className="text-2xl font-bold text-yellow-300">
-                        {stats.totalEarnings.toLocaleString()} coins
+                        {(stats.coinBalance ?? stats.totalEarnings).toLocaleString()} coins
                       </div>
-                      <div className="text-xs text-white/80">Total Coins Earned</div>
+                      <div className="text-sm font-bold text-green-300">
+                        = ₹{((stats.coinBalance ?? stats.totalEarnings) / 20).toFixed(2)}
+                      </div>
+                      <div className="text-xs text-white/80">Coin Balance (20 coins = ₹1)</div>
                     </div>
                   </div>
                 </header>
@@ -249,9 +252,10 @@ export default function Home() {
                   </div>
                   <div className="text-yellow-400 text-sm font-bold bounce-in">+28.9%</div>
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-white mb-1 text-glow">{stats.totalEarnings.toLocaleString()} coins</div>
-                <div className="text-slate-300 font-medium text-sm md:text-base">Total Coins Earned</div>
-                <div className="text-xs text-yellow-400 mt-1 font-medium wiggle">💰 This Month: {stats.monthlyEarnings} coins</div>
+                <div className="text-xl md:text-2xl font-bold text-white mb-1 text-glow">{(stats.coinBalance ?? stats.totalEarnings).toLocaleString()} coins</div>
+                <div className="text-green-400 font-bold text-base">₹{((stats.coinBalance ?? stats.totalEarnings) / 20).toFixed(2)}</div>
+                <div className="text-slate-300 font-medium text-sm">Coin Balance</div>
+                <div className="text-xs text-yellow-400 mt-1 font-medium wiggle">💰 20 coins = ₹1 | Earned: {stats.totalEarnings}</div>
               </CardContent>
             </Card>
             
@@ -442,17 +446,18 @@ export default function Home() {
                       <h3 className="text-xl font-semibold text-white mb-4">Earning Stats</h3>
                       <div className="space-y-3">
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-300">Total Earnings:</span>
-                          <span className="text-emerald-400 font-bold">₹0</span>
+                          <span className="text-slate-300">Total Coins:</span>
+                          <span className="text-yellow-400 font-bold">{stats.totalEarnings} 🪙</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-300">This Month:</span>
-                          <span className="text-green-400 font-bold">₹0</span>
+                          <span className="text-slate-300">Total Earnings:</span>
+                          <span className="text-emerald-400 font-bold">₹{(stats.totalEarnings / 20).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-slate-300">Downloads:</span>
-                          <span className="text-cyan-400 font-bold">0</span>
+                          <span className="text-cyan-400 font-bold">{stats.totalDownloads}</span>
                         </div>
+                        <div className="text-xs text-slate-400 mt-2 border-t border-slate-600 pt-2">20 coins = ₹1</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -484,8 +489,12 @@ export default function Home() {
                       <h3 className="text-lg font-semibold text-white mb-3">Quick Stats</h3>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-slate-300">Coins:</span>
-                          <span className="text-yellow-400">{user?.coinBalance || 0}</span>
+                          <span className="text-slate-300">Coins Earned:</span>
+                          <span className="text-yellow-400">{stats.totalEarnings} 🪙</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-300">= Rupees:</span>
+                          <span className="text-green-400 font-bold">₹{(stats.totalEarnings / 20).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-300">Downloads:</span>
