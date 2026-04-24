@@ -27,14 +27,14 @@ export const sessions = pgTable(
 );
 
 // Enums
-export const roleEnum = pgEnum('role', ['student', 'topper', 'reviewer', 'admin']);
+export const roleEnum = pgEnum('role', ['student', 'topper', 'reviewer', 'admin', 'teacher']);
 export const noteStatusEnum = pgEnum('note_status', ['draft', 'submitted', 'approved', 'published', 'rejected', 'archived']);
 export const reviewStatusEnum = pgEnum('review_status', ['open', 'changes_requested', 'approved', 'rejected']);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'inactive', 'cancelled', 'past_due']);
 export const payoutStatusEnum = pgEnum('payout_status', ['pending', 'approved', 'paid']);
 export const withdrawalStatusEnum = pgEnum('withdrawal_status', ['pending', 'approved', 'rejected', 'settled']);
 export const noteTypeEnum = pgEnum('note_type', ['notes', 'homework']);
-export const transactionTypeEnum = pgEnum('transaction_type', ['coin_earned', 'coin_spent', 'coin_purchased', 'download_free', 'download_paid']);
+export const transactionTypeEnum = pgEnum('transaction_type', ['coin_earned', 'coin_spent', 'coin_purchased', 'download_free', 'download_paid', 'upload_reward']);
 export const forumCategoryEnum = pgEnum('forum_category', ['latest_news', 'revolutionary_ideas', 'assignment_discussions', 'general', 'help_support']);
 export const broadcastTargetEnum = pgEnum('broadcast_target', ['all_users', 'students', 'toppers', 'reviewers']);
 
@@ -113,6 +113,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: roleEnum("role").default('student').notNull(),
   phone: varchar("phone"),
+  loginProvider: varchar("login_provider").default('email'), // 'email', 'google', 'facebook', etc.
   isActive: boolean("is_active").default(true).notNull(),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
@@ -125,6 +126,8 @@ export const users = pgTable("users", {
   totalSpent: integer("total_spent").default(0).notNull(),
   // Educational preferences
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  lastSeen: timestamp("last_seen").defaultNow(),
+  isOnline: boolean("is_online").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -168,8 +171,11 @@ export const notes = pgTable("notes", {
   estimatedTime: integer("estimated_time"), // minutes to complete
   thumbnailUrl: varchar("thumbnail_url"),
   // Educational categorization
-  categoryId: varchar("category_id").references(() => educationalCategories.id).notNull(),
+  categoryId: varchar("category_id").references(() => educationalCategories.id), // Made nullable - not all notes need a category
   classGrade: varchar("class_grade"), // For backwards compatibility, will be deprecated
+  // Teacher credentials for notes access
+  teacherId: varchar("teacher_id"),
+  teacherPassword: varchar("teacher_password"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -386,6 +392,45 @@ export const userAchievements = pgTable("user_achievements", {
   badgeColor: varchar("badge_color"),
   coinsRewarded: integer("coins_rewarded").default(0),
   unlockedAt: timestamp("unlocked_at").defaultNow(),
+});
+
+// Admin Panel Activity Logs (now references adminAccounts)
+export const adminActivityLogs = pgTable("admin_activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminAccountId: varchar("admin_account_id").references(() => adminAccounts.id).notNull(),
+  action: varchar("action").notNull(), // 'note_approved', 'note_rejected', 'user_viewed', etc.
+  targetType: varchar("target_type").notNull(), // 'note', 'user', 'transaction'
+  targetId: varchar("target_id").notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata"), // Additional data about the action
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Admin Accounts (separate from users table)
+export const adminAccounts = pgTable("admin_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: varchar("username").notNull().unique(),
+  password: varchar("password").notNull(), // Hashed password
+  email: varchar("email"),
+  fullName: varchar("full_name"),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastLogin: timestamp("last_login"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Admin Panel Sessions (now references adminAccounts)
+export const adminSessions = pgTable("admin_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminAccountId: varchar("admin_account_id").references(() => adminAccounts.id).notNull(),
+  token: varchar("token").notNull().unique(),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  lastActivity: timestamp("last_activity").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Daily challenges
@@ -773,6 +818,12 @@ export const insertWithdrawalRequestSchema = createInsertSchema(withdrawalReques
   createdAt: true,
 });
 
+export const insertAdminAccountSchema = createInsertSchema(adminAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type EducationalCategory = typeof educationalCategories.$inferSelect;
 export type InsertEducationalCategory = z.infer<typeof insertEducationalCategorySchema>;
@@ -820,3 +871,5 @@ export type UserChallengeProgress = typeof userChallengeProgress.$inferSelect;
 export type InsertUserChallengeProgress = z.infer<typeof insertUserChallengeProgressSchema>;
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
 export type InsertWithdrawalRequest = z.infer<typeof insertWithdrawalRequestSchema>;
+export type AdminAccount = typeof adminAccounts.$inferSelect;
+export type InsertAdminAccount = z.infer<typeof insertAdminAccountSchema>;

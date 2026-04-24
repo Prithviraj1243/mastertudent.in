@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MasterStudent - Notes Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                    chart: {
+                        "1": "var(--chart-1)",
+                        "2": "var(--chart-2)",
+                        "3": "var(--chart-3)",
+                        "4": "var(--chart-4)",
+                        "5": "var(--chart-5)",
+                    }
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                    serif: ["var(--font-serif)"],
+                    mono: ["var(--font-mono)"],
+                }
+            },
+        }
+    };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --background: hsl(210 40% 98%);
+            --foreground: hsl(222 47% 11%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222 47% 11%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222 47% 11%);
+            --primary: hsl(213 100% 40%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(25 95% 53%);
+            --secondary-foreground: hsl(222 47% 11%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215 13% 65%);
+            --accent: hsl(210 40% 96%);
+            --accent-foreground: hsl(222 47% 11%);
+            --destructive: hsl(0 72% 51%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214 32% 91%);
+            --input: hsl(214 32% 91%);
+            --ring: hsl(213 100% 40%);
+            --radius: 0.5rem;
+            --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+        }
+        
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .note-card {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .note-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .rating-stars {
+            color: hsl(45 93% 47%);
+        }
+    </style>
+</head>
+
+<body class="bg-background text-foreground min-h-screen">
+    <!-- @COMPONENT: AppHeader -->
+    <header class="bg-card border-b border-border sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-graduation-cap text-primary-foreground text-sm"></i>
+                        </div>
+                        <span class="text-xl font-bold text-foreground">MasterStudent</span>
+                    </div>
+                    <nav class="hidden md:flex space-x-6">
+                        <a href="#catalog" class="text-foreground hover:text-primary transition-colors">Browse Notes</a>
+                        <a href="#upload" class="text-foreground hover:text-primary transition-colors">Upload Notes</a>
+                        <a href="#pricing" class="text-foreground hover:text-primary transition-colors">Pricing</a>
+                    </nav>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:flex items-center space-x-2 bg-muted px-3 py-1 rounded-md">
+                        <i class="fas fa-crown text-secondary text-sm"></i>
+                        <span class="text-sm font-medium text-muted-foreground">Premium Active</span>
+                    </div>
+                    <button class="p-2 hover:bg-accent rounded-md transition-colors">
+                        <i class="fas fa-bell text-muted-foreground"></i>
+                    </button>
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <span class="text-primary-foreground text-sm font-medium">AR</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: AppHeader -->
+
+    <div class="flex min-h-screen">
+        <!-- @COMPONENT: Sidebar -->
+        <aside class="w-64 bg-card border-r border-border flex-shrink-0">
+            <div class="p-6">
+                <div class="space-y-6">
+                    <!-- Student Dashboard -->
+                    <div>
+                        <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Student Portal</h3>
+                        <nav class="space-y-2">
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md bg-primary text-primary-foreground">
+                                <i class="fas fa-book-open text-sm"></i>
+                                <span class="text-sm font-medium">Browse Notes</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-download text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">My Downloads</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-heart text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">Following</span>
+                            </a>
+                        </nav>
+                    </div>
+
+                    <!-- Topper Studio -->
+                    <div>
+                        <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Topper Studio</h3>
+                        <nav class="space-y-2">
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-plus text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">Upload Notes</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-file-alt text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">My Notes</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-chart-line text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">Analytics</span>
+                            </a>
+                        </nav>
+                    </div>
+
+                    <!-- Admin/Review -->
+                    <div>
+                        <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Admin</h3>
+                        <nav class="space-y-2">
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-tasks text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">Review Queue</span>
+                                <span class="ml-auto bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded-full">3</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-users text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">User Management</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-tachometer-alt text-sm text-muted-foreground"></i>
+                                <span class="text-sm font-medium">Dashboard</span>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden">
+            <!-- @COMPONENT: StudentCatalog -->
+            <div class="p-6">
+                <!-- Header Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h1 class="text-3xl font-bold text-foreground">Browse Study Notes</h1>
+                            <p class="text-muted-foreground">Discover high-quality notes from top students</p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <button class="flex items-center space-x-2 px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-th-large text-sm"></i>
+                                <span class="text-sm">Grid View</span>
+                            </button>
+                            <button class="flex items-center space-x-2 px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                <i class="fas fa-list text-sm"></i>
+                                <span class="text-sm">List View</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filters -->
+                    <div class="flex flex-col lg:flex-row gap-4">
+                        <div class="flex-1">
+                            <div class="relative">
+                                <input type="text" placeholder="Search notes by title, topic, or subject..." 
+                                       class="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <select class="px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                <option>All Subjects</option>
+                                <option>Mathematics</option>
+                                <option>Physics</option>
+                                <option>Chemistry</option>
+                                <option>Biology</option>
+                                <option>Computer Science</option>
+                            </select>
+                            <select class="px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                <option>All Classes</option>
+                                <option>Class 10</option>
+                                <option>Class 11</option>
+                                <option>Class 12</option>
+                                <option>Undergraduate</option>
+                            </select>
+                            <select class="px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                <option>Latest First</option>
+                                <option>Highest Rated</option>
+                                <option>Most Downloaded</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- @MAP: notes.map(note => ( -->
+                    <!-- Note Card 1 -->
+                    <div class="note-card bg-card rounded-lg border border-border overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-foreground mb-2" data-bind="note.title">Calculus Integration Techniques</h3>
+                                    <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                        <span data-bind="note.subject">Mathematics</span>
+                                        <span>•</span>
+                                        <span data-bind="note.class">Class 12</span>
+                                    </div>
+                                </div>
+                                <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Featured</span>
+                            </div>
+                            
+                            <p class="text-muted-foreground text-sm mb-4" data-bind="note.description">Comprehensive notes covering integration by parts, substitution, and partial fractions with solved examples.</p>
+                            
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                        <span class="text-primary-foreground text-xs font-medium">RK</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-foreground" data-bind="note.topper.name">Rajesh Kumar</p>
+                                        <p class="text-xs text-muted-foreground">IIT Delhi Topper</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="flex text-yellow-400">
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                    </div>
+                                    <span class="text-xs text-muted-foreground" data-bind="note.rating">4.9</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                                <span><i class="fas fa-download mr-1"></i> <span data-bind="note.downloads_count">1,234</span> downloads</span>
+                                <span><i class="fas fa-clock mr-1"></i> 2 days ago</span>
+                            </div>
+                            
+                            <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Notes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note Card 2 -->
+                    <div class="note-card bg-card rounded-lg border border-border overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-foreground mb-2">Organic Chemistry Reactions</h3>
+                                    <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                        <span>Chemistry</span>
+                                        <span>•</span>
+                                        <span>Class 12</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <p class="text-muted-foreground text-sm mb-4">Complete guide to organic reactions with mechanisms, reagents, and conditions. Includes practice problems.</p>
+                            
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                                        <span class="text-secondary-foreground text-xs font-medium">PS</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-foreground">Priya Sharma</p>
+                                        <p class="text-xs text-muted-foreground">AIIMS Topper</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="flex text-yellow-400">
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="far fa-star text-xs"></i>
+                                    </div>
+                                    <span class="text-xs text-muted-foreground">4.7</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                                <span><i class="fas fa-download mr-1"></i> 892 downloads</span>
+                                <span><i class="fas fa-clock mr-1"></i> 5 days ago</span>
+                            </div>
+                            
+                            <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Notes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note Card 3 -->
+                    <div class="note-card bg-card rounded-lg border border-border overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-foreground mb-2">Data Structures & Algorithms</h3>
+                                    <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                        <span>Computer Science</span>
+                                        <span>•</span>
+                                        <span>Undergraduate</span>
+                                    </div>
+                                </div>
+                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">New</span>
+                            </div>
+                            
+                            <p class="text-muted-foreground text-sm mb-4">Comprehensive notes on arrays, linked lists, trees, graphs with code examples in Java and Python.</p>
+                            
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                        <span class="text-white text-xs font-medium">AK</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-foreground">Arjun Kapoor</p>
+                                        <p class="text-xs text-muted-foreground">Google SDE</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="flex text-yellow-400">
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                    </div>
+                                    <span class="text-xs text-muted-foreground">5.0</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                                <span><i class="fas fa-download mr-1"></i> 567 downloads</span>
+                                <span><i class="fas fa-clock mr-1"></i> 1 day ago</span>
+                            </div>
+                            
+                            <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Notes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note Card 4 -->
+                    <div class="note-card bg-card rounded-lg border border-border overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-foreground mb-2">Modern Physics Concepts</h3>
+                                    <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                        <span>Physics</span>
+                                        <span>•</span>
+                                        <span>Class 12</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <p class="text-muted-foreground text-sm mb-4">Quantum mechanics, relativity, and atomic structure explained with diagrams and solved numerical problems.</p>
+                            
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                                        <span class="text-white text-xs font-medium">SM</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-foreground">Sneha Mehta</p>
+                                        <p class="text-xs text-muted-foreground">JEE AIR 15</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="flex text-yellow-400">
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="far fa-star text-xs"></i>
+                                    </div>
+                                    <span class="text-xs text-muted-foreground">4.6</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                                <span><i class="fas fa-download mr-1"></i> 743 downloads</span>
+                                <span><i class="fas fa-clock mr-1"></i> 3 days ago</span>
+                            </div>
+                            
+                            <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Notes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note Card 5 -->
+                    <div class="note-card bg-card rounded-lg border border-border overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-foreground mb-2">Cell Biology & Genetics</h3>
+                                    <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                        <span>Biology</span>
+                                        <span>•</span>
+                                        <span>Class 12</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <p class="text-muted-foreground text-sm mb-4">Detailed notes on cell structure, DNA replication, protein synthesis, and inheritance patterns with diagrams.</p>
+                            
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                                        <span class="text-white text-xs font-medium">VG</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-foreground">Vikram Gupta</p>
+                                        <p class="text-xs text-muted-foreground">NEET AIR 8</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="flex text-yellow-400">
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                    </div>
+                                    <span class="text-xs text-muted-foreground">4.8</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                                <span><i class="fas fa-download mr-1"></i> 991 downloads</span>
+                                <span><i class="fas fa-clock mr-1"></i> 1 week ago</span>
+                            </div>
+                            
+                            <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Notes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note Card 6 -->
+                    <div class="note-card bg-card rounded-lg border border-border overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-foreground mb-2">Statistical Analysis Methods</h3>
+                                    <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                        <span>Mathematics</span>
+                                        <span>•</span>
+                                        <span>Undergraduate</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <p class="text-muted-foreground text-sm mb-4">Hypothesis testing, regression analysis, and probability distributions with real-world applications and examples.</p>
+                            
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
+                                        <span class="text-white text-xs font-medium">NK</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-foreground">Nisha Kumari</p>
+                                        <p class="text-xs text-muted-foreground">Statistics PhD</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="flex text-yellow-400">
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="fas fa-star text-xs"></i>
+                                        <i class="far fa-star text-xs"></i>
+                                    </div>
+                                    <span class="text-xs text-muted-foreground">4.5</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                                <span><i class="fas fa-download mr-1"></i> 456 downloads</span>
+                                <span><i class="fas fa-clock mr-1"></i> 4 days ago</span>
+                            </div>
+                            
+                            <button class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Notes
+                            </button>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+
+                <!-- Pagination -->
+                <div class="flex items-center justify-center mt-12">
+                    <nav class="flex items-center space-x-2">
+                        <button class="px-3 py-2 border border-border rounded-md hover:bg-accent transition-colors disabled:opacity-50" disabled>
+                            <i class="fas fa-chevron-left text-sm"></i>
+                        </button>
+                        <button class="px-3 py-2 bg-primary text-primary-foreground rounded-md">1</button>
+                        <button class="px-3 py-2 border border-border rounded-md hover:bg-accent transition-colors">2</button>
+                        <button class="px-3 py-2 border border-border rounded-md hover:bg-accent transition-colors">3</button>
+                        <span class="px-3 py-2 text-muted-foreground">...</span>
+                        <button class="px-3 py-2 border border-border rounded-md hover:bg-accent transition-colors">12</button>
+                        <button class="px-3 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                            <i class="fas fa-chevron-right text-sm"></i>
+                        </button>
+                    </nav>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: StudentCatalog -->
+        </main>
+    </div>
+
+    <!-- @COMPONENT: SubscriptionModal (Hidden by default) -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" id="subscriptionModal">
+        <div class="bg-card rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="text-center mb-6">
+                <i class="fas fa-crown text-secondary text-4xl mb-4"></i>
+                <h2 class="text-2xl font-bold text-foreground mb-2">Upgrade to Premium</h2>
+                <p class="text-muted-foreground">Access unlimited downloads and premium content</p>
+            </div>
+            
+            <div class="space-y-4 mb-6">
+                <div class="border border-border rounded-lg p-4 hover:border-primary transition-colors cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold text-foreground">Monthly Plan</h3>
+                            <p class="text-sm text-muted-foreground">Perfect for short-term needs</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-2xl font-bold text-foreground">₹59</span>
+                            <p class="text-sm text-muted-foreground">/month</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border-2 border-primary rounded-lg p-4 relative">
+                    <div class="absolute -top-3 left-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
+                        Best Value
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold text-foreground">Yearly Plan</h3>
+                            <p class="text-sm text-muted-foreground">Save 30% with annual billing</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-2xl font-bold text-foreground">₹499</span>
+                            <p class="text-sm text-muted-foreground">/year</p>
+                            <p class="text-xs text-green-600">Save ₹209</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button class="flex-1 px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors" onclick="closeModal()">
+                    Cancel
+                </button>
+                <button class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                    Subscribe Now
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: SubscriptionModal -->
+
+    <!-- @COMPONENT: TopperUploadInterface (Hidden by default) -->
+    <div class="hidden" id="topperUpload">
+        <div class="p-6">
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-foreground mb-2">Upload Study Notes</h1>
+                    <p class="text-muted-foreground">Share your knowledge and earn from your study materials</p>
+                </div>
+
+                <div class="bg-card rounded-lg border border-border p-6">
+                    <form class="space-y-6">
+                        <!-- Basic Information -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Note Title</label>
+                                <input type="text" class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Enter a descriptive title">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Subject</label>
+                                <select class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                    <option>Select Subject</option>
+                                    <option>Mathematics</option>
+                                    <option>Physics</option>
+                                    <option>Chemistry</option>
+                                    <option>Biology</option>
+                                    <option>Computer Science</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Topic/Chapter</label>
+                                <input type="text" class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Specific topic covered">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Class/Grade</label>
+                                <select class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                    <option>Select Class</option>
+                                    <option>Class 10</option>
+                                    <option>Class 11</option>
+                                    <option>Class 12</option>
+                                    <option>Undergraduate</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Description</label>
+                            <textarea rows="4" class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Describe what's covered in these notes, key concepts, and any special features..."></textarea>
+                        </div>
+
+                        <!-- File Upload -->
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Upload Files</label>
+                            <div class="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-muted-foreground mb-4"></i>
+                                <p class="text-muted-foreground mb-2">Drag and drop your files here, or click to browse</p>
+                                <p class="text-sm text-muted-foreground">Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 50MB)</p>
+                                <button type="button" class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                    Choose Files
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-between pt-6">
+                            <button type="button" class="px-6 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                Save as Draft
+                            </button>
+                            <div class="space-x-3">
+                                <button type="button" class="px-6 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                    Preview
+                                </button>
+                                <button type="submit" class="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                    Submit for Review
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: TopperUploadInterface -->
+
+    <!-- @COMPONENT: ReviewQueue (Hidden by default) -->
+    <div class="hidden" id="reviewQueue">
+        <div class="p-6">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-foreground mb-2">Review Queue</h1>
+                <p class="text-muted-foreground">Review and approve submitted notes from toppers</p>
+            </div>
+
+            <!-- Review Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-card rounded-lg border border-border p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-muted-foreground">Pending Review</p>
+                            <p class="text-2xl font-bold text-foreground">8</p>
+                        </div>
+                        <i class="fas fa-clock text-secondary text-2xl"></i>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-muted-foreground">Approved Today</p>
+                            <p class="text-2xl font-bold text-green-600">5</p>
+                        </div>
+                        <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-muted-foreground">Changes Requested</p>
+                            <p class="text-2xl font-bold text-orange-600">2</p>
+                        </div>
+                        <i class="fas fa-edit text-orange-600 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-muted-foreground">Avg Review Time</p>
+                            <p class="text-2xl font-bold text-foreground">2.3h</p>
+                        </div>
+                        <i class="fas fa-tachometer-alt text-primary text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Queue List -->
+            <div class="bg-card rounded-lg border border-border">
+                <div class="p-6 border-b border-border">
+                    <h2 class="text-lg font-semibold text-foreground">Submitted Notes</h2>
+                </div>
+                <div class="divide-y divide-border">
+                    <!-- Review Item 1 -->
+                    <div class="p-6 hover:bg-accent transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <h3 class="text-lg font-semibold text-foreground">Advanced Calculus - Limits and Continuity</h3>
+                                    <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Pending</span>
+                                </div>
+                                <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                    <span>Mathematics • Class 12</span>
+                                    <span>•</span>
+                                    <span>Submitted 2 hours ago</span>
+                                    <span>•</span>
+                                    <span>by Rahul Singh</span>
+                                </div>
+                                <p class="text-muted-foreground text-sm mb-4">Comprehensive notes on limits, continuity, and differentiability with solved examples and practice problems.</p>
+                                <div class="flex items-center space-x-4">
+                                    <span class="text-sm text-muted-foreground"><i class="fas fa-file-pdf mr-1"></i> 3 files (12.5 MB)</span>
+                                    <span class="text-sm text-muted-foreground"><i class="fas fa-user mr-1"></i> Topper Rating: 4.8/5</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-6">
+                                <button class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                    Review
+                                </button>
+                                <button class="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                    Preview
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review Item 2 -->
+                    <div class="p-6 hover:bg-accent transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <h3 class="text-lg font-semibold text-foreground">Organic Chemistry Mechanisms</h3>
+                                    <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Pending</span>
+                                </div>
+                                <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                    <span>Chemistry • Class 12</span>
+                                    <span>•</span>
+                                    <span>Submitted 4 hours ago</span>
+                                    <span>•</span>
+                                    <span>by Anitha Reddy</span>
+                                </div>
+                                <p class="text-muted-foreground text-sm mb-4">Detailed reaction mechanisms for major organic chemistry reactions with arrow-pushing diagrams.</p>
+                                <div class="flex items-center space-x-4">
+                                    <span class="text-sm text-muted-foreground"><i class="fas fa-file-pdf mr-1"></i> 2 files (8.3 MB)</span>
+                                    <span class="text-sm text-muted-foreground"><i class="fas fa-user mr-1"></i> Topper Rating: 4.9/5</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-6">
+                                <button class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                    Review
+                                </button>
+                                <button class="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                    Preview
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review Item 3 -->
+                    <div class="p-6 hover:bg-accent transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <h3 class="text-lg font-semibold text-foreground">Data Structures - Trees and Graphs</h3>
+                                    <span class="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">Changes Requested</span>
+                                </div>
+                                <div class="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                    <span>Computer Science • Undergraduate</span>
+                                    <span>•</span>
+                                    <span>Submitted 1 day ago</span>
+                                    <span>•</span>
+                                    <span>by Karthik Kumar</span>
+                                </div>
+                                <p class="text-muted-foreground text-sm mb-4">Implementation of tree and graph data structures with traversal algorithms and complexity analysis.</p>
+                                <div class="flex items-center space-x-4">
+                                    <span class="text-sm text-muted-foreground"><i class="fas fa-file-pdf mr-1"></i> 4 files (15.2 MB)</span>
+                                    <span class="text-sm text-muted-foreground"><i class="fas fa-user mr-1"></i> Topper Rating: 4.7/5</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-6">
+                                <button class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                    Review
+                                </button>
+                                <button class="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors">
+                                    View Comments
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: ReviewQueue -->
+
+    <script>
+        // TODO: Implement business logic, API calls, or state management
+        (function() {
+            // Simple modal functions
+            window.openSubscriptionModal = function() {
+                document.getElementById('subscriptionModal').classList.remove('hidden');
+            };
+
+            window.closeModal = function() {
+                document.getElementById('subscriptionModal').classList.add('hidden');
+            };
+
+            // Simple page switching (in real app, this would be handled by routing)
+            window.showPage = function(pageId) {
+                // Hide all pages
+                const pages = ['studentCatalog', 'topperUpload', 'reviewQueue'];
+                pages.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.classList.add('hidden');
+                });
+                
+                // Show selected page
+                const selectedPage = document.getElementById(pageId);
+                if (selectedPage) selectedPage.classList.remove('hidden');
+            };
+
+            // Add click handlers for download buttons (would show subscription modal for non-subscribers)
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('button') && e.target.closest('button').textContent.includes('Download')) {
+                    // In real app, check subscription status
+                    // For demo, show subscription modal
+                    openSubscriptionModal();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -183,7 +183,7 @@ export default function CategorySelection() {
           <div className="text-center mt-16 max-w-4xl mx-auto">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-200/50 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-800 mb-4">
-                Why Choose MasterStudent? 🌟
+                Why Choose <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">MasterStudent</span>? 🌟
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-600">
                 <div className="text-center">

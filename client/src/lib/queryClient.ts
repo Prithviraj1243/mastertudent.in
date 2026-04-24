@@ -7,14 +7,56 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Helper to get x-user-id from sessionStorage (set during login)
+function getStoredUserId(): string | null {
+  try {
+    const stored = sessionStorage.getItem('authUser');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed?.id || null;
+    }
+  } catch {}
+  return null;
+}
+
+// Helper to get Supabase access token from localStorage (works even when DB is down)
+function getSupabaseToken(): string | null {
+  try {
+    // Supabase stores the session in localStorage with a key pattern
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('supabase') && key.includes('auth-token')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return parsed?.access_token || parsed?.session?.access_token || null;
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
+// Build auth headers for all API requests
+function buildAuthHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { ...(extra || {}) };
+  const userId = getStoredUserId();
+  if (userId) headers['x-user-id'] = userId;
+  const token = getSupabaseToken();
+  if (token) headers['x-supabase-token'] = token;
+  return headers;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const headers = buildAuthHeaders(data ? { "Content-Type": "application/json" } : {});
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,8 +71,11 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const headers = buildAuthHeaders();
+
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

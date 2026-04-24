@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Status Check</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .result {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Authentication Status Checker</h1>
+    
+    <button onclick="checkAuth()">Check If I'm Logged In</button>
+    <button onclick="window.location.href='http://localhost:8000/login'">Go to Login</button>
+    <button onclick="window.location.href='http://localhost:8000/profile'">Go to Profile</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        async function checkAuth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Checking...</p>';
+            
+            try {
+                // Check if user endpoint exists
+                const response = await fetch('http://localhost:8000/api/user', {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h2>✅ YOU ARE LOGGED IN!</h2>
+                            <p><strong>Email:</strong> ${data.email || 'N/A'}</p>
+                            <p><strong>Name:</strong> ${data.firstName || ''} ${data.lastName || ''}</p>
+                            <p><strong>User ID:</strong> ${data.id}</p>
+                            <hr>
+                            <p><strong>Upload should work!</strong></p>
+                            <p>If you still get 401, there's a different issue.</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h2>❌ YOU ARE NOT LOGGED IN!</h2>
+                            <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                            <hr>
+                            <h3>FIX:</h3>
+                            <ol>
+                                <li>Click "Go to Login" button above</li>
+                                <li>Login with your email/password or Google</li>
+                                <li>Come back and click "Check If I'm Logged In" again</li>
+                                <li>Then try uploading</li>
+                            </ol>
+                        </div>
+                    `;
+                }
+                
+                // Also check cookies
+                const cookies = document.cookie;
+                console.log('🍪 Cookies:', cookies);
+                const hasSessionCookie = cookies.includes('connect.sid');
+                console.log('🔑 Has session cookie:', hasSessionCookie);
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h2>❌ ERROR CHECKING AUTH</h2>
+                        <p>${error.message}</p>
+                        <p>Make sure the server is running on http://localhost:8000</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-check on page load
+        window.onload = checkAuth;
+    </script>
+</body>
+</html>

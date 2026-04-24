@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { checkAndSeedDatabase } from "./seed-data";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -38,6 +40,10 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Seed database with sample data if needed
+  // DISABLED: Only real data from actual users
+  // await checkAndSeedDatabase();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -64,7 +70,6 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });

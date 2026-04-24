@@ -1,0 +1,49 @@
+USE_SQLITE=0
+NODE_ENV=development
+PORT=8000
+
+# Database Configuration
+DATABASE_URL=postgresql://postgres:prithvi098675@db.snzsilepbuglkrjcxdim.supabase.co:5432/postgres?sslmode=disable
+
+# Email Configuration (optional for development)
+SENDGRID_API_KEY=SG.dummy_key_for_development
+
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID=914859639485-t5pjjuir3bmauq2t51nb60v1l1gm4ud8.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=914859639485-t5pjjuir3bmauq2t51nb60v1l1gm4ud8.apps.googleusercontent.com
+
+# Gemini API Configuration (for Chatbot)
+GEMINI_API_KEY=AIzaSyA3oYaWltO0IDAS8Ir7tQE4V7Np1Yx8D4E
+
+# Dodo Payments Configuration
+DODO_PROJECT_ID=pdt_CZikJJg7rTP13neCwBqng
+DODO_API_KEY=your_dodo_api_key_here
+DODO_API_URL=https://api.dodopayments.com
+DODO_CHECKOUT_BASE_URL=https://checkout.dodopayments.com/buy
+DODO_CHECKOUT_URL=https://checkout.dodopayments.com/buy/pdt_CZikJJg7rTP13neCwBqng?quantity=1
+
+# Admin Panel Configuration
+VITE_API_URL=http://localhost:8000
+VITE_ADMIN_API_URL=http://localhost:8000/api
+ADMIN_SECRET_KEY=admin_secret_key_change_in_production
+ADMIN_JWT_SECRET=admin_jwt_secret_change_in_production
+SESSION_SECRET=your_session_secret_key_here_change_in_production
+
+# Admin Login Credentials (Change these in production!)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+
+# Admin Promotion Security (Change these to secure values!)
+ADMIN_PROMOTION_ID=MASTER_ADMIN_2025
+ADMIN_PROMOTION_PASSWORD=SecureAdmin@2025
+
+# Supabase Configuration (NEW PROJECT)
+SUPABASE_URL=https://snzsilepbuglkrjcxdim.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NTc2MzAsImV4cCI6MjA4MjMzMzYzMH0.P8jg0dg17cMn3oS3xX0AcoR2rC9vNV6h8y64S-PM4Fg
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Njc1NzYzMCwiZXhwIjoyMDgyMzMzNjMwfQ.ViyUgUcMjyUWIpZD6nfhfdabYspxxUeSnrn1W7RFc_o
+VITE_SUPABASE_URL=https://snzsilepbuglkrjcxdim.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NTc2MzAsImV4cCI6MjA4MjMzMzYzMH0.P8jg0dg17cMn3oS3xX0AcoR2rC9vNV6h8y64S-PM4Fg
+
+# Storage Configuration
+STORAGE_PROVIDER=supabase
+SUPABASE_BUCKET_NAME=notes

@@ -524,7 +524,7 @@ export default function Onboarding() {
             </div>
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-700 via-pink-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-            Welcome to MasterStudent! 🎓
+            Welcome to <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">MasterStudent</span>! 🎓
           </h1>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
             Let's personalize your learning experience! Select the educational segments that interest you most.

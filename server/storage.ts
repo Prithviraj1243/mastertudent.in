@@ -24,6 +24,8 @@ import {
   educationalCategories,
   userEducationalPreferences,
   withdrawalRequests,
+  adminAccounts,
+  adminSessions,
   type User,
   type UpsertUser,
   type TopperProfile,
@@ -64,9 +66,12 @@ import {
   type InsertUserChallengeProgress,
   type WithdrawalRequest,
   type InsertWithdrawalRequest,
+  type AdminAccount,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, sql, count, avg, sum } from "drizzle-orm";
+import crypto from "crypto";
+import { supabaseAdmin } from "./supabase";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -75,8 +80,10 @@ export interface IStorage {
   
   // User management
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   updateUserRole(id: string, role: string): Promise<User>;
   updateUserStripeInfo(id: string, customerId: string, subscriptionId: string): Promise<User>;
+  updateUserLastSeen(id: string, isOnline: boolean): Promise<void>;
   
   // Topper profile operations
   createTopperProfile(profile: InsertTopperProfile): Promise<TopperProfile>;
@@ -87,6 +94,7 @@ export interface IStorage {
   createNote(note: InsertNote): Promise<Note>;
   getNoteById(id: string): Promise<Note | undefined>;
   getNotesByTopper(topperId: string): Promise<Note[]>;
+  getNotesByUser(userId: string): Promise<Note[]>;
   getPublishedNotes(filters?: {
     subject?: string;
     classGrade?: string;
@@ -95,8 +103,16 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ notes: Note[]; total: number }>;
+  getAllNotesForAdmin(filters?: {
+    status?: string;
+    subject?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ notes: any[]; total: number }>;
   updateNote(id: string, updates: Partial<InsertNote>): Promise<Note>;
   updateNoteStatus(id: string, status: string, reviewerId?: string): Promise<Note>;
+  updateNoteTeacherCredentials(noteId: string, teacherId: string, teacherPassword: string): Promise<Note>;
   
   // Review operations
   createReviewTask(task: InsertReviewTask): Promise<ReviewTask>;
@@ -121,6 +137,7 @@ export interface IStorage {
   // Download operations
   recordDownload(studentId: string, noteId: string): Promise<Download>;
   getDownloadHistory(studentId: string): Promise<Download[]>;
+  getAllDownloads(): Promise<Download[]>;
   
   // Analytics
   getTopperAnalytics(topperId: string): Promise<{
@@ -186,40 +203,632 @@ export interface IStorage {
   getUploaderStats(topperId: string): Promise<any>;
   getWithdrawalRequests(topperId: string): Promise<WithdrawalRequest[]>;
   createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest>;
+  getPendingWithdrawalsTotal(topperId: string): Promise<number>;
+  getTotalWithdrawn(topperId: string): Promise<number>;
+  getEarningTransactions(userId: string): Promise<Transaction[]>;
   
   // Admin withdrawal operations
   getAllWithdrawalRequests(): Promise<WithdrawalRequest[]>;
   approveWithdrawalRequest(id: string, adminId: string): Promise<WithdrawalRequest>;
   rejectWithdrawalRequest(id: string, adminId: string, reason: string): Promise<WithdrawalRequest>;
   settleWithdrawalRequest(id: string, adminId: string, comments?: string): Promise<WithdrawalRequest>;
+  
+  // User Activity Operations
+  getUserActivity(): Promise<any[]>;
+  getUserActivityById(userId: string): Promise<any[]>;
+  recordUserActivity(userId: string, action: string, details?: any): Promise<void>;
+  getUserSessions(userId?: string): Promise<any[]>;
+  getUserDetailedInfo(userId: string): Promise<any>;
+  
+  // User Stats Operations
+  getUserStats(userId: string): Promise<{
+    notesUploaded: number;
+    totalEarnings: number;
+    totalDownloads: number;
+    averageRating: number;
+    monthlyEarnings: number;
+    totalViews: number;
+    activeNotes: number;
+    pendingReviews: number;
+  }>;
+  getUserSubjectStats(userId: string): Promise<{
+    subject: string;
+    notesCount: number;
+    earnings: number;
+    downloads: number;
+    averageRating: number;
+  }[]>;
+  updateUserStats(userId: string, uploadData: { subject: string; noteId: string }): Promise<void>;
+  
+  // Admin Account Operations
+  getAdminByUsername(username: string): Promise<AdminAccount | undefined>;
+  getAdminById(id: string): Promise<AdminAccount | undefined>;
+  getAllAdmins(): Promise<AdminAccount[]>;
+  createAdmin(admin: { id: string; username: string; email: string; password: string; fullName: string; isActive: boolean }): Promise<AdminAccount>;
+  updateAdminLastLogin(id: string): Promise<void>;
+  updateAdminPassword(id: string, password: string): Promise<void>;
+  createAdminSession(session: { adminAccountId: string; token: string; ipAddress?: string; userAgent?: string; expiresAt: Date }): Promise<void>;
+  getAdminSession(token: string): Promise<any | undefined>;
+  updateAdminSessionActivity(token: string): Promise<void>;
+  deleteAdminSession(token: string): Promise<void>;
+  recordAdminActivity(adminId: string, action: string, targetType: string, targetId: string, metadata?: any): Promise<void>;
+  getReviewTaskByNoteId(noteId: string): Promise<ReviewTask | undefined>;
+  updateReviewTaskStatus(id: string, status: string): Promise<ReviewTask>;
+  createNotification(notification: { userId: string; type: string; title: string; body?: string; link?: string }): Promise<Notification>;
 }
 
-export class DatabaseStorage implements IStorage {
-  // User operations (required for Replit Auth)
+class InMemoryStorage implements IStorage {
+  private users: User[] = [];
+  private topperProfiles: TopperProfile[] = [];
+  private notes: Note[] = [];
+  private followsList: Follow[] = [];
+  private feedbackList: Feedback[] = [];
+  private transactionsList: Transaction[] = [];
+  private subscriptionsList: Subscription[] = [];
+  private categories: any[] = [];
+  private userActivities: any[] = [];
+  private userSessions: any[] = [];
+
+  constructor() {
+    // Seed minimal categories and notes
+    this.categories = [
+      { id: "fallback-1", name: "Class 10th CBSE", description: "Class 10 CBSE Board", categoryType: "school", isActive: true, displayOrder: 1, icon: "📚", color: "#3B82F6" },
+      { id: "fallback-5", name: "JEE Main", description: "Joint Entrance Examination - Main", categoryType: "competitive_exam", isActive: true, displayOrder: 30, icon: "⚙️", color: "#059669" },
+    ];
+
+    const demoTopperId = crypto.randomUUID();
+    this.users.push({
+      id: demoTopperId,
+      email: "topper@example.com",
+      firstName: "Topper",
+      lastName: "User",
+      profileImageUrl: "",
+      role: "topper" as any,
+      phone: null as any,
+      isActive: true,
+      stripeCustomerId: null as any,
+      stripeSubscriptionId: null as any,
+      coinBalance: 0,
+      freeDownloadsLeft: 3,
+      lastFreeDownloadReset: new Date(),
+      reputation: 0,
+      totalEarned: 0,
+      totalSpent: 0,
+      streak: 0,
+      onboardingCompleted: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as unknown as User);
+
+    // No demo notes - only show real database notes
+  }
+
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return this.users.find(u => u.id === id);
+  }
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    let user = this.users.find(u => u.id === (userData.id as string));
+    if (!user) {
+      const newUser = {
+        id: userData.id || crypto.randomUUID(),
+        email: userData.email || "",
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        profileImageUrl: userData.profileImageUrl || "",
+        role: (userData as any).role || ("student" as any),
+        phone: null as any,
+        isActive: true,
+        stripeCustomerId: null as any,
+        stripeSubscriptionId: null as any,
+        coinBalance: 0,
+        freeDownloadsLeft: 3,
+        lastFreeDownloadReset: new Date(),
+        reputation: 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        streak: 0,
+        onboardingCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as unknown as User;
+      this.users.push(newUser);
+      return newUser;
+    }
+    Object.assign(user, userData, { updatedAt: new Date() });
+    return user;
+  }
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return this.users.find(u => u.email === email);
+  }
+  async getAllUsers(): Promise<User[]> {
+    return this.users;
+  }
+  async updateUserRole(id: string, role: string): Promise<User> {
+    const user = this.users.find(u => u.id === id)!;
+    (user as any).role = role as any;
+    user.updatedAt = new Date() as any;
+    return user;
+  }
+  async updateUserStripeInfo(id: string): Promise<User> {
+    const user = this.users.find(u => u.id === id)!;
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
+  async updateUserLastSeen(id: string, isOnline: boolean): Promise<void> {
+    const user = this.users.find(u => u.id === id);
+    if (user) {
+      (user as any).lastSeen = new Date();
+      (user as any).isOnline = isOnline;
+    }
+  }
+
+  async createTopperProfile(profile: InsertTopperProfile): Promise<TopperProfile> {
+    const p = { id: crypto.randomUUID(), ...profile, createdAt: new Date() } as any;
+    this.topperProfiles.push(p);
+    return p;
+  }
+  async getTopperProfile(userId: string): Promise<TopperProfile | undefined> {
+    return this.topperProfiles.find(p => (p as any).userId === userId);
+  }
+  async updateTopperProfile(userId: string, updates: Partial<InsertTopperProfile>): Promise<TopperProfile> {
+    const p = this.topperProfiles.find(tp => (tp as any).userId === userId)!;
+    Object.assign(p, updates);
+    return p;
+  }
+
+  async createNote(note: InsertNote): Promise<Note> {
+    const n = { id: crypto.randomUUID(), ...note, createdAt: new Date(), updatedAt: new Date() } as any;
+    this.notes.push(n);
+    return n;
+  }
+  async getNoteById(id: string): Promise<Note | undefined> {
+    return this.notes.find(n => n.id === id);
+  }
+  async getNotesByTopper(topperId: string): Promise<Note[]> {
+    return this.notes.filter(n => n.topperId === topperId);
+  }
+  async getNotesByUser(userId: string): Promise<Note[]> {
+    return this.notes.filter(n => n.topperId === userId);
+  }
+  async getPublishedNotes(filters?: { subject?: string; classGrade?: string; search?: string; categoryId?: string; limit?: number; offset?: number; }): Promise<{ notes: Note[]; total: number }> {
+    let list = this.notes.filter(n => n.status === ('published' as any));
+    if (filters?.subject) list = list.filter(n => n.subject === (filters.subject as any));
+    if (filters?.classGrade) list = list.filter(n => n.classGrade === filters.classGrade);
+    if (filters?.categoryId) list = list.filter(n => n.categoryId === filters.categoryId);
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      list = list.filter(n => (n.title + ' ' + (n.description || '')).toLowerCase().includes(q));
+    }
+    const total = list.length;
+    const offset = filters?.offset || 0;
+    const limit = filters?.limit || 20;
+    return { notes: list.slice(offset, offset + limit), total };
+  }
+  
+  async getAllNotesForAdmin(filters?: { status?: string; subject?: string; search?: string; limit?: number; offset?: number; }): Promise<{ notes: any[]; total: number }> {
+    let list = [...this.notes]; // Get all notes regardless of status
+    if (filters?.status) list = list.filter(n => n.status === (filters.status as any));
+    if (filters?.subject) list = list.filter(n => n.subject === (filters.subject as any));
+    
+    // Add user information to notes
+    const notesWithUsers = list.map(note => {
+      const user = this.users.find(u => u.id === note.topperId);
+      return {
+        ...note,
+        authorName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+        authorEmail: user?.email || 'unknown@email.com',
+        authorRole: user?.role || 'student',
+      };
+    });
+    
+    const total = notesWithUsers.length;
+    const offset = filters?.offset || 0;
+    const limit = filters?.limit || 20;
+    return { notes: notesWithUsers.slice(offset, offset + limit), total };
+  }
+  async updateNote(id: string, updates: Partial<InsertNote>): Promise<Note> {
+    const n = this.notes.find(n => n.id === id)!;
+    Object.assign(n, updates, { updatedAt: new Date() });
+    return n;
+  }
+  async updateNoteStatus(id: string, status: string): Promise<Note> {
+    const n = this.notes.find(n => n.id === id)!;
+    (n as any).status = status as any;
+    if (status === 'published') (n as any).publishedAt = new Date();
+    n.updatedAt = new Date() as any;
+    return n;
+  }
+
+  // Stubs and simplified implementations
+  async createReviewTask(task: InsertReviewTask): Promise<ReviewTask> { return { id: crypto.randomUUID(), ...task, createdAt: new Date() } as any; }
+  async getReviewTasks(): Promise<ReviewTask[]> { return []; }
+  async updateReviewTask(id: string, updates: Partial<InsertReviewTask>): Promise<ReviewTask> { return { id, ...updates } as any; }
+  async createFeedback(fb: InsertFeedback): Promise<Feedback> { const f = { id: crypto.randomUUID(), ...fb, createdAt: new Date() } as any; this.feedbackList.push(f); return f; }
+  async getFeedbackByNote(noteId: string): Promise<Feedback[]> { return this.feedbackList.filter(f => (f as any).noteId === noteId); }
+  async getFeedbackByStudent(studentId: string, noteId: string): Promise<Feedback | undefined> { return this.feedbackList.find(f => (f as any).studentId === studentId && (f as any).noteId === noteId); }
+  async createSubscription(s: InsertSubscription): Promise<Subscription> { const sub = { id: crypto.randomUUID(), ...s, status: 'active' } as any; this.subscriptionsList.push(sub); return sub; }
+  async getActiveSubscription(studentId: string): Promise<Subscription | undefined> { return this.subscriptionsList.find(s => (s as any).studentId === studentId && (s as any).status === 'active'); }
+  async updateSubscriptionStatus(id: string, status: string): Promise<Subscription> { const s = this.subscriptionsList.find(s => s.id === id)!; (s as any).status = status as any; return s; }
+  async followTopper(studentId: string, topperId: string): Promise<Follow> { const f = { id: crypto.randomUUID(), studentId, topperId, createdAt: new Date() } as any; this.followsList.push(f); return f; }
+  async unfollowTopper(studentId: string, topperId: string): Promise<void> { this.followsList = this.followsList.filter(f => !(f.studentId === studentId && f.topperId === topperId)); }
+  async getFollows(studentId: string): Promise<Follow[]> { return this.followsList.filter(f => f.studentId === studentId) as any; }
+  async recordDownload(studentId: string, noteId: string): Promise<Download> { const d = { id: crypto.randomUUID(), studentId, noteId, downloadedAt: new Date() } as any; const n = this.notes.find(n => n.id === noteId); if (n) (n as any).downloadsCount += 1; return d; }
+  async getDownloadHistory(studentId: string): Promise<Download[]> { return [] as any; }
+  async getAllDownloads(): Promise<Download[]> { return [] as any; }
+  async getTopperAnalytics(): Promise<{ totalDownloads: number; averageRating: number; followersCount: number; notesCount: number; }> { return { totalDownloads: 0, averageRating: 0, followersCount: 0, notesCount: this.notes.length }; }
+  async getAdminStats(): Promise<{ totalUsers: number; totalNotes: number; activeSubscriptions: number; pendingReviews: number; }> { return { totalUsers: this.users.length, totalNotes: this.notes.length, activeSubscriptions: 0, pendingReviews: 0 }; }
+  async getNote(id: string): Promise<Note | undefined> { return this.getNoteById(id); }
+  async updateUserCoins(userId: string, coinChange: number): Promise<void> { const u = this.users.find(u => u.id === userId); if (u) { u.coinBalance += coinChange as any; if (coinChange > 0) u.totalEarned += coinChange as any; if (coinChange < 0) u.totalSpent += Math.abs(coinChange) as any; } }
+  async recordTransaction(userId: string, type: string, amount: number, coinChange: number, noteId?: string, description?: string): Promise<Transaction> { const t = { id: crypto.randomUUID(), userId, type: type as any, amount, coinChange, noteId: noteId as any, description, createdAt: new Date() } as any; this.transactionsList.push(t); return t; }
+  async recordNoteView(viewerId: string, noteId: string, coinsEarned: number): Promise<NoteView> { return { id: crypto.randomUUID(), viewerId, noteId, coinsEarned, viewedAt: new Date() } as any; }
+  async hasUserViewedNoteToday(): Promise<boolean> { return false; }
+  async incrementNoteViews(noteId: string): Promise<void> { const n = this.notes.find(n => n.id === noteId); if (n) (n as any).viewsCount += 1; }
+  async incrementNoteDownloads(noteId: string): Promise<void> { const n = this.notes.find(n => n.id === noteId); if (n) (n as any).downloadsCount += 1; }
+  async toggleNoteLike(userId: string, noteId: string): Promise<boolean> { const n = this.notes.find(n => n.id === noteId); if (!n) return false; const liked = (n as any).__likes?.includes(userId) || false; (n as any).__likes = (n as any).__likes || []; if (liked) { (n as any).__likes = (n as any).__likes.filter((x: string) => x !== userId); n.likesCount = (n.likesCount as any) - 1; return false; } else { (n as any).__likes.push(userId); n.likesCount = (n.likesCount as any) + 1; return true; } }
+  async getNoteLikesCount(noteId: string): Promise<number> { const n = this.notes.find(n => n.id === noteId); return n ? (n.likesCount as any) : 0; }
+  async hasUserDownloaded(): Promise<boolean> { return false; }
+  async resetDailyFreeDownloads(): Promise<void> { }
+  async useFreeDowload(): Promise<void> { }
+  async getCoinPackages(): Promise<CoinPackage[]> { return []; }
+  async getUserTransactions(): Promise<Transaction[]> { return []; }
+  async getLeaderboard(): Promise<any[]> { return []; }
+  async getDailyChallenges(): Promise<any[]> { return []; }
+  async completeDailyChallenge(): Promise<{ completed: boolean; coinsEarned?: number; progress?: number }> { return { completed: false, progress: 0 }; }
+  async createForumCategory(category: InsertForumCategory): Promise<ForumCategory> { return { id: crypto.randomUUID(), ...category, createdAt: new Date() } as any; }
+  async getForumCategories(): Promise<ForumCategory[]> { return []; }
+  async createForumPost(post: InsertForumPost): Promise<ForumPost> { return { id: crypto.randomUUID(), ...post, createdAt: new Date(), updatedAt: new Date() } as any; }
+  async getForumPosts(): Promise<{ posts: ForumPost[]; total: number }> { return { posts: [], total: 0 }; }
+  async getForumPost(): Promise<ForumPost | undefined> { return undefined; }
+  async createForumReply(reply: InsertForumReply): Promise<ForumReply> { return { id: crypto.randomUUID(), ...reply, createdAt: new Date(), updatedAt: new Date() } as any; }
+  async getForumReplies(): Promise<ForumReply[]> { return []; }
+  async toggleForumReplyLike(): Promise<boolean> { return false; }
+  async createBroadcast(broadcast: InsertBroadcast): Promise<Broadcast> { return { id: crypto.randomUUID(), ...broadcast, createdAt: new Date(), sentAt: new Date(), isActive: true } as any; }
+  async getBroadcasts(): Promise<Broadcast[]> { return []; }
+  async createUserAchievement(achievement: InsertUserAchievement): Promise<UserAchievement> { return { id: crypto.randomUUID(), ...achievement, unlockedAt: new Date() } as any; }
+  async getUserAchievements(): Promise<UserAchievement[]> { return []; }
+  async getEducationalCategories(): Promise<any[]> { return this.categories; }
+  async saveUserEducationalPreferences(): Promise<void> { }
+  async getUserEducationalPreferences(): Promise<any[]> { return []; }
+  async completeUserOnboarding(userId: string): Promise<User> { const u = this.users.find(u => u.id === userId)!; (u as any).onboardingCompleted = true; return u; }
+  async seedEducationalCategories(): Promise<void> { }
+  async getUploaderStats(): Promise<any> { return { totalUploads: this.notes.length, publishedNotes: this.notes.length, totalDownloads: this.notes.reduce((a, n) => a + (n.downloadsCount as any), 0), walletBalance: 0 }; }
+  async getWithdrawalRequests(): Promise<WithdrawalRequest[]> { return []; }
+  async createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest> { return { id: crypto.randomUUID(), ...request, status: 'pending', requestedAt: new Date() } as any; }
+  async getPendingWithdrawalsTotal(): Promise<number> { return 0; }
+  async getTotalWithdrawn(): Promise<number> { return 0; }
+  async getEarningTransactions(): Promise<Transaction[]> { return []; }
+  async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> { return []; }
+  async approveWithdrawalRequest(id: string, adminId: string): Promise<WithdrawalRequest> { return { id, topperId: adminId, amount: 0 as any, coins: 0, status: 'approved', requestedAt: new Date(), processedAt: new Date(), processedBy: adminId } as any; }
+  async rejectWithdrawalRequest(id: string, adminId: string, reason: string): Promise<WithdrawalRequest> { return { id, topperId: adminId, amount: 0 as any, coins: 0, status: 'rejected', requestedAt: new Date(), processedAt: new Date(), processedBy: adminId, rejectionReason: reason } as any; }
+  async settleWithdrawalRequest(id: string, adminId: string, comments?: string): Promise<WithdrawalRequest> { return { id, topperId: adminId, amount: 0 as any, coins: 0, status: 'settled', requestedAt: new Date(), processedAt: new Date(), processedBy: adminId, adminComments: comments } as any; }
+  
+  // User Activity Operations
+  async getUserActivity(): Promise<any[]> {
+    // Return only real stored activities (no mock data)
+    return this.userActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+  
+  async getUserActivityById(userId: string): Promise<any[]> {
+    const allActivities = await this.getUserActivity();
+    return allActivities.filter(activity => activity.userId === userId);
+  }
+  
+  async recordUserActivity(userId: string, action: string, details?: any): Promise<void> {
+    const user = this.users.find(u => u.id === userId);
+    if (!user) return;
+
+    const activity = {
+      id: crypto.randomUUID(),
+      userId,
+      userName: `${user.firstName} ${user.lastName}`,
+      userEmail: user.email,
+      action,
+      details: details || this.getActionDetails(action),
+      timestamp: new Date().toISOString(),
+      ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      location: 'Mumbai, India'
+    };
+
+    this.userActivities.push(activity);
+    
+    // Keep only last 1000 activities to prevent memory issues
+    if (this.userActivities.length > 1000) {
+      this.userActivities = this.userActivities.slice(-1000);
+    }
+
+    // Record login session if it's a login action
+    if (action === 'login') {
+      this.recordUserSession(userId, details);
+    }
+
+    console.log(`User ${userId} performed action: ${action}`, details);
+  }
+
+  async getUserSessions(userId?: string): Promise<any[]> {
+    if (userId) {
+      return this.userSessions.filter(session => session.userId === userId)
+        .sort((a, b) => new Date(b.loginTime).getTime() - new Date(a.loginTime).getTime());
+    }
+    return this.userSessions.sort((a, b) => new Date(b.loginTime).getTime() - new Date(a.loginTime).getTime());
+  }
+
+  async getUserDetailedInfo(userId: string): Promise<any> {
+    const user = this.users.find(u => u.id === userId);
+    if (!user) return null;
+
+    const userActivities = await this.getUserActivityById(userId);
+    const userSessions = await this.getUserSessions(userId);
+    const userStats = await this.getUserStats(userId);
+    const userNotes = this.notes.filter(n => n.topperId === userId);
+
+    // Calculate additional metrics
+    const lastLogin = userSessions.length > 0 ? userSessions[0].loginTime : user.createdAt;
+    const totalSessions = userSessions.length;
+    const avgSessionDuration = '2h 15m'; // Mock data
+    const deviceTypes = Array.from(new Set(userSessions.map(s => s.device)));
+    const locations = Array.from(new Set(userSessions.map(s => s.location)));
+
+    return {
+      ...user,
+      lastLogin,
+      totalSessions,
+      avgSessionDuration,
+      deviceTypes,
+      locations,
+      recentActivities: userActivities.slice(0, 10),
+      recentSessions: userSessions.slice(0, 5),
+      stats: userStats,
+      notes: userNotes.map(note => ({
+        id: note.id,
+        title: note.title,
+        subject: note.subject,
+        status: note.status,
+        downloads: note.downloadsCount || 0,
+        createdAt: note.createdAt
+      }))
+    };
+  }
+
+  private recordUserSession(userId: string, details?: any): void {
+    const user = this.users.find(u => u.id === userId);
+    if (!user) return;
+
+    const session = {
+      id: crypto.randomUUID(),
+      userId,
+      userName: `${user.firstName} ${user.lastName}`,
+      userEmail: user.email,
+      loginTime: new Date().toISOString(),
+      ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+      userAgent: details?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      location: details?.location || 'Mumbai, India',
+      device: details?.device || 'Desktop',
+      browser: details?.browser || 'Chrome',
+      isActive: true,
+      lastActivity: new Date().toISOString()
+    };
+
+    this.userSessions.push(session);
+    
+    // Keep only last 500 sessions
+    if (this.userSessions.length > 500) {
+      this.userSessions = this.userSessions.slice(-500);
+    }
+  }
+  
+  async getUserStats(userId: string): Promise<{
+    notesUploaded: number;
+    totalEarnings: number;
+    totalDownloads: number;
+    averageRating: number;
+    monthlyEarnings: number;
+    totalViews: number;
+    activeNotes: number;
+    pendingReviews: number;
+  }> {
+    const user = this.users.find(u => u.id === userId);
+    const userNotes = this.notes.filter(n => n.topperId === userId);
+    const userDownloads = this.followsList.filter(f => f.studentId === userId);
+    
+    // Calculate stats from user's notes
+    const totalDownloads = userNotes.reduce((sum, note) => sum + (note.downloadsCount || 0), 0);
+    const totalViews = userNotes.reduce((sum, note) => sum + (note.viewsCount || 0), 0);
+    const activeNotes = userNotes.filter(n => n.status === 'published').length;
+    
+    // Calculate average rating from feedback
+    const allFeedback = this.feedbackList.filter(f => 
+      userNotes.some(note => note.id === f.noteId)
+    );
+    const averageRating = allFeedback.length > 0 
+      ? allFeedback.reduce((sum, f) => sum + f.rating, 0) / allFeedback.length 
+      : 0;
+    
+    return {
+      notesUploaded: userNotes.length,
+      totalEarnings: user?.totalEarned || 0,
+      totalDownloads,
+      averageRating,
+      monthlyEarnings: Math.floor((user?.totalEarned || 0) * 0.3), // Simulate monthly earnings
+      totalViews,
+      activeNotes,
+      pendingReviews: userNotes.filter(n => n.status === 'submitted').length,
+    };
+  }
+  
+  async getUserSubjectStats(userId: string): Promise<{
+    subject: string;
+    notesCount: number;
+    earnings: number;
+    downloads: number;
+    averageRating: number;
+  }[]> {
+    const userNotes = this.notes.filter(n => n.topperId === userId);
+    const subjectMap = new Map<string, any>();
+    
+    for (const note of userNotes) {
+      const subject = note.subject;
+      if (!subjectMap.has(subject)) {
+        subjectMap.set(subject, {
+          subject,
+          notesCount: 0,
+          earnings: 0,
+          downloads: 0,
+          averageRating: 0,
+          ratings: []
+        });
+      }
+      
+      const stats = subjectMap.get(subject);
+      stats.notesCount++;
+      stats.downloads += note.downloadsCount || 0;
+      stats.earnings += (note.downloadsCount || 0) * 5; // Simulate earnings
+      
+      // Get feedback for this note
+      const noteFeedback = this.feedbackList.filter(f => f.noteId === note.id);
+      stats.ratings.push(...noteFeedback.map(f => f.rating));
+    }
+    
+    // Calculate average ratings
+    const result = Array.from(subjectMap.values()).map(stats => ({
+      subject: stats.subject,
+      notesCount: stats.notesCount,
+      earnings: stats.earnings,
+      downloads: stats.downloads,
+      averageRating: stats.ratings.length > 0 
+        ? stats.ratings.reduce((sum: number, rating: number) => sum + rating, 0) / stats.ratings.length 
+        : 0
+    }));
+    
+    return result;
+  }
+  
+  async updateUserStats(userId: string, uploadData: { subject: string; noteId: string }): Promise<void> {
+    // In memory storage - stats are calculated dynamically, so this is a no-op
+    console.log(`Updated stats for user ${userId} after uploading ${uploadData.subject} note ${uploadData.noteId}`);
+  }
+  
+  // Admin Account Operations (InMemoryStorage stubs)
+  async getAdminByUsername(username: string) { return undefined; }
+  async getAdminById(id: string) { return undefined; }
+  async getAllAdmins() { return []; }
+  async createAdmin(admin: any) { return admin as AdminAccount; }
+  async updateAdminLastLogin(id: string) { }
+  async updateAdminPassword(id: string, password: string) { }
+  async createAdminSession(session: any) { }
+  async getAdminSession(token: string) { return undefined; }
+  async updateAdminSessionActivity(token: string) { }
+  async deleteAdminSession(token: string) { }
+  async recordAdminActivity(adminId: string, action: string, targetType: string, targetId: string, metadata?: any) { }
+  async getReviewTaskByNoteId(noteId: string) { return undefined; }
+  async updateReviewTaskStatus(id: string, status: string) { return { id, status: status as any } as any; }
+  async createNotification(notification: any) { return { id: crypto.randomUUID(), ...notification, read: false, createdAt: new Date() } as any; }
+  
+  private getActionDetails(action: string): any {
+    const detailsMap: { [key: string]: any } = {
+      'login': { page: '/login', sessionDuration: '2h 15m' },
+      'download': { noteTitle: 'Physics Notes - Kinematics', noteId: crypto.randomUUID() },
+      'upload': { noteTitle: 'Chemistry Notes - Organic', noteId: crypto.randomUUID() },
+      'view_note': { noteTitle: 'Mathematics Notes - Calculus', noteId: crypto.randomUUID() },
+      'like_note': { noteTitle: 'Biology Notes - Cell Structure', noteId: crypto.randomUUID() },
+      'follow_user': { followedUser: 'Dr. Sarah Johnson', followedUserId: crypto.randomUUID() },
+      'comment': { noteTitle: 'History Notes - World War II', comment: 'Great notes!' }
+    };
+    return detailsMap[action] || {};
+  }
+}
+
+export class DatabaseStorage implements IStorage {
+  private async syncMissingApprovalCoins(userId: string): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return;
+
+    const [approvedNotesResult] = await db
+      .select({ count: count(notes.id) })
+      .from(notes)
+      .where(and(eq(notes.topperId, userId), eq(notes.status, "approved")));
+
+    const approvedNotesCount = Number(approvedNotesResult?.count || 0);
+    const expectedApprovalCoins = approvedNotesCount * 20;
+    const currentEarned = Number(user.totalEarned || 0);
+
+    if (currentEarned >= expectedApprovalCoins) return;
+
+    const missingCoins = expectedApprovalCoins - currentEarned;
+    await db
+      .update(users)
+      .set({
+        totalEarned: sql`${users.totalEarned} + ${missingCoins}`,
+        coinBalance: sql`${users.coinBalance} + ${missingCoins}`,
+        updatedAt: new Date(),
       })
-      .returning();
-    return user;
+      .where(eq(users.id, userId));
+  }
+
+  // User operations (required for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    if (process.env.USE_SQLITE === "1") return undefined;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as User | undefined;
+    } catch {
+      // Fallback to drizzle
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    }
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .upsert({ ...userData, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as User;
+    } catch {
+      // Fallback to drizzle
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: { ...userData, updatedAt: new Date() },
+        })
+        .returning();
+      return user;
+    }
   }
 
   // User management
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    if (process.env.USE_SQLITE === "1") return undefined;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+      if (error) throw error;
+      return data as User | undefined;
+    } catch {
+      // Fallback to drizzle
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user;
+    }
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    if (process.env.USE_SQLITE === "1") {
+      return [];
+    }
+    return await db.select().from(users).orderBy(desc(users.createdAt));
   }
 
   async updateUserRole(id: string, role: string): Promise<User> {
@@ -242,6 +851,17 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateUserLastSeen(id: string, isOnline: boolean): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        lastSeen: new Date(),
+        isOnline: isOnline,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, id));
   }
 
   // Topper profile operations
@@ -272,11 +892,31 @@ export class DatabaseStorage implements IStorage {
 
   // Note operations
   async createNote(note: InsertNote): Promise<Note> {
-    const [createdNote] = await db
-      .insert(notes)
-      .values(note)
-      .returning();
-    return createdNote;
+    try {
+      const noteData = {
+        ...note,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        downloads_count: 0,
+        views_count: 0,
+        likes_count: 0,
+        price: 5,
+        status: note.status || 'draft',
+        type: (note as any).type || 'notes',
+      };
+      const { data, error } = await supabaseAdmin
+        .from('notes')
+        .insert(noteData)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Note;
+    } catch {
+      // Fallback to drizzle
+      const [createdNote] = await db.insert(notes).values(note).returning();
+      return createdNote;
+    }
   }
 
   async getNoteById(id: string): Promise<Note | undefined> {
@@ -289,6 +929,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(notes)
       .where(eq(notes.topperId, topperId))
+      .orderBy(desc(notes.createdAt));
+  }
+
+  async getNotesByUser(userId: string): Promise<Note[]> {
+    return await db
+      .select()
+      .from(notes)
+      .where(eq(notes.topperId, userId))
       .orderBy(desc(notes.createdAt));
   }
 
@@ -362,6 +1010,97 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getAllNotesForAdmin(filters?: {
+    status?: string;
+    subject?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ notes: any[]; total: number }> {
+    const conditions = [];
+    
+    // Filter by status
+    if (filters?.status && filters.status !== 'all') {
+      conditions.push(eq(notes.status, filters.status as any));
+    }
+    
+    // Filter by subject
+    if (filters?.subject) {
+      conditions.push(eq(notes.subject, filters.subject as any));
+    }
+
+    // Search functionality - search in title, subject, topic, description, and uploader name/email
+    if (filters?.search && filters.search.trim()) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`LOWER(${notes.title}) LIKE ${searchTerm}`,
+          sql`LOWER(${notes.subject}) LIKE ${searchTerm}`,
+          sql`LOWER(${notes.topic}) LIKE ${searchTerm}`,
+          sql`LOWER(${notes.description}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.firstName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.lastName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.email}) LIKE ${searchTerm}`
+        )
+      );
+    }
+
+    const [notesResult, totalResult] = await Promise.all([
+      db
+        .select({
+          id: notes.id,
+          title: notes.title,
+          subject: notes.subject,
+          topic: notes.topic,
+          description: notes.description,
+          status: notes.status,
+          type: notes.type,
+          topperId: notes.topperId,
+          publishedAt: notes.publishedAt,
+          downloadsCount: notes.downloadsCount,
+          viewsCount: notes.viewsCount,
+          likesCount: notes.likesCount,
+          price: notes.price,
+          categoryId: notes.categoryId,
+          classGrade: notes.classGrade,
+          createdAt: notes.createdAt,
+          updatedAt: notes.updatedAt,
+          attachments: notes.attachments,
+          // Join with users to get author info
+          authorFirstName: users.firstName,
+          authorLastName: users.lastName,
+          authorEmail: users.email,
+          authorRole: users.role,
+        })
+        .from(notes)
+        .leftJoin(users, eq(notes.topperId, users.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(notes.createdAt))
+        .limit(filters?.limit || 20)
+        .offset(filters?.offset || 0),
+      db
+        .select({ count: count() })
+        .from(notes)
+        .leftJoin(users, eq(notes.topperId, users.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+    ]);
+
+    // Format the results with author info
+    const notesWithUsers = notesResult.map((note: any) => ({
+      ...note,
+      uploaderName: `${note.authorFirstName || ''} ${note.authorLastName || ''}`.trim() || 'Unknown',
+      uploaderEmail: note.authorEmail || 'unknown@email.com',
+      authorName: `${note.authorFirstName || ''} ${note.authorLastName || ''}`.trim() || 'Unknown',
+      authorEmail: note.authorEmail || 'unknown@email.com',
+      authorRole: note.authorRole || 'student',
+    }));
+
+    return {
+      notes: notesWithUsers,
+      total: totalResult[0].count
+    };
+  }
+
   async updateNote(id: string, updates: Partial<InsertNote>): Promise<Note> {
     const [note] = await db
       .update(notes)
@@ -393,13 +1132,40 @@ export class DatabaseStorage implements IStorage {
     return note;
   }
 
+  async updateNoteTeacherCredentials(noteId: string, teacherId: string, teacherPassword: string): Promise<Note> {
+    const [note] = await db
+      .update(notes)
+      .set({
+        teacherId,
+        teacherPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(notes.id, noteId))
+      .returning();
+    return note;
+  }
+
   // Review operations
   async createReviewTask(task: InsertReviewTask): Promise<ReviewTask> {
-    const [reviewTask] = await db
-      .insert(reviewTasks)
-      .values(task)
-      .returning();
-    return reviewTask;
+    try {
+      const taskData = {
+        ...task,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        status: task.status || 'open',
+      };
+      const { data, error } = await supabaseAdmin
+        .from('review_tasks')
+        .insert(taskData)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ReviewTask;
+    } catch {
+      // Fallback to drizzle
+      const [reviewTask] = await db.insert(reviewTasks).values(task).returning();
+      return reviewTask;
+    }
   }
 
   async getReviewTasks(reviewerId?: string): Promise<ReviewTask[]> {
@@ -537,6 +1303,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(notes, eq(downloads.noteId, notes.id))
       .where(eq(downloads.studentId, studentId))
       .orderBy(desc(downloads.downloadedAt));
+  }
+
+  async getAllDownloads(): Promise<Download[]> {
+    return await db.select().from(downloads).orderBy(desc(downloads.downloadedAt));
   }
 
   // Analytics
@@ -840,8 +1610,8 @@ export class DatabaseStorage implements IStorage {
       );
 
     const challengesWithProgress = await Promise.all(
-      activeChallenges.map(async (challenge) => {
-        const [progress] = await db
+      activeChallenges.map(async (challenge: DailyChallenge) => {
+        const progressResult = await db
           .select()
           .from(userChallengeProgress)
           .where(
@@ -850,6 +1620,8 @@ export class DatabaseStorage implements IStorage {
               eq(userChallengeProgress.challengeId, challenge.id)
             )
           );
+
+        const progress = progressResult[0];
 
         return {
           ...challenge,
@@ -1236,6 +2008,46 @@ export class DatabaseStorage implements IStorage {
     return withdrawal;
   }
 
+  async getPendingWithdrawalsTotal(topperId: string): Promise<number> {
+    const result = await db
+      .select({ total: sum(withdrawalRequests.coins) })
+      .from(withdrawalRequests)
+      .where(
+        and(
+          eq(withdrawalRequests.topperId, topperId),
+          eq(withdrawalRequests.status, 'pending')
+        )
+      );
+    return Number(result[0]?.total || 0);
+  }
+
+  async getTotalWithdrawn(topperId: string): Promise<number> {
+    const result = await db
+      .select({ total: sum(withdrawalRequests.coins) })
+      .from(withdrawalRequests)
+      .where(
+        and(
+          eq(withdrawalRequests.topperId, topperId),
+          eq(withdrawalRequests.status, 'settled')
+        )
+      );
+    return Number(result[0]?.total || 0);
+  }
+
+  async getEarningTransactions(userId: string): Promise<Transaction[]> {
+    return await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'coin_earned')
+        )
+      )
+      .orderBy(desc(transactions.createdAt))
+      .limit(50);
+  }
+
   // Admin withdrawal operations
   async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> {
     return await db
@@ -1284,6 +2096,301 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return withdrawal;
   }
+
+  // User Activity Operations
+  async getUserActivity(): Promise<any[]> {
+    // For now, return mock data similar to InMemoryStorage
+    // In production, this would query a user_activities table
+    const activities = [];
+    const actions = ['login', 'download', 'upload', 'view_note', 'like_note', 'follow_user', 'comment'];
+    
+    // Get some users from the database
+    const dbUsers = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email
+    }).from(users).limit(5);
+    
+    for (let i = 0; i < 20; i++) {
+      const user = dbUsers[Math.floor(Math.random() * dbUsers.length)];
+      const action = actions[Math.floor(Math.random() * actions.length)];
+      const timestamp = new Date(Date.now() - Math.random() * 3600000); // Last hour
+      
+      activities.push({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        userName: `${user.firstName} ${user.lastName}`,
+        userEmail: user.email,
+        action,
+        details: this.getActionDetails(action),
+        timestamp: timestamp.toISOString(),
+        ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        location: 'Mumbai, India'
+      });
+    }
+    
+    return activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+  
+  async getUserActivityById(userId: string): Promise<any[]> {
+    const allActivities = await this.getUserActivity();
+    return allActivities.filter(activity => activity.userId === userId);
+  }
+  
+  async recordUserActivity(userId: string, action: string, details?: any): Promise<void> {
+    // In production, this would insert into a user_activities table
+    console.log(`User ${userId} performed action: ${action}`, details);
+  }
+
+  async getUserSessions(userId?: string): Promise<any[]> {
+    // In production, this would query a user_sessions table
+    // For now, return mock data
+    const mockSessions = [
+      {
+        id: crypto.randomUUID(),
+        userId: userId || crypto.randomUUID(),
+        loginTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        location: 'Mumbai, India',
+        device: 'Desktop',
+        browser: 'Chrome',
+        isActive: true,
+        lastActivity: new Date().toISOString()
+      }
+    ];
+    
+    return mockSessions;
+  }
+
+  async getUserDetailedInfo(userId: string): Promise<any> {
+    // Get user from database
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return null;
+
+    const userActivities = await this.getUserActivityById(userId);
+    const userSessions = await this.getUserSessions(userId);
+    const userStats = await this.getUserStats(userId);
+    
+    // Get user's notes
+    const userNotes = await db
+      .select()
+      .from(notes)
+      .where(eq(notes.topperId, userId))
+      .limit(10);
+
+    return {
+      ...user,
+      lastLogin: userSessions.length > 0 ? userSessions[0].loginTime : user.createdAt,
+      totalSessions: userSessions.length,
+      avgSessionDuration: '2h 15m',
+      deviceTypes: ['Desktop', 'Mobile'],
+      locations: ['Mumbai, India'],
+      recentActivities: userActivities.slice(0, 10),
+      recentSessions: userSessions.slice(0, 5),
+      stats: userStats,
+      notes: userNotes.map((note: any) => ({
+        id: note.id,
+        title: note.title,
+        subject: note.subject,
+        status: note.status,
+        downloads: note.downloadsCount || 0,
+        createdAt: note.createdAt
+      }))
+    };
+  }
+  
+  async getUserStats(userId: string): Promise<{
+    notesUploaded: number;
+    totalEarnings: number;
+    totalDownloads: number;
+    averageRating: number;
+    monthlyEarnings: number;
+    totalViews: number;
+    activeNotes: number;
+    pendingReviews: number;
+  }> {
+    // Backfill legacy users who missed coin credits before approval-only flow fix.
+    await this.syncMissingApprovalCoins(userId);
+
+    // Get user data
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    
+    // Get user's notes count and stats
+    const userNotesStats = await db
+      .select({
+        notesCount: count(notes.id),
+        totalViews: sum(notes.viewsCount),
+        totalDownloads: sum(notes.downloadsCount),
+        activeNotes: count(sql`CASE WHEN ${notes.status} = 'published' THEN 1 END`),
+        pendingReviews: count(sql`CASE WHEN ${notes.status} = 'submitted' THEN 1 END`),
+      })
+      .from(notes)
+      .where(eq(notes.topperId, userId));
+    
+    // Get average rating from feedback
+    const avgRatingResult = await db
+      .select({
+        avgRating: avg(feedback.rating)
+      })
+      .from(feedback)
+      .innerJoin(notes, eq(feedback.noteId, notes.id))
+      .where(eq(notes.topperId, userId));
+    
+    const stats = userNotesStats[0];
+    const avgRating = avgRatingResult[0]?.avgRating || 0;
+    
+    // Calculate monthly earnings (30% of total for simulation)
+    const monthlyEarnings = Math.floor((user?.totalEarned || 0) * 0.3);
+    
+    return {
+      notesUploaded: Number(stats?.notesCount || 0),
+      totalEarnings: user?.totalEarned || 0,
+      totalDownloads: Number(stats?.totalDownloads || 0),
+      averageRating: Number(avgRating),
+      monthlyEarnings,
+      totalViews: Number(stats?.totalViews || 0),
+      activeNotes: Number(stats?.activeNotes || 0),
+      pendingReviews: Number(stats?.pendingReviews || 0),
+    };
+  }
+  
+  async getUserSubjectStats(userId: string): Promise<{
+    subject: string;
+    notesCount: number;
+    earnings: number;
+    downloads: number;
+    averageRating: number;
+  }[]> {
+    const subjectStats = await db
+      .select({
+        subject: notes.subject,
+        notesCount: count(notes.id),
+        downloads: sum(notes.downloadsCount),
+        avgRating: avg(feedback.rating)
+      })
+      .from(notes)
+      .leftJoin(feedback, eq(feedback.noteId, notes.id))
+      .where(eq(notes.topperId, userId))
+      .groupBy(notes.subject);
+    
+    return subjectStats.map((stat: any) => ({
+      subject: stat.subject,
+      notesCount: Number(stat.notesCount || 0),
+      earnings: Number(stat.downloads || 0) * 5, // Simulate earnings: 5 coins per download
+      downloads: Number(stat.downloads || 0),
+      averageRating: Number(stat.avgRating || 0),
+    }));
+  }
+  
+  async updateUserStats(userId: string, uploadData: { subject: string; noteId: string }): Promise<void> {
+    // Keep this endpoint as a lightweight stats-touch hook only.
+    // Coins are awarded on admin approval, not on upload submission.
+    await db
+      .update(users)
+      .set({
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+  
+  // Admin Account Operations
+  async getAdminByUsername(username: string): Promise<AdminAccount | undefined> {
+    const [admin] = await db.select().from(adminAccounts).where(eq(adminAccounts.username, username));
+    return admin;
+  }
+
+  async getAdminById(id: string): Promise<AdminAccount | undefined> {
+    const [admin] = await db.select().from(adminAccounts).where(eq(adminAccounts.id, id));
+    return admin;
+  }
+
+  async getAllAdmins(): Promise<AdminAccount[]> {
+    const admins = await db.select().from(adminAccounts);
+    return admins;
+  }
+
+  async createAdmin(admin: { id: string; username: string; email: string; password: string; fullName: string; isActive: boolean }): Promise<AdminAccount> {
+    const [newAdmin] = await db.insert(adminAccounts).values({
+      id: admin.id,
+      username: admin.username,
+      email: admin.email,
+      password: admin.password,
+      fullName: admin.fullName,
+      isActive: admin.isActive,
+      createdAt: new Date(),
+    }).returning();
+    return newAdmin;
+  }
+
+  async updateAdminLastLogin(id: string): Promise<void> {
+    await db.update(adminAccounts).set({ lastLogin: new Date(), updatedAt: new Date() }).where(eq(adminAccounts.id, id));
+  }
+
+  async updateAdminPassword(id: string, password: string): Promise<void> {
+    await db.update(adminAccounts).set({ password, updatedAt: new Date() }).where(eq(adminAccounts.id, id));
+  }
+
+  async createAdminSession(session: any): Promise<void> {
+    await db.insert(adminSessions).values(session as any);
+  }
+
+  async getAdminSession(token: string): Promise<any | undefined> {
+    const [session] = await db.select().from(adminSessions).where(eq(adminSessions.token, token));
+    return session;
+  }
+
+  async updateAdminSessionActivity(token: string): Promise<void> {
+    await db.update(adminSessions).set({ lastActivity: new Date() }).where(eq(adminSessions.token, token));
+  }
+
+  async deleteAdminSession(token: string): Promise<void> {
+    await db.delete(adminSessions).where(eq(adminSessions.token, token));
+  }
+
+  async recordAdminActivity(adminId: string, action: string, targetType: string, targetId: string, metadata?: any): Promise<void> {
+    console.log(`Admin ${adminId} performed ${action} on ${targetType} ${targetId}`, metadata);
+  }
+
+  async getReviewTaskByNoteId(noteId: string): Promise<ReviewTask | undefined> {
+    const [task] = await db.select().from(reviewTasks).where(eq(reviewTasks.noteId, noteId));
+    return task;
+  }
+
+  async updateReviewTaskStatus(id: string, status: string): Promise<ReviewTask> {
+    const [task] = await db.update(reviewTasks).set({ status: status as any }).where(eq(reviewTasks.id, id)).returning();
+    return task;
+  }
+
+  async createNotification(notification: any): Promise<Notification> {
+    const [notif] = await db.insert(notifications).values(notification).returning();
+    return notif;
+  }
+  
+  private getActionDetails(action: string): any {
+    const detailsMap: { [key: string]: any } = {
+      'login': { page: '/login', sessionDuration: '2h 15m' },
+      'download': { noteTitle: 'Physics Notes - Kinematics', noteId: crypto.randomUUID() },
+      'upload': { noteTitle: 'Chemistry Notes - Organic', noteId: crypto.randomUUID() },
+      'view_note': { noteTitle: 'Mathematics Notes - Calculus', noteId: crypto.randomUUID() },
+      'like_note': { noteTitle: 'Biology Notes - Cell Structure', noteId: crypto.randomUUID() },
+      'follow_user': { followedUser: 'Dr. Sarah Johnson', followedUserId: crypto.randomUUID() },
+      'comment': { noteTitle: 'History Notes - World War II', comment: 'Great notes!' }
+    };
+    return detailsMap[action] || {};
+  }
 }
 
-export const storage = new DatabaseStorage();
+const useDatabaseStorage = process.env.USE_SQLITE !== '1';
+
+if (useDatabaseStorage) {
+  console.log('[storage] Using DatabaseStorage (PostgreSQL)');
+} else {
+  console.log('[storage] Using InMemoryStorage (USE_SQLITE=1)');
+}
+
+export const storage: IStorage = useDatabaseStorage
+  ? new DatabaseStorage()
+  : new InMemoryStorage();

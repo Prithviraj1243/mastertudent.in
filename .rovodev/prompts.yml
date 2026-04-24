@@ -1,0 +1,4 @@
+prompts:
+  - name: supabase-storage-integration
+    description: Complete guide to integrate Supabase Storage for notes uploads with admin approval workflow, ensuring files are stored in Supabase cloud storage instead of local server, making it production-ready and scalable.
+    content_file: supabase-storage-integration.md

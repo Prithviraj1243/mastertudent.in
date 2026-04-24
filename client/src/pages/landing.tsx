@@ -3,10 +3,51 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, GraduationCap, Star, Users, BookOpen, TrendingUp, Quote } from "lucide-react";
 import logoImage from "/src/assets/logo.png";
 import LoginForm from "@/components/auth/LoginForm";
-import { useState } from "react";
+import SplashScreen from "@/components/SplashScreen";
+import OnboardingScreen from "@/components/OnboardingScreen";
+import SignUpScreen from "@/components/SignUpScreen";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Landing() {
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const [showSplash, setShowSplash] = useState(() => {
+    // Check if we should skip splash screen
+    const skipSplash = localStorage.getItem('skipSplash');
+    if (skipSplash === 'true') {
+      localStorage.removeItem('skipSplash'); // Clean up
+      return false; // Skip splash screen
+    }
+    return true; // Show splash screen normally
+  });
+  const [showSignUp, setShowSignUp] = useState(() => {
+    // If skipping splash, go directly to signup
+    return localStorage.getItem('skipSplash') === 'true';
+  });
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  
+  // Show splash screen first (only if not skipping)
+  if (showSplash) {
+    return <SplashScreen onComplete={() => {
+      setShowSplash(false);
+      setShowSignUp(true); // Skip onboarding, go directly to signup
+    }} />;
+  }
+  
+  // Show sign up screen after splash (skip onboarding and this landing page)
+  if (showSignUp) {
+    return <SignUpScreen 
+      selectedGoals={selectedGoals}
+      onComplete={() => {
+        // After successful signup, set direct authentication
+        sessionStorage.setItem('directAuth', 'true');
+        sessionStorage.setItem('userAuthenticated', 'true');
+        
+        // Redirect to home page
+        window.location.href = "/";
+      }} 
+    />;
+  }
   
   if (showLoginForm) {
     return (
@@ -27,26 +68,60 @@ export default function Landing() {
   }
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 relative overflow-hidden">
+      {/* Animated Background Effects */}
+      <div className="absolute inset-0">
+        {/* Floating Particles */}
+        <div className="absolute inset-0">
+          {[...Array(30)].map((_, i) => (
+            <div
+              key={i}
+              className={`absolute rounded-full animate-pulse ${
+                i % 3 === 0 ? 'w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500' :
+                i % 3 === 1 ? 'w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-500' :
+                'w-1 h-1 bg-gradient-to-r from-cyan-400 to-blue-500'
+              }`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 4}s`,
+                animationDuration: `${3 + Math.random() * 2}s`
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        </div>
+
+        {/* Glowing Orbs */}
+        <div className="absolute top-1/4 left-1/6 w-32 h-32 bg-gradient-to-r from-orange-400/20 to-red-500/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/6 w-40 h-40 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-xl animate-pulse" style={{animationDelay: '2s'}}></div>
+      </div>
+
       {/* Header */}
-      <header className="bg-white/95 border-b border-pink-300/50 sticky top-0 z-50 backdrop-blur-md">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-100/30 via-purple-100/30 to-cyan-100/30 animate-study-pulse"></div>
+      <header className="bg-black/30 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md relative">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl">
-                <img 
-                  src={logoImage}
-                  alt="MasterStudent Logo" 
-                  className="w-full h-full object-contain rounded-2xl"
-                />
+              <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
+                <GraduationCap className="w-7 h-7 text-white drop-shadow-lg" />
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-700 via-pink-600 to-cyan-600 bg-clip-text text-transparent">MasterStudent</span>
+              <div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
+                  MasterStudent
+                </span>
+                <div className="text-xs text-orange-300 font-medium tracking-wider uppercase">
+                  ⚡ Learn • Share • Excel
+                </div>
+              </div>
             </div>
             
             <div className="flex items-center">
               <Button 
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-lg border border-blue-400/30"
+                className="bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-400 hover:to-red-500 shadow-lg border border-orange-400/30 hover:border-red-400/50 transition-all duration-300"
                 onClick={() => setShowLoginForm(true)}
                 data-testid="button-get-started"
               >
@@ -58,36 +133,43 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-200/20 via-purple-200/20 to-cyan-200/20 animate-morphingGlow"></div>
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 z-10">
         <div className="relative max-w-7xl mx-auto text-center">
           <div className="animate-fade-in">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              <span className="text-gray-800">Master Your Studies with</span>
-              <span className="block bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-600 bg-clip-text text-transparent"> Top Student Notes</span>
+            {/* Premium Badge */}
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-400/30 rounded-full mb-8">
+              <Star className="w-4 h-4 text-orange-400 mr-2" />
+              <span className="text-orange-400 text-sm font-medium">Premium Study Platform</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+              <span className="text-white">Crack your goal with</span>
+              <span className="block bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent animate-pulse">
+                India's top students notes
+              </span>
             </h1>
-            <p className="text-xl text-gray-700 mb-8 max-w-3xl mx-auto animate-slide-up">
+            <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
               Access premium study notes from top performers, upload your own materials to earn, 
-              and join a community of academic excellence.
+              and join a <span className="text-orange-400 font-semibold">vibrant community</span> of academic excellence.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-pink-400/50 hover:border-yellow-400"
+              className="bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-400 hover:to-red-500 text-lg px-8 py-4 font-bold shadow-2xl border border-orange-400/50 hover:border-red-400/50 transition-all duration-300 hover:scale-105"
               onClick={() => setShowLoginForm(true)}
               data-testid="button-browse-notes"
             >
-              <BookOpen className="mr-2 h-5 w-5 animate-glow-pulse" />
-              📈 Browse Notes
+              <BookOpen className="mr-2 h-5 w-5" />
+              📚 Browse Premium Notes
             </Button>
             <Button 
               size="lg"
-              className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 hover-study-card animate-interactive-hover text-lg px-8 py-4 font-bold shadow-2xl border-2 border-emerald-400/50 hover:border-cyan-400"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 text-lg px-8 py-4 font-bold shadow-2xl border border-purple-400/50 hover:border-pink-400/50 transition-all duration-300 hover:scale-105"
               onClick={() => setShowLoginForm(true)}
               data-testid="button-become-topper"
             >
-              <TrendingUp className="mr-2 h-5 w-5 animate-glow-pulse" />
+              <TrendingUp className="mr-2 h-5 w-5" />
               💰 Become a Topper
             </Button>
           </div>
@@ -95,83 +177,83 @@ export default function Landing() {
           {/* Floating Elements - Removed */}
           
           {/* Stats Preview */}
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="bg-white/80 border-2 border-pink-300/50 rounded-xl p-6 hover-study-card animate-interactive-hover shadow-xl">
-              <div className="text-3xl font-bold text-purple-600 mb-2 animate-number-counter">10,000+</div>
-              <div className="text-purple-700 font-medium">Quality Notes</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="bg-black/40 backdrop-blur-md border border-orange-400/30 rounded-xl p-6 hover:border-orange-400/50 transition-all duration-300 hover:scale-105 shadow-2xl">
+              <div className="flex items-center mb-4">
+                <BookOpen className="w-8 h-8 text-orange-400 mr-3" />
+                <div className="text-3xl font-bold text-orange-400 font-mono">10,000+</div>
+              </div>
+              <div className="text-gray-300 font-medium">Premium Notes</div>
+              <div className="text-xs text-gray-500 mt-1">Curated & Verified</div>
             </div>
-            <div className="bg-white/80 border-2 border-emerald-300/50 rounded-xl p-6 hover-study-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.1s'}}>
-              <div className="text-3xl font-bold text-emerald-600 mb-2 animate-number-counter">5,000+</div>
-              <div className="text-emerald-700 font-medium">Active Students</div>
+            <div className="bg-black/40 backdrop-blur-md border border-purple-400/30 rounded-xl p-6 hover:border-purple-400/50 transition-all duration-300 hover:scale-105 shadow-2xl">
+              <div className="flex items-center mb-4">
+                <Users className="w-8 h-8 text-purple-400 mr-3" />
+                <div className="text-3xl font-bold text-purple-400 font-mono">5,000+</div>
+              </div>
+              <div className="text-gray-300 font-medium">Active Students</div>
+              <div className="text-xs text-gray-500 mt-1">Growing Community</div>
             </div>
-            <div className="bg-white/80 border-2 border-orange-300/50 rounded-xl p-6 hover-study-card animate-interactive-hover shadow-xl" style={{animationDelay: '0.2s'}}>
-              <div className="text-3xl font-bold text-orange-600 mb-2 animate-number-counter">500+</div>
-              <div className="text-orange-700 font-medium">Top Contributors</div>
+            <div className="bg-black/40 backdrop-blur-md border border-pink-400/30 rounded-xl p-6 hover:border-pink-400/50 transition-all duration-300 hover:scale-105 shadow-2xl">
+              <div className="flex items-center mb-4">
+                <Star className="w-8 h-8 text-pink-400 mr-3" />
+                <div className="text-3xl font-bold text-pink-400 font-mono">500+</div>
+              </div>
+              <div className="text-gray-300 font-medium">Top Contributors</div>
+              <div className="text-xs text-gray-500 mt-1">Elite Performers</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-black/20 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 animate-fade-in">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Why Choose MasterStudent?
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Why Choose <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">MasterStudent</span>?
             </h2>
-            <p className="text-xl text-muted-foreground">
-              The complete ecosystem for academic success
+            <p className="text-xl text-gray-300">
+              The complete <span className="text-orange-400">premium ecosystem</span> for academic success
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center card-enhanced hover-lift animate-slide-up" data-testid="card-feature-quality">
-              <CardHeader>
-                <div className="relative mb-4">
-                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center hover-scale">
-                    <Star className="h-10 w-10 text-white" />
-                  </div>
+            <div className="bg-black/40 backdrop-blur-md border border-orange-400/30 rounded-xl p-8 hover:border-orange-400/50 transition-all duration-300 hover:scale-105 text-center" data-testid="card-feature-quality">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 mx-auto bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
+                  <Star className="h-10 w-10 text-white" />
                 </div>
-                <CardTitle className="text-xl font-bold">Premium Quality</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  All notes are reviewed by our expert team and come from verified top performers.
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">Premium Quality</h3>
+              <p className="text-gray-300">
+                All notes are <span className="text-orange-400">expertly reviewed</span> and come from verified top performers.
+              </p>
+            </div>
             
-            <Card className="text-center card-enhanced hover-lift animate-slide-up" data-testid="card-feature-community" style={{animationDelay: '0.2s'}}>
-              <CardHeader>
-                <div className="relative mb-4">
-                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center hover-scale">
-                    <Users className="h-10 w-10 text-white" />
-                  </div>
+            <div className="bg-black/40 backdrop-blur-md border border-purple-400/30 rounded-xl p-8 hover:border-purple-400/50 transition-all duration-300 hover:scale-105 text-center" data-testid="card-feature-community">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
+                  <Users className="h-10 w-10 text-white" />
                 </div>
-                <CardTitle className="text-xl font-bold">Vibrant Community</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Connect with top students, follow your favorite toppers, and get feedback on notes.
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">Vibrant Community</h3>
+              <p className="text-gray-300">
+                Connect with <span className="text-purple-400">top students</span>, follow your favorite toppers, and get feedback on notes.
+              </p>
+            </div>
             
-            <Card className="text-center card-enhanced hover-lift animate-slide-up" data-testid="card-feature-earnings" style={{animationDelay: '0.4s'}}>
-              <CardHeader>
-                <div className="relative mb-4">
-                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center hover-scale">
-                    <TrendingUp className="h-10 w-10 text-white" />
-                  </div>
+            <div className="bg-black/40 backdrop-blur-md border border-pink-400/30 rounded-xl p-8 hover:border-pink-400/50 transition-all duration-300 hover:scale-105 text-center" data-testid="card-feature-earnings">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 mx-auto bg-gradient-to-br from-pink-400 to-red-500 rounded-full flex items-center justify-center">
+                  <TrendingUp className="h-10 w-10 text-white" />
                 </div>
-                <CardTitle className="text-xl font-bold">Earn from Knowledge</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Upload your study materials and earn money based on downloads and ratings.
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">Earn from Knowledge</h3>
+              <p className="text-gray-300">
+                Upload your study materials and <span className="text-pink-400">earn money</span> based on downloads and ratings.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -288,7 +370,7 @@ export default function Landing() {
                   <Quote className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
                   <div>
                     <p className="text-muted-foreground mb-4 italic">
-                      "MasterStudent saved my semester! I found comprehensive Physics notes that helped me score 95% in my finals. The ₹59/month subscription paid for itself with just one good grade."
+                      "<span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">MasterStudent</span> saved my semester! I found comprehensive Physics notes that helped me score 95% in my finals. The ₹59/month subscription paid for itself with just one good grade."
                     </p>
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -475,7 +557,7 @@ export default function Landing() {
             Ready to Master Your Studies?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Join thousands of students who are already excelling with MasterStudent
+            Join thousands of students who are already excelling with <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">MasterStudent</span>
           </p>
           <Button 
             size="lg" 
@@ -492,11 +574,18 @@ export default function Landing() {
       <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-card border-t border-border">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <GraduationCap className="text-primary-foreground text-sm" />
+            <div className="flex items-center space-x-3 mb-4 md:mb-0">
+              <div className="relative w-10 h-10 rounded-2xl flex items-center justify-center shadow-xl bg-gradient-to-br from-orange-500 via-red-500 to-orange-600">
+                <GraduationCap className="w-6 h-6 text-white drop-shadow-lg" />
               </div>
-              <span className="text-xl font-bold text-foreground">MasterStudent</span>
+              <div>
+                <span className="text-xl font-bold bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
+                  MasterStudent
+                </span>
+                <div className="text-xs text-orange-300 font-medium tracking-wider uppercase">
+                  ⚡ Learn • Share • Excel
+                </div>
+              </div>
             </div>
             <div className="flex space-x-6 text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Terms</a>
@@ -505,7 +594,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 MasterStudent. All rights reserved.</p>
+            <p>&copy; 2024 <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">MasterStudent</span>. All rights reserved.</p>
           </div>
         </div>
       </footer>

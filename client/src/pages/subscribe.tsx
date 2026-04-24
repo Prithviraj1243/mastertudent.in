@@ -1,104 +1,76 @@
-import { useStripe, Elements, PaymentElement, useElements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
 import { useEffect, useState } from 'react';
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/header";
-import { CheckCircle, Crown } from "lucide-react";
+import { CheckCircle, Crown, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
+import PaymentGateway from "@/components/payment-gateway";
 
-// Stripe is optional - only initialize if key is provided
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY 
-  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
-  : Promise.resolve(null);
-
-const SubscribeForm = ({ plan }: { plan: string }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { toast } = useToast();
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin,
-      },
-    });
-
-    if (error) {
-      toast({
-        title: "Payment Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Payment Successful",
-        description: "You are now subscribed to MasterStudent Premium!",
-      });
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} data-testid="form-subscription">
-      <PaymentElement />
-      <Button 
-        type="submit" 
-        className="w-full mt-6" 
-        disabled={!stripe || !elements}
-        data-testid="button-submit-payment"
-      >
-        Subscribe Now
-      </Button>
-    </form>
-  );
-};
 
 export default function Subscribe() {
-  const [clientSecret, setClientSecret] = useState("");
   const [selectedPlan, setSelectedPlan] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-
-  const createSubscription = async (plan: string) => {
-    setLoading(true);
-    try {
-      const response = await apiRequest("POST", "/api/create-subscription", { plan });
-      const data = await response.json();
-      if (response.status === 503) {
-        toast({
-          title: "Payment Unavailable",
-          description: "Payment processing is currently not configured. Please contact support.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setClientSecret(data.clientSecret);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create subscription",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+  const [, setLocation] = useLocation();
+  
+  // Get URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const preSelectedPlan = urlParams.get('plan');
+  const returnTo = urlParams.get('returnTo') || '/download-notes';
+  
+  // Set pre-selected plan on component mount
+  useEffect(() => {
+    if (preSelectedPlan && !selectedPlan) {
+      setSelectedPlan(preSelectedPlan);
     }
+  }, [preSelectedPlan, selectedPlan]);
+
+  const handleProceedToPayment = (plan: string) => {
+    setSelectedPlan(plan);
+    setShowPaymentGateway(true);
   };
 
-  if (!clientSecret) {
+  const handlePaymentSuccess = () => {
+    setLocation('/payment-success');
+  };
+
+  const handleBackFromPayment = () => {
+    setShowPaymentGateway(false);
+  };
+
+  if (showPaymentGateway) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50">
+        <Header />
+        <PaymentGateway 
+          plan={selectedPlan as 'monthly' | 'yearly'}
+          onBack={handleBackFromPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+      </div>
+    );
+  }
+
+  if (true) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="max-w-4xl mx-auto p-6">
+          {/* Back Button */}
+          <div className="mb-6">
+            <Button 
+              variant="ghost" 
+              onClick={() => setLocation(returnTo)}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Notes
+            </Button>
+          </div>
+          
           <div className="text-center mb-8">
             <Crown className="h-16 w-16 text-secondary mx-auto mb-4" />
             <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-upgrade-title">
@@ -107,12 +79,19 @@ export default function Subscribe() {
             <p className="text-muted-foreground" data-testid="text-upgrade-description">
               Access unlimited downloads and premium content
             </p>
+            {preSelectedPlan && (
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-blue-800 text-sm">
+                  Continue with your selected {preSelectedPlan} plan
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <Card 
-              className={`cursor-pointer transition-colors ${
-                selectedPlan === 'monthly' ? 'border-primary border-2' : ''
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                selectedPlan === 'monthly' ? 'border-primary border-2 shadow-lg' : 'hover:border-primary/50'
               }`}
               onClick={() => setSelectedPlan('monthly')}
               data-testid="card-monthly-plan"
@@ -146,8 +125,8 @@ export default function Subscribe() {
             </Card>
 
             <Card 
-              className={`cursor-pointer transition-colors relative ${
-                selectedPlan === 'yearly' ? 'border-primary border-2' : ''
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg relative ${
+                selectedPlan === 'yearly' ? 'border-primary border-2 shadow-lg' : 'hover:border-primary/50'
               }`}
               onClick={() => setSelectedPlan('yearly')}
               data-testid="card-yearly-plan"
@@ -188,38 +167,31 @@ export default function Subscribe() {
           <div className="text-center">
             <Button 
               size="lg" 
-              onClick={() => createSubscription(selectedPlan)}
-              disabled={loading || !selectedPlan}
+              onClick={() => handleProceedToPayment(selectedPlan)}
+              disabled={!selectedPlan}
               data-testid="button-proceed-payment"
+              className={`px-8 py-3 font-semibold transition-all duration-200 ${
+                selectedPlan 
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transform hover:scale-105' 
+                  : ''
+              }`}
             >
-              {loading 
-                ? "Processing..." 
-                : !selectedPlan 
+              {!selectedPlan 
                 ? "Select a Plan" 
-                : `Subscribe to ${selectedPlan === 'yearly' ? 'Yearly' : 'Monthly'} Plan`
+                : `Proceed to Payment`
               }
             </Button>
+            {selectedPlan && (
+              <p className="text-xs text-gray-500 mt-2">
+                Secure payment • Cancel anytime • Instant access
+              </p>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="max-w-md mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">Complete Your Subscription</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Elements stripe={stripePromise} options={{ clientSecret }}>
-              <SubscribeForm plan={selectedPlan} />
-            </Elements>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  // This return should never be reached due to the condition above
+  return null;
 }

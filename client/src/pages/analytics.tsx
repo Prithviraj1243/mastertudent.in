@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserStats } from "@/hooks/useUserStats";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,39 +13,15 @@ import {
   DollarSign, 
   Eye,
   AlertCircle,
-  Calendar
+  Calendar,
+  ArrowLeft
 } from "lucide-react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
 export default function Analytics() {
   const { user } = useAuth();
-
-  // Check if user is a topper
-  if (user && user.role !== 'topper') {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-6">
-            <Card className="max-w-2xl mx-auto">
-              <CardContent className="pt-6 text-center">
-                <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-                <p className="text-muted-foreground">
-                  Only toppers can access analytics. Please contact admin to become a topper.
-                </p>
-              </CardContent>
-            </Card>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  const { data: analytics, isLoading } = useQuery({
-    queryKey: ["/api/analytics/topper"],
-    retry: false,
-  });
+  const { stats, subjectStats, isLoading } = useUserStats();
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,11 +30,25 @@ export default function Analytics() {
         <Sidebar />
         <main className="flex-1 p-6">
           <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Browse Notes
+                </Link>
+              </Button>
+            </div>
             <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-analytics-title">
-              Topper Analytics
+              💰 My Earnings & Analytics
             </h1>
             <p className="text-muted-foreground" data-testid="text-analytics-description">
-              Track your notes performance and earnings
+              Track your notes performance, earnings, and growth
             </p>
           </div>
 
@@ -75,7 +66,7 @@ export default function Analytics() {
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Total Downloads</p>
                         <p className="text-2xl font-bold text-foreground">
-                          {analytics?.totalDownloads || 0}
+                          {stats.totalDownloads.toLocaleString()}
                         </p>
                       </div>
                       <Download className="h-8 w-8 text-primary" />
@@ -89,7 +80,7 @@ export default function Analytics() {
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Average Rating</p>
                         <p className="text-2xl font-bold text-foreground">
-                          {analytics?.averageRating ? analytics.averageRating.toFixed(1) : '0.0'}
+                          {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : '0.0'}
                         </p>
                       </div>
                       <Star className="h-8 w-8 text-yellow-500" />
@@ -97,16 +88,16 @@ export default function Analytics() {
                   </CardContent>
                 </Card>
 
-                <Card data-testid="card-followers-count">
+                <Card data-testid="card-total-earnings">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Followers</p>
+                        <p className="text-sm font-medium text-muted-foreground">Total Earnings</p>
                         <p className="text-2xl font-bold text-foreground">
-                          {analytics?.followersCount || 0}
+                          ₹{stats.totalEarnings.toLocaleString()}
                         </p>
                       </div>
-                      <Users className="h-8 w-8 text-secondary" />
+                      <DollarSign className="h-8 w-8 text-green-600" />
                     </div>
                   </CardContent>
                 </Card>
@@ -115,61 +106,61 @@ export default function Analytics() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Published Notes</p>
+                        <p className="text-sm font-medium text-muted-foreground">Notes Uploaded</p>
                         <p className="text-2xl font-bold text-foreground">
-                          {analytics?.notesCount || 0}
+                          {stats.notesUploaded.toLocaleString()}
                         </p>
                       </div>
-                      <BookOpen className="h-8 w-8 text-green-600" />
+                      <BookOpen className="h-8 w-8 text-blue-600" />
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Performance Overview */}
+              {/* Earnings Overview */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <Card data-testid="card-earnings-overview">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <DollarSign className="h-5 w-5" />
-                      <span>Earnings Overview</span>
+                      <span>💰 Earnings Overview</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                       <div>
-                        <p className="font-medium">Estimated Monthly Earnings</p>
-                        <p className="text-sm text-muted-foreground">Based on downloads and ratings</p>
+                        <p className="font-medium text-green-800">Monthly Earnings</p>
+                        <p className="text-sm text-green-600">This month's income</p>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-green-600">
-                          ₹{Math.floor((analytics?.totalDownloads || 0) * 2.5).toLocaleString()}
+                          ₹{stats.monthlyEarnings.toLocaleString()}
                         </p>
-                        <p className="text-sm text-muted-foreground">This month</p>
+                        <p className="text-sm text-green-500">Current month</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
                       <div>
-                        <p className="font-medium">Total Lifetime Earnings</p>
-                        <p className="text-sm text-muted-foreground">All-time revenue</p>
+                        <p className="font-medium text-blue-800">Total Lifetime Earnings</p>
+                        <p className="text-sm text-blue-600">All-time revenue</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-primary">
-                          ₹{Math.floor((analytics?.totalDownloads || 0) * 15).toLocaleString()}
+                        <p className="text-2xl font-bold text-blue-600">
+                          ₹{stats.totalEarnings.toLocaleString()}
                         </p>
-                        <p className="text-sm text-muted-foreground">Lifetime</p>
+                        <p className="text-sm text-blue-500">Lifetime</p>
                       </div>
                     </div>
 
                     <div className="pt-4 border-t border-border">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Avg. earnings per download</span>
-                        <span className="font-medium">₹2.50</span>
+                        <span className="text-muted-foreground">💰 Coins per verified upload</span>
+                        <span className="font-medium text-yellow-600">20 coins</span>
                       </div>
                       <div className="flex items-center justify-between text-sm mt-2">
-                        <span className="text-muted-foreground">Bonus for high ratings</span>
-                        <span className="font-medium text-green-600">+20%</span>
+                        <span className="text-muted-foreground">🎯 Bonus for quality notes</span>
+                        <span className="font-medium text-green-600">+5-15 coins</span>
                       </div>
                     </div>
                   </CardContent>
@@ -179,7 +170,7 @@ export default function Analytics() {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <TrendingUp className="h-5 w-5" />
-                      <span>Performance Metrics</span>
+                      <span>📊 Performance Metrics</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -187,8 +178,8 @@ export default function Analytics() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Download Rate</span>
                         <span className="font-medium">
-                          {analytics?.notesCount > 0 
-                            ? Math.floor((analytics.totalDownloads / analytics.notesCount)) 
+                          {stats.notesUploaded > 0 
+                            ? Math.floor(stats.totalDownloads / stats.notesUploaded) 
                             : 0} downloads/note
                         </span>
                       </div>
@@ -196,103 +187,73 @@ export default function Analytics() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Engagement Rate</span>
                         <span className="font-medium text-green-600">
-                          {analytics?.averageRating > 4 ? 'High' : analytics?.averageRating > 3 ? 'Medium' : 'Low'}
+                          {stats.averageRating > 4 ? 'High' : stats.averageRating > 3 ? 'Medium' : 'Low'}
                         </span>
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Follower Growth</span>
+                        <span className="text-sm text-muted-foreground">Monthly Growth</span>
                         <span className="font-medium text-blue-600">
-                          +{Math.floor((analytics?.followersCount || 0) * 0.1)} this month
+                          +{stats.monthlyEarnings > 0 ? '15%' : '0%'} this month
                         </span>
                       </div>
                     </div>
 
                     <div className="pt-4 border-t border-border">
-                      <h4 className="font-medium mb-3">Top Performing Subjects</h4>
+                      <h4 className="font-medium mb-3">📚 Subject Performance</h4>
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Mathematics</span>
-                          <span className="text-muted-foreground">
-                            {Math.floor((analytics?.totalDownloads || 0) * 0.4)} downloads
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Physics</span>
-                          <span className="text-muted-foreground">
-                            {Math.floor((analytics?.totalDownloads || 0) * 0.3)} downloads
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Chemistry</span>
-                          <span className="text-muted-foreground">
-                            {Math.floor((analytics?.totalDownloads || 0) * 0.2)} downloads
-                          </span>
-                        </div>
+                        {subjectStats.slice(0, 3).map((subject, index) => (
+                          <div key={subject.subject} className="flex items-center justify-between text-sm">
+                            <span>{subject.subject}</span>
+                            <span className="text-muted-foreground">
+                              {subject.downloads} downloads
+                            </span>
+                          </div>
+                        ))}
+                        {subjectStats.length === 0 && (
+                          <p className="text-sm text-muted-foreground">Upload notes to see subject performance</p>
+                        )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Monthly Trends */}
-              <Card data-testid="card-monthly-trends">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Calendar className="h-5 w-5" />
-                    <span>Monthly Trends</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-2">This Month</p>
-                      <p className="text-2xl font-bold text-foreground mb-1">
-                        {Math.floor((analytics?.totalDownloads || 0) * 0.3)}
-                      </p>
-                      <p className="text-sm text-green-600">+15% from last month</p>
-                    </div>
-                    
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-2">Last Month</p>
-                      <p className="text-2xl font-bold text-foreground mb-1">
-                        {Math.floor((analytics?.totalDownloads || 0) * 0.26)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Previous period</p>
-                    </div>
-                    
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-2">Avg. Monthly</p>
-                      <p className="text-2xl font-bold text-foreground mb-1">
-                        {Math.floor((analytics?.totalDownloads || 0) * 0.25)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Last 6 months</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Goals & Achievements */}
               <Card data-testid="card-goals-achievements">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Eye className="h-5 w-5" />
-                    <span>Goals & Achievements</span>
+                    <span>🎯 Goals & Achievements</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className={`flex items-center justify-between p-4 rounded-lg border ${
+                      stats.averageRating >= 4.5 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-gray-50 border-gray-200'
+                    }`}>
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          stats.averageRating >= 4.5 ? 'bg-green-500' : 'bg-gray-400'
+                        }`}>
                           <Star className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                          <p className="font-medium text-green-800">Top Rated Contributor</p>
-                          <p className="text-sm text-green-600">Maintain 4.5+ rating average</p>
+                          <p className={`font-medium ${
+                            stats.averageRating >= 4.5 ? 'text-green-800' : 'text-gray-800'
+                          }`}>Top Rated Contributor</p>
+                          <p className={`text-sm ${
+                            stats.averageRating >= 4.5 ? 'text-green-600' : 'text-gray-600'
+                          }`}>Maintain 4.5+ rating average</p>
                         </div>
                       </div>
-                      <span className="text-green-600 font-medium">Achieved!</span>
+                      <span className={`font-medium ${
+                        stats.averageRating >= 4.5 ? 'text-green-600' : 'text-gray-500'
+                      }`}>
+                        {stats.averageRating >= 4.5 ? 'Achieved!' : `${stats.averageRating.toFixed(1)}/4.5`}
+                      </span>
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -303,46 +264,46 @@ export default function Analytics() {
                         <div>
                           <p className="font-medium text-blue-800">1K Downloads Milestone</p>
                           <p className="text-sm text-blue-600">
-                            {analytics?.totalDownloads || 0}/1000 downloads
+                            {stats.totalDownloads}/1000 downloads
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-blue-600 font-medium">
-                          {Math.floor(((analytics?.totalDownloads || 0) / 1000) * 100)}%
+                          {Math.floor((stats.totalDownloads / 1000) * 100)}%
                         </p>
                         <div className="w-16 h-2 bg-blue-200 rounded-full mt-1">
                           <div 
                             className="h-2 bg-blue-500 rounded-full"
                             style={{ 
-                              width: `${Math.min(((analytics?.totalDownloads || 0) / 1000) * 100, 100)}%` 
+                              width: `${Math.min((stats.totalDownloads / 1000) * 100, 100)}%` 
                             }}
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                          <Users className="h-4 w-4 text-white" />
+                        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <BookOpen className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                          <p className="font-medium text-purple-800">100 Followers Goal</p>
-                          <p className="text-sm text-purple-600">
-                            {analytics?.followersCount || 0}/100 followers
+                          <p className="font-medium text-yellow-800">Upload 10 Notes Goal</p>
+                          <p className="text-sm text-yellow-600">
+                            {stats.notesUploaded}/10 notes uploaded
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-purple-600 font-medium">
-                          {Math.floor(((analytics?.followersCount || 0) / 100) * 100)}%
+                        <p className="text-yellow-600 font-medium">
+                          {Math.floor((stats.notesUploaded / 10) * 100)}%
                         </p>
-                        <div className="w-16 h-2 bg-purple-200 rounded-full mt-1">
+                        <div className="w-16 h-2 bg-yellow-200 rounded-full mt-1">
                           <div 
-                            className="h-2 bg-purple-500 rounded-full"
+                            className="h-2 bg-yellow-500 rounded-full"
                             style={{ 
-                              width: `${Math.min(((analytics?.followersCount || 0) / 100) * 100, 100)}%` 
+                              width: `${Math.min((stats.notesUploaded / 10) * 100, 100)}%` 
                             }}
                           />
                         </div>

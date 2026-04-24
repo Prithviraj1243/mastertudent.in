@@ -7,6 +7,7 @@ import { Mail, Loader2, Download, Upload, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { supabase } from "@/lib/supabase";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -19,6 +20,66 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+
+  // Handle Google OAuth with Supabase
+  const handleGoogleSignIn = async () => {
+    if (!selectedRole) {
+      toast({
+        title: "Please Select Purpose",
+        description: "Choose whether you want to download or upload notes before signing in with Google",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('🚀 Starting Supabase Google OAuth flow...');
+      console.log('📍 Current origin:', window.location.origin);
+      console.log('🔄 Redirect URL:', `${window.location.origin}/auth/callback`);
+
+      // Store selected role in localStorage to retrieve after redirect
+      localStorage.setItem('pendingUserRole', selectedRole);
+      console.log('💾 Stored role in localStorage:', selectedRole);
+
+      // Sign in with Google using Supabase Auth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      console.log('📦 OAuth response data:', data);
+      console.log('❌ OAuth response error:', error);
+
+      if (error) {
+        console.error('❌ OAuth Error:', error);
+        setIsLoading(false);
+        throw error;
+      }
+
+      // If we reach here, redirect should happen automatically
+      // Don't reset loading state - we're redirecting
+      console.log('✅ OAuth initiated, waiting for redirect...');
+      
+      // Note: Don't call setIsLoading(false) here - we're redirecting!
+
+    } catch (error: any) {
+      console.error('❌ Google Sign-In Error:', error);
+      setIsLoading(false);
+      toast({
+        title: "Sign-In Failed",
+        description: error.message || "Failed to sign in with Google. Please check your Supabase configuration.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,10 +129,6 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       const data = await response.json();
 
       if (response.ok) {
-        toast({
-          title: "Login Successful!",
-          description: `Welcome${data.user.firstName ? `, ${data.user.firstName}` : ''}!`,
-        });
         // Invalidate auth cache to trigger re-fetch and proper routing
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         // Refetch user data and let App.tsx handle routing
@@ -82,7 +139,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           if (onSuccess) {
             onSuccess();
           } else {
-            setLocation("/");
+            setLocation("/home");
           }
         }, 500);
       } else {
@@ -112,6 +169,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Role Selection */}
           <div className="space-y-3">
@@ -152,8 +210,52 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                   <div className="text-sm opacity-90">Share your notes and earn coins for each download</div>
                 </div>
               </Button>
+
             </div>
           </div>
+
+          {/* Google Sign-In Button */}
+          {selectedRole && (
+            <div className="space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Quick Sign-In</span>
+                </div>
+              </div>
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleSignIn}
+                disabled={!selectedRole || isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <img
+                    src="https://www.google.com/favicon.ico"
+                    alt="Google"
+                    className="mr-2 h-4 w-4"
+                  />
+                )}
+                Continue with Google
+              </Button>
+              
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Email Input */}
           <div className="space-y-2">
@@ -194,23 +296,20 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           
           <Button 
             type="submit" 
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             disabled={isLoading || !selectedRole}
-            data-testid="button-submit-login"
+            data-testid="button-login"
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in...
+                Signing In...
               </>
             ) : (
-              selectedRole === "student" ? "Join as Student" : selectedRole === "topper" ? "Join as Topper" : "Sign In / Sign Up"
+              "Sign In"
             )}
           </Button>
-          
-          <p className="text-sm text-gray-600 text-center">
-            New users will automatically get a welcome email and account setup
-          </p>
+
         </form>
       </CardContent>
     </Card>

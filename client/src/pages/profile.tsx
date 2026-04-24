@@ -3,277 +3,230 @@ import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  User, 
   Crown, 
-  Calendar, 
   Download, 
   BookOpen,
-  CheckCircle,
-  Clock,
-  CreditCard
+  Coins,
+  TrendingUp,
+  ArrowLeft,
+  Edit3,
+  Settings
 } from "lucide-react";
 import { Link } from "wouter";
-
-interface Subscription {
-  id: string;
-  plan: string;
-  startDate: string;
-  renewalDate: string;
-  status: string;
-  gateway?: string;
-}
-
-interface DownloadedNote {
-  id: string;
-  noteId: string;
-  downloadedAt: string;
-  note: {
-    id: string;
-    title: string;
-    subject: string;
-    type: string;
-    description: string;
-    createdAt: string;
-  };
-}
+import { useRealtimeCoinBalance } from "@/hooks/useRealtimeCoinBalance";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 export default function Profile() {
   const { user } = useAuth();
 
-  // Fetch user subscription
-  const { data: subscription, isLoading: subscriptionLoading } = useQuery<Subscription | null>({
-    queryKey: ['/api/subscription'],
+  // Fetch real profile statistics
+  const { data: profileStats } = useQuery<{
+    notesUploaded: number;
+    approvedNotes: number;
+    pendingNotes: number;
+    totalDownloads: number;
+    averageRating: number;
+    coinBalance: number;
+    totalEarned: number;
+    totalSpent: number;
+    reputation: number;
+    streak: number;
+    freeDownloadsLeft: number;
+  }>({
+    queryKey: ['/api/profile/stats'],
     enabled: !!user,
+    refetchInterval: 30000,
   });
 
-  // Fetch downloaded notes
-  const { data: downloads, isLoading: downloadsLoading } = useQuery<{ downloads: DownloadedNote[] }>({
-    queryKey: ['/api/downloads'],
-    enabled: !!user,
-  });
+  // 🚀 REAL-TIME COIN BALANCE & NOTIFICATIONS
+  const { coinBalance: realtimeCoinBalance } = useRealtimeCoinBalance(user?.id);
+  useRealtimeNotifications(user?.id);
+
+  // Use real-time coin balance if available, otherwise fall back to fetched data
+  const displayCoinBalance = realtimeCoinBalance !== null 
+    ? realtimeCoinBalance 
+    : (profileStats?.coinBalance || 0);
 
   if (!user) {
     return null;
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const getSubscriptionStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'expired':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      default:
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50 relative overflow-hidden">
-      {/* Animated Background */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 relative overflow-hidden">
+      {/* Animated Background Effects - Matching Main Website */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-200/20 via-purple-200/20 to-cyan-200/20 animate-study-pulse"></div>
+        {/* Floating Particles */}
+        <div className="absolute inset-0">
+          {[...Array(15)].map((_, i) => (
+            <div
+              key={i}
+              className={`absolute rounded-full ${
+                i % 4 === 0 ? 'w-2 h-2 bg-purple-400/20 animate-pulse' :
+                i % 4 === 1 ? 'w-3 h-3 bg-cyan-400/15 animate-ping' :
+                i % 4 === 2 ? 'w-1 h-1 bg-pink-400/25 animate-bounce' :
+                'w-4 h-4 bg-indigo-400/10 animate-pulse'
+              }`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 3}s`
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Gradient Orbs */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute top-3/4 left-1/2 w-72 h-72 bg-pink-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
       </div>
       
-      <Header />
-      <div className="relative z-10 flex">
-        <Sidebar />
-        <main className="flex-1 p-6 animate-slide-in-right" role="main">
-          {/* Profile Header */}
-          <section className="mb-8" aria-labelledby="profile-heading">
-            <div className="bg-study-card rounded-3xl p-8 border border-slate-600/30 relative overflow-hidden hover-glow-intense">
-              <div className="relative z-10">
-                <header className="flex items-center gap-4 mb-6">
-                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl animate-glow-pulse">
-                    <User className="h-10 w-10 text-white" />
-                  </div>
-                  <div>
-                    <h1 id="profile-heading" className="text-4xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent animate-scale-in">
-                      My Profile
-                    </h1>
-                    <p className="text-slate-300 text-lg font-medium">
-                      {user.firstName} {user.lastName} • {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </p>
-                  </div>
-                </header>
-              </div>
-            </div>
-          </section>
+      <div className="relative z-10">
+        <Header />
+        <div className="flex">
+          <Sidebar />
+        <main className="flex-1 p-6" role="main">
+          {/* Back Button */}
+          <div className="mb-6">
+            <Button 
+              asChild
+              variant="ghost" 
+              className="bg-slate-800/80 hover:bg-slate-700 border border-slate-600 hover:border-slate-500 text-slate-300 hover:text-white shadow-sm transition-all duration-300"
+            >
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Link>
+            </Button>
+          </div>
 
-          {/* Profile Information */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Personal Information */}
-            <Card className="bg-study-card border-2 border-blue-500/50 hover-study-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <User className="h-5 w-5" />
-                  Personal Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm text-slate-400">Full Name</label>
-                  <p className="text-white font-medium">{user.firstName} {user.lastName}</p>
+          {/* Profile Header */}
+          <Card className="bg-slate-800/90 backdrop-blur-md border-slate-600/50 mb-8">
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={user.profileImageUrl} />
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xl font-bold">
+                    {user.firstName?.[0]}{user.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <CardTitle className="text-2xl text-white flex items-center gap-2">
+                    {user.firstName} {user.lastName}
+                    {user.role === 'topper' && <Crown className="h-6 w-6 text-yellow-400" />}
+                  </CardTitle>
+                  <p className="text-slate-300 capitalize">{user.role}</p>
+                  <p className="text-slate-400 text-sm">{user.email}</p>
                 </div>
-                <div>
-                  <label className="text-sm text-slate-400">Email</label>
-                  <p className="text-white font-medium">{user.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-slate-400">Role</label>
-                  <Badge 
-                    variant={user.role === 'admin' ? 'destructive' : 'secondary'}
-                    className="mt-1"
+                
+                {/* Edit Profile Button */}
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    asChild
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                   >
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </Badge>
+                    <Link href="/profile/edit">
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Link>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-300"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Coins */}
+            <Card className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-md border border-yellow-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <Coins className="h-8 w-8 text-yellow-400" />
+                  <div>
+                    <p className="text-2xl font-bold text-yellow-300">
+                      {displayCoinBalance.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-yellow-200/80 font-medium">COINS</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Subscription Status */}
-            <Card className="bg-study-card border-2 border-purple-500/50 hover-study-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Crown className="h-5 w-5" />
-                  Subscription Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {subscriptionLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+            {/* Downloads */}
+            <Card className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-md border border-green-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <Download className="h-8 w-8 text-green-400" />
+                  <div>
+                    <p className="text-2xl font-bold text-green-300">
+                      {profileStats?.freeDownloadsLeft ?? '0'}
+                    </p>
+                    <p className="text-xs text-green-200/80 font-medium">FREE LEFT</p>
                   </div>
-                ) : subscription ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Plan</span>
-                      <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                        {subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)} Plan
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Status</span>
-                      <Badge className={getSubscriptionStatusColor(subscription.status)}>
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Started</span>
-                      <span className="text-white">{formatDate(subscription.startDate)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Renewal Date</span>
-                      <span className="text-white">{formatDate(subscription.renewalDate)}</span>
-                    </div>
-                    {subscription.gateway && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Payment Method</span>
-                        <div className="flex items-center gap-1 text-white">
-                          <CreditCard className="h-4 w-4" />
-                          {subscription.gateway.charAt(0).toUpperCase() + subscription.gateway.slice(1)}
-                        </div>
-                      </div>
-                    )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notes */}
+            <Card className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-md border border-blue-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="h-8 w-8 text-blue-400" />
+                  <div>
+                    <p className="text-2xl font-bold text-blue-300">
+                      {profileStats?.notesUploaded || '0'}
+                    </p>
+                    <p className="text-xs text-blue-200/80 font-medium">NOTES</p>
                   </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <Crown className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-2">No Active Subscription</h3>
-                    <p className="text-slate-400 mb-4">Upgrade to Premium to access unlimited downloads and exclusive content.</p>
-                    <Button asChild className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500">
-                      <Link href="/subscribe" data-testid="button-upgrade">
-                        <Crown className="h-4 w-4 mr-2" />
-                        Upgrade to Premium
-                      </Link>
-                    </Button>
-                  </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Downloaded Notes */}
-          <Card className="bg-study-card border-2 border-green-500/50 hover-study-card">
+          {/* Activity Stats */}
+          <Card className="bg-slate-800/90 backdrop-blur-md border border-slate-600/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <Download className="h-5 w-5" />
-                My Downloaded Notes
-                {downloads?.downloads?.length && (
-                  <Badge variant="secondary" className="ml-2">
-                    {downloads.downloads.length}
-                  </Badge>
-                )}
+              <CardTitle className="text-xl text-white flex items-center gap-2">
+                <TrendingUp className="h-6 w-6 text-orange-400" />
+                Activity Stats
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {downloadsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">{profileStats?.notesUploaded || '0'}</p>
+                  <p className="text-sm text-slate-400">Notes Uploaded</p>
                 </div>
-              ) : downloads?.downloads?.length ? (
-                <div className="space-y-4">
-                  {downloads.downloads.map((download) => (
-                    <div 
-                      key={download.id} 
-                      className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-600/30 hover:border-blue-500/50 transition-colors"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg">
-                          <BookOpen className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-white">{download.note.title}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs">
-                              {download.note.subject}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {download.note.type}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-slate-400 mt-1">{download.note.description}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-slate-400 text-sm mb-1">
-                          <Clock className="h-3 w-3" />
-                          Downloaded
-                        </div>
-                        <span className="text-sm text-white">{formatDate(download.downloadedAt)}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-400">{profileStats?.approvedNotes || '0'}</p>
+                  <p className="text-sm text-slate-400">Approved</p>
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Download className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">No Downloads Yet</h3>
-                  <p className="text-slate-400 mb-4">Start downloading notes to see them here.</p>
-                  <Button asChild className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500">
-                    <Link href="/catalog" data-testid="button-browse">
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Browse Notes
-                    </Link>
-                  </Button>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-yellow-400">{profileStats?.pendingNotes || '0'}</p>
+                  <p className="text-sm text-slate-400">Pending</p>
                 </div>
-              )}
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-400">{profileStats?.totalDownloads || '0'}</p>
+                  <p className="text-sm text-slate-400">Downloads</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </main>
+        </div>
       </div>
     </div>
   );

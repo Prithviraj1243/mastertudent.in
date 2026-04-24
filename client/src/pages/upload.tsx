@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,6 +6,8 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
+import { useUserStats, useSubjectContent } from "@/hooks/useUserStats";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,12 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Upload as UploadIcon, FileText, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Upload as UploadIcon, FileText, AlertCircle, BookOpen, Layers, Target, CheckCircle, X, Coins, Sparkles } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useLocation } from "wouter";
 
 const uploadSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
   subject: z.string().min(1, "Subject is required"),
+  chapter: z.string().min(1, "Chapter is required"),
+  unit: z.string().min(1, "Unit is required"),
   topic: z.string().min(1, "Topic is required"),
   classGrade: z.string().min(1, "Class/Grade is required"),
   description: z.string().min(10, "Description must be at least 10 characters").max(1000, "Description too long"),
@@ -31,9 +37,23 @@ type UploadFormData = z.infer<typeof uploadSchema>;
 export default function Upload() {
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState("Physics");
+  const [selectedChapter, setSelectedChapter] = useState("Chapter 5");
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { stats, updateStats } = useUserStats();
+  const [location] = useLocation();
+  
+  // Get subject from URL params if coming from subject card
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const subjectParam = urlParams.get('subject');
+    if (subjectParam) {
+      setSelectedSubject(subjectParam);
+      form.setValue('subject', subjectParam);
+    }
+  }, [location]);
 
   // Fetch educational categories
   const { data: categories } = useQuery<any[]>({
@@ -43,74 +63,101 @@ export default function Upload() {
   const form = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
-      title: "",
-      subject: "",
-      topic: "",
-      classGrade: "",
-      description: "",
+      title: "Physics Chapter 5 - Laws of Motion Notes",
+      subject: "Physics",
+      chapter: "Chapter 5",
+      unit: "Unit 2",
+      topic: "Newton's Laws of Motion",
+      classGrade: "Class 11",
+      description: "Comprehensive notes on Newton's three laws of motion with solved examples, diagrams, and practice problems. Covers inertia, force, momentum, and action-reaction pairs.",
       categoryId: "",
     },
   });
 
-  // Check if user is a topper
-  if (user && user.role !== 'topper' && user.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-6">
-            <Card className="max-w-2xl mx-auto">
-              <CardContent className="pt-6 text-center">
-                <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-                <p className="text-muted-foreground">
-                  Only verified toppers can upload notes. Please contact admin to become a topper.
-                </p>
-              </CardContent>
-            </Card>
-          </main>
-        </div>
-      </div>
-    );
-  }
+  // Get subject content (chapters and units)
+  const subjectContent = useSubjectContent(selectedSubject);
+
 
   const uploadMutation = useMutation({
     mutationFn: async (data: UploadFormData) => {
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
-        // Convert "none" categoryId to empty string
         if (key === 'categoryId' && value === 'none') {
           formData.append(key, '');
         } else {
           formData.append(key, value);
         }
       });
-      files.forEach(file => {
-        formData.append('files', file);
-      });
+      files.forEach(file => formData.append('files', file));
 
-      const response = await fetch('/api/notes', {
+      // Always get a fresh Supabase JWT — this is the most reliable auth method
+      const authHeaders: Record<string, string> = {};
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+          authHeaders['x-supabase-token'] = session.access_token;
+        }
+      } catch { /* non-fatal */ }
+
+      // Also send stored user ID as backup
+      try {
+        const stored = sessionStorage.getItem('authUser');
+        const uid = stored ? JSON.parse(stored)?.id : null;
+        if (uid) authHeaders['x-user-id'] = uid;
+      } catch { /* non-fatal */ }
+
+      // Use the new clean upload endpoint
+      const response = await fetch('/api/upload-notes', {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: authHeaders,
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Upload failed');
+        // Body stream can only be read ONCE — read as text first, then parse
+        const raw = await response.text();
+        let errorMsg = 'Upload failed';
+        try { errorMsg = JSON.parse(raw)?.message || raw || errorMsg; } catch { errorMsg = raw || errorMsg; }
+        throw new Error(errorMsg);
       }
 
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Notes uploaded successfully! They are now in draft status.",
+    onSuccess: (data) => {
+      if (data.coinsEarned) {
+        toast({
+          title: "🎉 Upload Successful!",
+          description: `Your notes have been submitted for review and you earned ${data.coinsEarned} coins!`,
+        });
+        
+        // Show additional success info
+        setTimeout(() => {
+          toast({
+            title: "✅ What's Next?",
+            description: "Your notes are now under review by our team. Once approved, they'll be available for download by other students!",
+          });
+        }, 2000);
+      } else {
+        toast({
+          title: "🎉 Upload Successful!",
+          description: data.message || "Your notes have been submitted for review!",
+        });
+      }
+      
+      // Update user stats
+      updateStats({ 
+        subject: form.getValues('subject'), 
+        noteId: data.id 
       });
+      
       form.reset();
       setFiles([]);
+      setSelectedSubject("");
+      setSelectedChapter("");
       queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -135,7 +182,49 @@ export default function Upload() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...newFiles]);
+      
+      // Validate file types and sizes
+      const validFiles = newFiles.filter(file => {
+        const validTypes = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'text/plain',
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/gif',
+          'image/webp'
+        ];
+        
+        const maxSize = 50 * 1024 * 1024; // 50MB
+        
+        if (!validTypes.includes(file.type)) {
+          toast({
+            title: "Invalid File Type",
+            description: `${file.name} is not a supported file type.`,
+            variant: "destructive",
+          });
+          return false;
+        }
+        
+        if (file.size > maxSize) {
+          toast({
+            title: "File Too Large",
+            description: `${file.name} is larger than 50MB.`,
+            variant: "destructive",
+          });
+          return false;
+        }
+        
+        return true;
+      });
+      
+      setFiles(prev => [...prev, ...validFiles]);
     }
   };
 
@@ -174,29 +263,100 @@ export default function Upload() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 relative overflow-hidden">
+      {/* Animated Background Effects - Matching Signup Page */}
+      <div className="absolute inset-0">
+        {/* Floating Particles */}
+        <div className="absolute inset-0">
+          {[...Array(30)].map((_, i) => (
+            <div
+              key={i}
+              className={`absolute rounded-full animate-pulse ${
+                i % 3 === 0 ? 'w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500' :
+                i % 3 === 1 ? 'w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-500' :
+                'w-1 h-1 bg-gradient-to-r from-cyan-400 to-blue-500'
+              }`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 4}s`,
+                animationDuration: `${3 + Math.random() * 2}s`
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        </div>
+
+        {/* Glowing Orbs */}
+        <div className="absolute top-1/4 left-1/6 w-32 h-32 bg-gradient-to-r from-orange-400/20 to-red-500/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/6 w-40 h-40 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-xl animate-pulse" style={{animationDelay: '2s'}}></div>
+      </div>
+      
       <Header />
-      <div className="flex">
+      <div className="relative z-10 flex">
         <Sidebar />
         <main className="flex-1 p-6">
           <div className="max-w-4xl mx-auto">
+            {/* Header with Stats */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-upload-title">
-                Upload Study Notes
-              </h1>
-              <p className="text-muted-foreground" data-testid="text-upload-description">
-                Share your knowledge and earn from your study materials
-              </p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+                    Upload Study Notes 🚀
+                  </h1>
+                  <p className="text-gray-600 text-lg">
+                    Share your knowledge and earn from your study materials
+                  </p>
+                </div>
+                
+                {/* Quick Stats */}
+                <div className="bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-purple-200 shadow-lg">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">{stats.notesUploaded}</div>
+                    <div className="text-sm text-gray-600">Notes Uploaded</div>
+                    <div className="text-xs text-green-600 font-medium">₹{stats.totalEarnings} Earned</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Progress Indicators */}
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-green-200 text-center">
+                  <BookOpen className="h-6 w-6 text-green-600 mx-auto mb-1" />
+                  <div className="text-sm font-medium text-gray-700">Step 1: Content</div>
+                </div>
+                <div className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-blue-200 text-center">
+                  <Layers className="h-6 w-6 text-blue-600 mx-auto mb-1" />
+                  <div className="text-sm font-medium text-gray-700">Step 2: Structure</div>
+                </div>
+                <div className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-yellow-200 text-center">
+                  <UploadIcon className="h-6 w-6 text-yellow-600 mx-auto mb-1" />
+                  <div className="text-sm font-medium text-gray-700">Step 3: Files</div>
+                </div>
+                <div className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-purple-200 text-center">
+                  <Target className="h-6 w-6 text-purple-600 mx-auto mb-1" />
+                  <div className="text-sm font-medium text-gray-700">Step 4: Publish</div>
+                </div>
+              </div>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="h-5 w-5" />
+            <Card className="bg-white/90 backdrop-blur-md border border-gray-200 shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+                <CardTitle className="flex items-center space-x-2 text-gray-800">
+                  <FileText className="h-6 w-6 text-purple-600" />
                   <span>Note Details</span>
+                  {selectedSubject && (
+                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white ml-auto">
+                      {selectedSubject}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-8">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     {/* Basic Information */}
@@ -225,7 +385,16 @@ export default function Upload() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Subject</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select 
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedSubject(value);
+                                setSelectedChapter("");
+                                form.setValue('chapter', '');
+                                form.setValue('unit', '');
+                              }} 
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger data-testid="select-subject">
                                   <SelectValue placeholder="Select Subject" />
@@ -244,6 +413,80 @@ export default function Upload() {
                         )}
                       />
                     </div>
+
+                    {/* Chapter and Unit Selection */}
+                    {selectedSubject && subjectContent.chapters.length > 0 && (
+                      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-200">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                          <Layers className="h-5 w-5 text-blue-600 mr-2" />
+                          Subject Structure
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="chapter"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Chapter</FormLabel>
+                                <Select 
+                                  onValueChange={(value) => {
+                                    field.onChange(value);
+                                    setSelectedChapter(value);
+                                    form.setValue('unit', '');
+                                  }} 
+                                  value={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select Chapter" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {subjectContent.chapters.map((chapter) => (
+                                      <SelectItem key={chapter} value={chapter}>
+                                        {chapter}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="unit"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Unit/Topic</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder={selectedChapter ? "Select Unit" : "Select Chapter first"} />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {selectedChapter && subjectContent.units[selectedChapter] ? 
+                                      subjectContent.units[selectedChapter].map((unit) => (
+                                        <SelectItem key={unit} value={unit}>
+                                          {unit}
+                                        </SelectItem>
+                                      )) : (
+                                        <SelectItem value="none" disabled>
+                                          Select a chapter first
+                                        </SelectItem>
+                                      )
+                                    }
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
@@ -347,13 +590,22 @@ export default function Upload() {
                     />
 
                     {/* File Upload */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Upload Files
-                      </label>
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-6 border border-yellow-200">
+                      <div className="flex items-center mb-4">
+                        <UploadIcon className="h-6 w-6 text-yellow-600 mr-2" />
+                        <label className="text-lg font-semibold text-gray-800">
+                          Upload Files
+                        </label>
+                        <Badge className="ml-auto bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                          Step 3
+                        </Badge>
+                      </div>
+                      
                       <div
-                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                          dragOver ? 'border-primary bg-primary/5' : 'border-border'
+                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
+                          dragOver 
+                            ? 'border-yellow-400 bg-yellow-100/50 scale-105' 
+                            : 'border-yellow-300 bg-white/50 hover:border-yellow-400 hover:bg-yellow-50/50'
                         }`}
                         onDragOver={(e) => {
                           e.preventDefault();
@@ -363,27 +615,45 @@ export default function Upload() {
                         onDrop={handleDrop}
                         data-testid="file-upload-area"
                       >
-                        <UploadIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground mb-2">
-                          Drag and drop your files here, or click to browse
+                        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full p-4 w-fit mx-auto mb-4">
+                          <UploadIcon className="h-8 w-8 text-white" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                          Drag and drop your files here
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          or click to browse from your computer
                         </p>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 50MB each)
-                        </p>
+                        
+                        {/* Supported Formats */}
+                        <div className="mb-6">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Supported formats:</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            <Badge variant="outline" className="text-xs">PDF</Badge>
+                            <Badge variant="outline" className="text-xs">DOC/DOCX</Badge>
+                            <Badge variant="outline" className="text-xs">PPT/PPTX</Badge>
+                            <Badge variant="outline" className="text-xs">XLS/XLSX</Badge>
+                            <Badge variant="outline" className="text-xs">TXT</Badge>
+                            <Badge variant="outline" className="text-xs">JPG/PNG</Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">Maximum file size: 50MB each</p>
+                        </div>
+                        
                         <input
                           type="file"
                           multiple
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.webp"
                           onChange={handleFileChange}
                           className="hidden"
                           id="file-input"
                         />
                         <Button 
                           type="button" 
-                          variant="outline"
+                          className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                           onClick={() => document.getElementById('file-input')?.click()}
                           data-testid="button-choose-files"
                         >
+                          <UploadIcon className="mr-2 h-5 w-5" />
                           Choose Files
                         </Button>
                       </div>
@@ -419,11 +689,58 @@ export default function Upload() {
                       )}
                     </div>
 
+                    {/* Coin Reward Information */}
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-6 border-2 border-yellow-200">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full p-3">
+                          <Coins className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">💰 Earn Coins for Your Upload!</h3>
+                          <p className="text-sm text-gray-600">Get rewarded for sharing quality notes</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                              <CheckCircle className="h-4 w-4 text-white" />
+                            </div>
+                            <span className="font-semibold text-gray-800">After Verification</span>
+                          </div>
+                          <div className="text-2xl font-bold text-green-600 mb-1">+20 Coins</div>
+                          <p className="text-xs text-gray-600">Earned once your notes are approved by our team</p>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+                              <Target className="h-4 w-4 text-white" />
+                            </div>
+                            <span className="font-semibold text-gray-800">Bonus Rewards</span>
+                          </div>
+                          <div className="text-lg font-bold text-blue-600 mb-1">+5-15 Coins</div>
+                          <p className="text-xs text-gray-600">Extra coins for high-quality, popular notes</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border border-purple-200">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-purple-600" />
+                          <span className="text-sm font-medium text-purple-800">
+                            💡 Tip: Upload detailed, well-organized notes to earn maximum coins and help more students!
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Action Buttons */}
                     <div className="flex justify-between pt-6">
                       <Button 
                         type="button" 
                         variant="outline"
+                        className="border-gray-300 text-gray-600 hover:bg-gray-50"
                         data-testid="button-save-draft"
                       >
                         Save as Draft
@@ -432,6 +749,7 @@ export default function Upload() {
                         <Button 
                           type="button" 
                           variant="outline"
+                          className="border-purple-300 text-purple-600 hover:bg-purple-50"
                           data-testid="button-preview"
                         >
                           Preview
@@ -439,9 +757,20 @@ export default function Upload() {
                         <Button 
                           type="submit"
                           disabled={uploadMutation.isPending}
+                          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                           data-testid="button-submit"
                         >
-                          {uploadMutation.isPending ? "Uploading..." : "Submit for Review"}
+                          {uploadMutation.isPending ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Uploading...
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <UploadIcon className="h-4 w-4" />
+                              Submit & Earn 20 Coins
+                            </div>
+                          )}
                         </Button>
                       </div>
                     </div>

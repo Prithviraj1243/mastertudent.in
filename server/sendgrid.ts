@@ -1,11 +1,16 @@
 import { MailService } from '@sendgrid/mail';
 
-if (!process.env.SENDGRID_API_KEY) {
+// In dev SQLite mode, skip strict SendGrid requirement
+if (!process.env.SENDGRID_API_KEY && process.env.USE_SQLITE === '1') {
+  // no-op; functions will return true and log
+} else if (!process.env.SENDGRID_API_KEY) {
   throw new Error("SENDGRID_API_KEY environment variable must be set");
 }
 
 const mailService = new MailService();
-mailService.setApiKey(process.env.SENDGRID_API_KEY);
+if (process.env.SENDGRID_API_KEY) {
+  mailService.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 interface EmailParams {
   to: string;
