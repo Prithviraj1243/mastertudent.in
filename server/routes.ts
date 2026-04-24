@@ -1806,18 +1806,80 @@ export function registerRoutes(app: Express): Server {
     },
   );
 
-  // Get user stats for home page
+  // Get user stats for home page — direct Supabase REST (no pooler/ORM lag)
   app.get("/api/user/stats", isAuthenticated, async (req: any, res) => {
     const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     try {
-      const stats = await storage.getUserStats(userId);
-      res.json(stats);
+      const supaUrl = process.env.SUPABASE_URL!;
+      const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const h = { 'apikey': supaKey, 'Authorization': `Bearer ${supaKey}`, 'Prefer': 'count=exact' };
+
+      const getCount = (r: Response) => {
+        const cr = r.headers.get('content-range') || '';
+        const t = cr.split('/')[1];
+        return t ? parseInt(t, 10) : 0;
+      };
+
+      // Run all queries in parallel
+      const [userRes, totalNotesRes, approvedRes, pendingRes, downloadsRes] = await Promise.all([
+        fetch(`${supaUrl}/rest/v1/users?id=eq.${userId}&select=coin_balance,total_earned,reputation`, { headers: h }),
+        fetch(`${supaUrl}/rest/v1/notes?topper_id=eq.${userId}&select=id`, { method: 'HEAD', headers: h }),
+        fetch(`${supaUrl}/rest/v1/notes?topper_id=eq.${userId}&status=eq.approved&select=id`, { method: 'HEAD', headers: h }),
+        fetch(`${supaUrl}/rest/v1/notes?topper_id=eq.${userId}&status=eq.submitted&select=id`, { method: 'HEAD', headers: h }),
+        fetch(`${supaUrl}/rest/v1/downloads?select=id`, { method: 'HEAD', headers: { ...h, 'filter': `note_id=in.(select id from notes where topper_id='${userId}')` } }),
+      ]);
+
+      const userData = userRes.ok ? await userRes.json() : [];
+      const user = userData[0] || {};
+
+      // Get total downloads on user's notes (via notes downloads_count sum)
+      const dlSumRes = await fetch(
+        `${supaUrl}/rest/v1/notes?topper_id=eq.${userId}&status=eq.approved&select=downloads_count`,
+        { headers: { 'apikey': supaKey, 'Authorization': `Bearer ${supaKey}` } }
+      );
+      const dlRows = dlSumRes.ok ? await dlSumRes.json() : [];
+      const totalDownloads = dlRows.reduce((s: number, n: any) => s + (n.downloads_count || 0), 0);
+
+      // Get total views
+      const viewSumRes = await fetch(
+        `${supaUrl}/rest/v1/notes?topper_id=eq.${userId}&select=views_count`,
+        { headers: { 'apikey': supaKey, 'Authorization': `Bearer ${supaKey}` } }
+      );
+      const viewRows = viewSumRes.ok ? await viewSumRes.json() : [];
+      const totalViews = viewRows.reduce((s: number, n: any) => s + (n.views_count || 0), 0);
+
+      const notesUploaded = getCount(totalNotesRes);
+      const activeNotes   = getCount(approvedRes);
+      const pendingReviews = getCount(pendingRes);
+      const totalEarnings = user.total_earned || 0;
+      const monthlyEarnings = Math.floor(totalEarnings * 0.3);
+
+      res.json({
+        notesUploaded,
+        totalEarnings,
+        totalDownloads,
+        averageRating: 0,
+        monthlyEarnings,
+        totalViews,
+        activeNotes,
+        pendingReviews,
+        coinBalance: user.coin_balance || 0,
+      });
     } catch (error) {
       console.error("Error fetching user stats:", error);
-      res.status(500).json({ message: "Failed to fetch user stats" });
+      // Fallback to storage
+      try {
+        const stats = await storage.getUserStats(userId);
+        res.json(stats);
+      } catch {
+        res.status(500).json({ message: "Failed to fetch user stats" });
+      }
     }
   });
+
+
 
   // Get user subject-wise stats
   app.get("/api/user/subject-stats", isAuthenticated, async (req: any, res) => {
@@ -2634,13 +2696,12 @@ export function registerRoutes(app: Express): Server {
         const currentUploads = user.total_uploads  || 0;
         const currentEarned  = user.total_earned   || 0;
 
-        // 4. Update user: increment coin_balance, total_uploads, total_earned
+        // 4. Update user: increment coin_balance and total_earned (no total_uploads column in DB)
         await fetch(`${url}/rest/v1/users?id=eq.${uploaderId}`, {
           method: 'PATCH', headers: h,
           body: JSON.stringify({
-            coin_balance:  currentCoins   + coinsToAward,
-            total_uploads: currentUploads + 1,
-            total_earned:  currentEarned  + coinsToAward,
+            coin_balance: currentCoins + coinsToAward,
+            total_earned: currentEarned + coinsToAward,
             updated_at: new Date().toISOString(),
           }),
         });
