@@ -4,3 +4,15 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Local upload files (stored in Supabase, not git)
+uploads/
+temp_uploads/
+server.log
+
+# Test/temp files
+test-upload.pdf
+check_user.mjs
+tmp_rovodev_*
+*.zip
+cookies.txt
