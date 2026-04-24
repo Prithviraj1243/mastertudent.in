@@ -46,40 +46,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   
   const displayUser = adminUser.username ? adminUser : null;
 
-  // Check admin authentication on mount
+  // Redirect to login only if sessionStorage has no admin auth
   useEffect(() => {
-    const validateAdminSession = async () => {
-      if (!isAdminAuthenticated) {
-        toast({
-          title: 'Access Denied',
-          description: 'Please log in to access admin panel',
-          variant: 'destructive',
-        });
-        setLocation('/admin/login');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/admin/check-session', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok || !data?.authenticated) {
-          sessionStorage.removeItem('adminAuth');
-          sessionStorage.removeItem('adminToken');
-          sessionStorage.removeItem('adminUser');
-          toast({
-            title: 'Session Expired',
-            description: 'Please log in again.',
-            variant: 'destructive',
-          });
-          setLocation('/admin/login');
-        }
-      } catch {
-        setLocation('/admin/login');
-      }
-    };
-
-    validateAdminSession();
-  }, [isAdminAuthenticated, setLocation, toast]);
+    if (!isAdminAuthenticated) {
+      setLocation('/admin/login');
+    }
+  }, [isAdminAuthenticated, setLocation]);
 
   const navItems: NavItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },

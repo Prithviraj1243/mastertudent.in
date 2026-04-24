@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, Eye, Search, Filter, FileText, Clock, AlertCircle, Coins, User, Calendar, Download, Wifi, WifiOff } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Search, Filter, FileText, Clock, AlertCircle, Coins, User, Calendar, Download, Wifi, WifiOff, ExternalLink, ZoomIn, X as XIcon, ChevronLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase';
@@ -20,17 +20,25 @@ interface Note {
   id: string;
   title: string;
   subject: string;
-  topic: string;
+  chapter?: string;
   description: string;
   status: string;
-  topperId: string;
+  uploaderId?: string;
   uploaderName?: string;
   uploaderEmail?: string;
-  attachments: string[];
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  coinPrice?: number;
+  rating?: number;
+  downloadCount?: number;
   createdAt: string;
-  downloadsCount: number;
-  viewsCount: number;
-  price: number;
+  // Legacy fields
+  attachments?: string[];
+  price?: number;
+  topic?: string;
+  downloadsCount?: number;
+  viewsCount?: number;
 }
 
 export default function NotesManagementEnhanced() {
@@ -39,6 +47,7 @@ export default function NotesManagementEnhanced() {
   
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [docPreviewOpen, setDocPreviewOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('submitted');
@@ -89,43 +98,40 @@ export default function NotesManagementEnhanced() {
   const { data: notesData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/notes', statusFilter, searchQuery, page],
     queryFn: async () => {
+      const token = sessionStorage.getItem('adminToken');
       const params = new URLSearchParams({
         status: statusFilter,
         search: searchQuery,
         page: page.toString(),
         limit: limit.toString(),
       });
-
       const res = await fetch(`/api/admin/notes?${params}`, {
         credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       });
-
-      if (!res.ok) {
-        throw new Error('Failed to fetch notes');
-      }
-
+      if (!res.ok) throw new Error('Failed to fetch notes');
       return res.json();
     },
-    refetchInterval: 10000,
+    refetchInterval: 15000,
     refetchOnWindowFocus: true,
   });
 
   // Approve note mutation
   const approveMutation = useMutation({
     mutationFn: async (noteId: string) => {
+      const token = sessionStorage.getItem('adminToken');
       const res = await fetch(`/api/admin/notes/${noteId}/approve`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
       });
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to approve note');
       }
-
       return res.json();
     },
     onSuccess: (data) => {
@@ -149,20 +155,20 @@ export default function NotesManagementEnhanced() {
   // Reject note mutation
   const rejectMutation = useMutation({
     mutationFn: async ({ noteId, reason }: { noteId: string; reason: string }) => {
+      const token = sessionStorage.getItem('adminToken');
       const res = await fetch(`/api/admin/notes/${noteId}/reject`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ reason }),
       });
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to reject note');
       }
-
       return res.json();
     },
     onSuccess: () => {
@@ -473,16 +479,36 @@ export default function NotesManagementEnhanced() {
                               {getStatusBadge(note.status)}
                             </div>
 
-                            {/* Stats */}
+                            {/* Stats — Download & Preview Buttons */}
                             <div className="flex items-center gap-3 text-sm">
-                              <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 rounded-lg border border-blue-300">
-                                <Download className="h-4 w-4 text-blue-700" />
-                                <span className="text-black font-black">{note.downloadsCount}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 px-3 py-2 bg-purple-100 rounded-lg border border-purple-300">
+                              {/* Download Button */}
+                              {note.fileUrl ? (
+                                <a
+                                  href={note.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Download / Open file"
+                                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 rounded-lg border border-blue-300 hover:bg-blue-200 hover:border-blue-500 transition-colors cursor-pointer"
+                                >
+                                  <Download className="h-4 w-4 text-blue-700" />
+                                  <span className="text-black font-black">{note.downloadCount || note.downloadsCount || 0}</span>
+                                </a>
+                              ) : (
+                                <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-lg border border-gray-300 opacity-50" title="No file attached">
+                                  <Download className="h-4 w-4 text-gray-500" />
+                                  <span className="text-gray-500 font-black">0</span>
+                                </div>
+                              )}
+
+                              {/* Preview Button */}
+                              <button
+                                title="Quick preview"
+                                onClick={() => { setSelectedNote(note); setDocPreviewOpen(true); }}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-purple-100 rounded-lg border border-purple-300 hover:bg-purple-200 hover:border-purple-500 transition-colors cursor-pointer"
+                              >
                                 <Eye className="h-4 w-4 text-purple-700" />
-                                <span className="text-black font-black">{note.viewsCount}</span>
-                              </div>
+                                <span className="text-black font-black">{note.viewsCount || 0}</span>
+                              </button>
                             </div>
 
                             {/* Date */}
@@ -552,104 +578,274 @@ export default function NotesManagementEnhanced() {
           </CardContent>
         </Card>
 
-        {/* View Note Dialog */}
-        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Review Note</DialogTitle>
-              <DialogDescription>
-                Review the note details and decide to approve or reject.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedNote && (
-              <div className="space-y-4">
+        {/* ── Full-Screen Document Viewer ── */}
+        {docPreviewOpen && selectedNote && (
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+            {/* Top Bar */}
+            <div className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-700">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setDocPreviewOpen(false); setViewDialogOpen(true); }}
+                  className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  Back to Review
+                </button>
+                <div className="w-px h-5 bg-slate-600" />
                 <div>
-                  <h3 className="font-semibold text-lg">{selectedNote.title}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedNote.subject} • {selectedNote.topic}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Uploader</label>
-                    <p className="text-sm">{selectedNote.uploaderName || 'Unknown'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Status</label>
-                    <div className="mt-1">{getStatusBadge(selectedNote.status)}</div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Price</label>
-                    <p className="text-sm flex items-center gap-1">
-                      <Coins className="h-3 w-3" />
-                      {selectedNote.price} coins
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Uploaded</label>
-                    <p className="text-sm">{new Date(selectedNote.createdAt).toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Description</label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {selectedNote.description || 'No description provided'}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Attachments</label>
-                  <div className="mt-2 space-y-2">
-                    {selectedNote.attachments && selectedNote.attachments.length > 0 ? (
-                      selectedNote.attachments.map((attachment: string, index: number) => (
-                        <a
-                          key={index}
-                          href={attachment}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                        >
-                          <FileText className="h-4 w-4" />
-                          View attachment {index + 1}
-                        </a>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No attachments</p>
-                    )}
-                  </div>
+                  <p className="text-white font-semibold text-sm">{selectedNote.title}</p>
+                  <p className="text-slate-400 text-xs">{selectedNote.fileName || 'Document'}</p>
                 </div>
               </div>
-            )}
-            <DialogFooter className="flex gap-2">
-              {selectedNote?.status === 'submitted' && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setRejectDialogOpen(true);
-                      setViewDialogOpen(false);
-                    }}
-                    className="text-red-600 hover:bg-red-50"
+              <div className="flex items-center gap-2">
+                {selectedNote.fileUrl && (
+                  <a
+                    href={selectedNote.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                   >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Reject
-                  </Button>
-                  <Button
-                    onClick={() => selectedNote && handleApprove(selectedNote.id)}
-                    disabled={approveMutation.isPending}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Approve & Award 20 Coins
-                  </Button>
-                </>
+                    <ExternalLink className="w-4 h-4" />
+                    Open in New Tab
+                  </a>
+                )}
+                <button
+                  onClick={() => setDocPreviewOpen(false)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Document Preview */}
+            <div className="flex-1 overflow-hidden">
+              {selectedNote.fileUrl ? (
+                (() => {
+                  const url = selectedNote.fileUrl;
+                  const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(url);
+                  const isPdf = /\.pdf$/i.test(url) || url.includes('pdf');
+
+                  if (isImage) {
+                    return (
+                      <div className="h-full flex items-center justify-center bg-slate-950 p-4">
+                        <img
+                          src={url}
+                          alt={selectedNote.title}
+                          className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (isPdf) {
+                    return (
+                      <iframe
+                        src={`${url}#toolbar=1&navpanes=1`}
+                        className="w-full h-full border-0"
+                        title={selectedNote.title}
+                      />
+                    );
+                  }
+
+                  // Generic: try Google Docs Viewer for office files
+                  const isOffice = /\.(doc|docx|ppt|pptx|xls|xlsx)$/i.test(url);
+                  if (isOffice) {
+                    return (
+                      <iframe
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+                        className="w-full h-full border-0"
+                        title={selectedNote.title}
+                      />
+                    );
+                  }
+
+                  return (
+                    <div className="h-full flex flex-col items-center justify-center gap-4 text-slate-400">
+                      <FileText className="w-16 h-16 opacity-40" />
+                      <p className="text-lg">Preview not available for this file type</p>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download File
+                      </a>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center gap-4 text-slate-400">
+                  <FileText className="w-16 h-16 opacity-40" />
+                  <p className="text-lg">No document attached to this note</p>
+                </div>
               )}
-              <Button variant="secondary" onClick={() => setViewDialogOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
+            </div>
+          </div>
+        )}
+
+        {/* ── View Note Dialog ── */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+            {selectedNote && (
+              <>
+                {/* Header */}
+                <div className="flex items-start justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-slate-800 to-slate-900">
+                  <div className="flex-1">
+                    <h2 className="text-xl font-black text-white mb-1">{selectedNote.title}</h2>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-slate-400 text-sm">{selectedNote.subject}</span>
+                      {selectedNote.chapter && <span className="text-slate-500 text-sm">• {selectedNote.chapter}</span>}
+                      <div className="mt-1">{getStatusBadge(selectedNote.status)}</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setViewDialogOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg ml-4">
+                    <XIcon className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex flex-1 overflow-hidden">
+                  {/* Left: Metadata */}
+                  <div className="w-64 flex-shrink-0 border-r border-slate-700 p-5 space-y-4 overflow-y-auto bg-slate-900">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Uploader</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">{(selectedNote.uploaderName || 'U')[0].toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">{selectedNote.uploaderName || 'Unknown'}</p>
+                          {selectedNote.uploaderEmail && <p className="text-xs text-slate-400">{selectedNote.uploaderEmail}</p>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Uploaded</p>
+                      <p className="text-sm text-slate-200">{new Date(selectedNote.createdAt).toLocaleString()}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Coin Price</p>
+                      <div className="flex items-center gap-1">
+                        <Coins className="w-4 h-4 text-yellow-400" />
+                        <span className="text-sm font-bold text-white">{selectedNote.coinPrice || selectedNote.price || 0} coins</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Downloads</p>
+                      <div className="flex items-center gap-1">
+                        <Download className="w-4 h-4 text-blue-400" />
+                        <span className="text-sm font-bold text-white">{selectedNote.downloadCount || selectedNote.downloadsCount || 0}</span>
+                      </div>
+                    </div>
+
+                    {selectedNote.fileSize && (
+                      <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">File Size</p>
+                        <p className="text-sm text-slate-200">{(selectedNote.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Description + Document Preview */}
+                  <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-slate-800">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p>
+                      <p className="text-sm text-slate-100 leading-relaxed">{selectedNote.description || 'No description provided.'}</p>
+                    </div>
+
+                    {/* Document Preview Card */}
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Document</p>
+                      {selectedNote.fileUrl ? (
+                        <div className="border-2 border-dashed border-slate-600 rounded-xl overflow-hidden bg-slate-700">
+                          {/* Mini preview */}
+                          {(() => {
+                            const url = selectedNote.fileUrl!;
+                            const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(url);
+                            return (
+                              <div className="relative h-48 bg-slate-900 flex items-center justify-center group">
+                                {isImage ? (
+                                  <img src={url} alt={selectedNote.title} className="h-full w-full object-contain" />
+                                ) : (
+                                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                                    <FileText className="w-12 h-12" />
+                                    <span className="text-sm text-slate-300">{selectedNote.fileName || 'Document'}</span>
+                                  </div>
+                                )}
+                                {/* Overlay */}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                  <button
+                                    onClick={() => { setViewDialogOpen(false); setDocPreviewOpen(true); }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 font-bold rounded-lg hover:bg-slate-100 transition-colors"
+                                  >
+                                    <ZoomIn className="w-4 h-4" />
+                                    Full Preview
+                                  </button>
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Open
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          <div className="p-3 flex items-center justify-between bg-slate-800">
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-blue-400" />
+                              <span className="text-sm font-semibold text-white truncate max-w-[200px]">{selectedNote.fileName || 'Document'}</span>
+                            </div>
+                            <button
+                              onClick={() => { setViewDialogOpen(false); setDocPreviewOpen(true); }}
+                              className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                            >
+                              <ZoomIn className="w-3 h-3" /> Preview
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center text-slate-400 bg-slate-700">
+                          <FileText className="w-10 h-10 mb-2 opacity-40" />
+                          <p className="text-sm text-slate-300">No document attached</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                {selectedNote.status === 'submitted' && (
+                  <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-700 bg-slate-900">
+                    <Button
+                      variant="outline"
+                      onClick={() => { setRejectDialogOpen(true); setViewDialogOpen(false); }}
+                      className="border-2 border-red-300 text-red-600 hover:bg-red-50 font-bold"
+                    >
+                      <XCircle className="h-4 w-4 mr-1.5" />
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={() => selectedNote && handleApprove(selectedNote.id)}
+                      disabled={approveMutation.isPending}
+                      className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold px-6 shadow-lg"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1.5" />
+                      Approve & Award 20 Coins
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </DialogContent>
         </Dialog>
 

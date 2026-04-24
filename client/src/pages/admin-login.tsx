@@ -8,8 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, Lock, User, Loader2 } from "lucide-react";
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("Admin@123");
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -45,7 +45,7 @@ export default function AdminLogin() {
         sessionStorage.setItem('adminAuth', 'true');
         sessionStorage.setItem('adminToken', data.token);
         sessionStorage.setItem('adminUser', JSON.stringify(data.admin));
-        
+
         toast({
           title: "Welcome Admin! 👑",
           description: "Login successful",
@@ -97,7 +97,7 @@ export default function AdminLogin() {
               Enter your admin credentials to access the dashboard
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">

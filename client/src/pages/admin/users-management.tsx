@@ -50,7 +50,16 @@ export default function UsersManagement() {
 
   const { data: users, isLoading, refetch } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
-    retry: false,
+    queryFn: async () => {
+      const token = sessionStorage.getItem('adminToken');
+      const res = await fetch('/api/admin/users', {
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Failed to fetch users');
+      return res.json();
+    },
+    retry: 1,
   });
 
   const handleRoleChange = async (userId: string, newRole: string) => {
