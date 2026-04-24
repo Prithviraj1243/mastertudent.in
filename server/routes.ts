@@ -2366,39 +2366,75 @@ export function registerRoutes(app: Express): Server {
       const h = { 'apikey': key, 'Authorization': `Bearer ${key}` };
 
       let query = `${url}/rest/v1/notes?select=*&order=created_at.desc`;
-      if (status) query += `&status=eq.${status}`;
+      if (status && status !== 'all') query += `&status=eq.${status}`;
       if (subject) query += `&subject=eq.${encodeURIComponent(subject as string)}`;
-      if (search) query += `&or=(title.ilike.*${encodeURIComponent(search as string)}*,description.ilike.*${encodeURIComponent(search as string)}`;
+      if (search) query += `&or=(title.ilike.*${encodeURIComponent(search as string)}*,description.ilike.*${encodeURIComponent(search as string)}*)`;
 
-      const r = await fetch(query, { headers: h });
-      const notes = r.ok ? await r.json() : [];
+      const pageNum = parseInt(page as string) || 1;
+      const pageSize = parseInt(limit as string) || 20;
+      const from = (pageNum - 1) * pageSize;
+      const to = from + pageSize - 1;
 
-      // Map snake_case to camelCase
-      const mapped = notes.map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        description: n.description,
-        subject: n.subject,
-        chapter: n.chapter,
-        status: n.status,
-        uploaderId: n.uploader_id,
-        uploaderName: n.uploader_name,
-        fileUrl: n.file_url,
-        fileName: n.file_name,
-        fileSize: n.file_size,
-        coinPrice: n.coin_price,
-        rating: n.rating,
-        downloadCount: n.download_count || 0,
-        createdAt: n.created_at,
-        updatedAt: n.updated_at,
-      }));
+      const r = await fetch(query, { headers: { ...h, 'Range': `${from}-${to}`, 'Prefer': 'count=exact' } });
+      const notes = r.status < 300 ? await r.json() : [];
+      const totalCount = (() => {
+        const cr = r.headers.get('content-range') || '';
+        const t = cr.split('/')[1];
+        return t ? parseInt(t, 10) : notes.length;
+      })();
 
-      res.json({ notes: mapped, total: mapped.length, page: parseInt(page as string), limit: parseInt(limit as string) });
+      // Fetch uploader info (topper_id → users table)
+      const uploaderIds = [...new Set(notes.map((n: any) => n.topper_id).filter(Boolean))] as string[];
+      let uploaderMap: Record<string, any> = {};
+      if (uploaderIds.length > 0) {
+        const uRes = await fetch(
+          `${url}/rest/v1/users?select=id,email,first_name,last_name&id=in.(${uploaderIds.join(',')})`,
+          { headers: h }
+        );
+        const uRows = uRes.ok ? await uRes.json() : [];
+        uRows.forEach((u: any) => { uploaderMap[u.id] = u; });
+      }
+
+      // Map to frontend shape — fileUrl comes from attachments[0]
+      const mapped = notes.map((n: any) => {
+        const uploader = uploaderMap[n.topper_id] || {};
+        const attachments: string[] = Array.isArray(n.attachments) ? n.attachments : [];
+        const fileUrl = attachments[0] || null;
+        const fileName = fileUrl
+          ? decodeURIComponent(fileUrl.split('/').pop()?.split('?')[0] || 'Document')
+          : null;
+        return {
+          id: n.id,
+          title: n.title,
+          description: n.description,
+          subject: n.subject,
+          chapter: n.topic || '',
+          status: n.status,
+          uploaderId: n.topper_id,
+          uploaderName: uploader.first_name
+            ? `${uploader.first_name} ${uploader.last_name || ''}`.trim()
+            : (uploader.email?.split('@')[0] || 'Unknown'),
+          uploaderEmail: uploader.email || '',
+          fileUrl,
+          fileName,
+          fileSize: n.file_size || null,
+          coinPrice: n.price || 0,
+          downloadCount: n.downloads_count || 0,
+          viewsCount: n.views_count || 0,
+          downloadsCount: n.downloads_count || 0,
+          attachments,
+          createdAt: n.created_at,
+          updatedAt: n.updated_at,
+        };
+      });
+
+      res.json({ notes: mapped, total: totalCount, page: pageNum, limit: pageSize });
     } catch (error) {
       console.error('Admin notes error:', error);
       res.status(500).json({ message: 'Failed to fetch notes' });
     }
   });
+
 
 
   // ========== EARNINGS & WITHDRAWAL ROUTES ==========
