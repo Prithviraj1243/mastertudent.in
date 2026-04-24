@@ -2224,11 +2224,12 @@ export class DatabaseStorage implements IStorage {
         notesCount: count(notes.id),
         totalViews: sum(notes.viewsCount),
         totalDownloads: sum(notes.downloadsCount),
-        activeNotes: count(sql`CASE WHEN ${notes.status} = 'published' THEN 1 END`),
-        pendingReviews: count(sql`CASE WHEN ${notes.status} = 'submitted' THEN 1 END`),
+        activeNotes: count(sql`CASE WHEN ${notes.status} IN ('approved', 'published') THEN 1 END`),
+        pendingReviews: count(sql`CASE WHEN ${notes.status} IN ('submitted', 'pending') THEN 1 END`),
       })
       .from(notes)
       .where(eq(notes.topperId, userId));
+
     
     // Get average rating from feedback
     const avgRatingResult = await db

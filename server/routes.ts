@@ -2602,48 +2602,70 @@ export function registerRoutes(app: Express): Server {
       }
 
       const { noteId } = req.params;
+      const { coinsToAward = 20 } = req.body;
       const url = process.env.SUPABASE_URL!;
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
       const h = { 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 
-      // Get note
+      // 1. Fetch the note
       const noteRes = await fetch(`${url}/rest/v1/notes?id=eq.${noteId}&select=*&limit=1`, { headers: h });
       const notes = noteRes.ok ? await noteRes.json() : [];
       const note = notes[0];
       if (!note) return res.status(404).json({ message: 'Note not found' });
-      if (note.status !== 'submitted' && note.status !== 'pending') {
-        return res.status(400).json({ message: `Only submitted notes can be approved. Current status: ${note.status}` });
+      if (note.status === 'approved') {
+        return res.status(400).json({ message: 'Note is already approved.' });
       }
 
-      // Update note status
+      // 2. Update note status → approved + set published_at
       await fetch(`${url}/rest/v1/notes?id=eq.${noteId}`, {
         method: 'PATCH', headers: h,
-        body: JSON.stringify({ status: 'approved', updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ status: 'approved', published_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
       });
 
-      const uploaderId = note.uploader_id || note.topper_id;
+      const uploaderId = note.topper_id || note.uploader_id;
 
-      // Award 20 coins (best-effort)
       if (uploaderId) {
-        fetch(`${url}/rest/v1/rpc/increment_coins`, {
-          method: 'POST', headers: h,
-          body: JSON.stringify({ user_id: uploaderId, amount: 20 }),
-        }).catch(() => {
-          // Fallback: direct update
-          fetch(`${url}/rest/v1/users?id=eq.${uploaderId}`, {
-            method: 'PATCH', headers: h,
-            body: JSON.stringify({ coin_balance: note.coin_balance + 20 }),
-          }).catch(() => {});
+        // 3. Fetch current user to get accurate balances
+        const userRes = await fetch(`${url}/rest/v1/users?id=eq.${uploaderId}&select=id,coin_balance,total_uploads,total_earned&limit=1`, { headers: h });
+        const users = userRes.ok ? await userRes.json() : [];
+        const user = users[0] || {};
+
+        const currentCoins   = user.coin_balance   || 0;
+        const currentUploads = user.total_uploads  || 0;
+        const currentEarned  = user.total_earned   || 0;
+
+        // 4. Update user: increment coin_balance, total_uploads, total_earned
+        await fetch(`${url}/rest/v1/users?id=eq.${uploaderId}`, {
+          method: 'PATCH', headers: h,
+          body: JSON.stringify({
+            coin_balance:  currentCoins   + coinsToAward,
+            total_uploads: currentUploads + 1,
+            total_earned:  currentEarned  + coinsToAward,
+            updated_at: new Date().toISOString(),
+          }),
         });
 
-        // Notification (best-effort)
+        // 5. Record a transaction
+        fetch(`${url}/rest/v1/transactions`, {
+          method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            user_id: uploaderId,
+            type: 'note_approval',
+            amount: coinsToAward,
+            description: `Note approved: "${note.title}"`,
+            status: 'completed',
+            created_at: new Date().toISOString(),
+          }),
+        }).catch(() => {});
+
+        // 6. Send notification (best-effort)
         fetch(`${url}/rest/v1/notifications`, {
           method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
           body: JSON.stringify({
             user_id: uploaderId,
             type: 'note_approved',
             title: 'Note Approved! 🎉',
-            body: `Your note "${note.title}" has been approved! You earned 20 coins.`,
+            body: `Your note "${note.title}" has been approved! You earned ${coinsToAward} coins.`,
             link: `/note-detail/${noteId}`,
             is_read: false,
             created_at: new Date().toISOString(),
@@ -2651,13 +2673,14 @@ export function registerRoutes(app: Express): Server {
         }).catch(() => {});
       }
 
-      console.log(`✅ Note approved: ${noteId} by admin`);
-      res.json({ success: true, message: 'Note approved successfully! User awarded 20 coins.', coinsAwarded: 20 });
+      console.log(`✅ Note approved: ${noteId} | uploader: ${uploaderId} | +${coinsToAward} coins`);
+      res.json({ success: true, message: `Note approved! User awarded ${coinsToAward} coins and upload count updated.`, coinsAwarded: coinsToAward });
     } catch (error) {
       console.error('Error approving note:', error);
       res.status(500).json({ message: 'Failed to approve note' });
     }
   });
+
 
   // Reject note (admin only)
   app.post("/api/admin/notes/:noteId/reject", async (req: any, res) => {
