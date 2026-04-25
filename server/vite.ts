@@ -92,13 +92,10 @@ export async function setupVite(app: Express, server: Server) {
 
 export function serveStatic(app: Express) {
   // Vite builds to dist/public (configured in vite.config.ts outDir)
-  // __dirname is server/ at runtime, so we go up one level to project root
   const distPath = path.resolve(__dirname, "..", "dist", "public");
-
-  // Fallback: some environments may place it at dist/public relative to cwd
-  const altPath = path.resolve(process.cwd(), "dist", "public");
-
-  const resolvedPath = fs.existsSync(distPath) ? distPath : fs.existsSync(altPath) ? altPath : null;
+  const altPath  = path.resolve(process.cwd(), "dist", "public");
+  const resolvedPath = fs.existsSync(distPath) ? distPath
+    : fs.existsSync(altPath) ? altPath : null;
 
   if (!resolvedPath) {
     throw new Error(
@@ -106,10 +103,30 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(resolvedPath));
+  app.use(express.static(resolvedPath, { index: false }));
 
-  // fall through to index.html if the file doesn't exist
+  // Serve index.html for all non-asset routes, injecting runtime config
+  // so the frontend works even when VITE_* env vars weren't set at build time.
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(resolvedPath, "index.html"));
+    const indexPath = path.resolve(resolvedPath, "index.html");
+    try {
+      let html = fs.readFileSync(indexPath, "utf-8");
+
+      // Build runtime config from server env vars (available at runtime)
+      const runtimeConfig = {
+        SUPABASE_URL:    process.env.SUPABASE_URL    || process.env.VITE_SUPABASE_URL    || "",
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "",
+      };
+
+      // Inject as the very first script in <head>
+      const configScript = `<script>window.__RUNTIME_CONFIG__ = ${JSON.stringify(runtimeConfig)};</script>`;
+      html = html.replace("<head>", `<head>\n  ${configScript}`);
+
+      res.setHeader("Content-Type", "text/html");
+      res.send(html);
+    } catch {
+      res.sendFile(indexPath);
+    }
   });
 }

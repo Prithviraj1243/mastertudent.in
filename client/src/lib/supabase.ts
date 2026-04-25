@@ -1,21 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-
-// Accept both the legacy anon key name and the new publishable key name
-// They are functionally identical — both are the public/anon key
-const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Missing Supabase environment variables!');
-  console.error('VITE_SUPABASE_URL:', supabaseUrl);
-  console.error('VITE_SUPABASE_ANON_KEY / VITE_SUPABASE_PUBLISHABLE_KEY:', supabaseAnonKey ? 'Present' : 'Missing');
-  throw new Error('Missing Supabase environment variables. Check your .env file.');
+// Runtime config injected by server/vite.ts at request time.
+// This works even when VITE_* env vars were not set during the build.
+declare global {
+  interface Window {
+    __RUNTIME_CONFIG__?: {
+      SUPABASE_URL?: string;
+      SUPABASE_ANON_KEY?: string;
+      GOOGLE_CLIENT_ID?: string;
+    };
+  }
 }
 
-console.log('🔧 Initializing Supabase client for:', supabaseUrl);
+// Priority: runtime config (from server) > build-time VITE_ env > hardcoded fallback
+const supabaseUrl =
+  window.__RUNTIME_CONFIG__?.SUPABASE_URL ||
+  import.meta.env.VITE_SUPABASE_URL ||
+  '';
+
+const supabaseAnonKey =
+  window.__RUNTIME_CONFIG__?.SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  '';
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing Supabase configuration!');
+  console.error('SUPABASE_URL:', supabaseUrl || 'MISSING');
+  console.error('SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Present' : 'MISSING');
+}
+
+console.log('🔧 Supabase config source:', window.__RUNTIME_CONFIG__?.SUPABASE_URL ? 'runtime (server)' : 'build-time env');
+console.log('🔧 Initializing Supabase client for:', supabaseUrl || 'MISSING');
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -37,7 +53,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Set auth token for realtime subscriptions
 supabase.realtime.setAuth(supabaseAnonKey);
 
 console.log('✅ Supabase client initialized');
