@@ -6,7 +6,7 @@
 
 // The guaranteed-correct pooler URL (from config.ts which sets process.env)
 const POOLER_FALLBACK =
-  'postgresql://postgres.snzsilepbuglkrjcxdim:prashant098675@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
+  'postgresql://postgres.snzsilepbuglkrjcxdim:prashant098675@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
 
 export function getFixedDatabaseUrl(): string {
   const raw = process.env.DATABASE_URL || POOLER_FALLBACK;

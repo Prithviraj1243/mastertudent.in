@@ -31,7 +31,7 @@ setEnv('SUPABASE_BUCKET_NAME', 'notes');
 
 // ── Database (IPv4 Supabase pooler — works on Render) ─────────────────────────
 setEnv('DATABASE_URL',
-  'postgresql://postgres.snzsilepbuglkrjcxdim:prashant098675@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true');
+  'postgresql://postgres.snzsilepbuglkrjcxdim:prashant098675@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true');
 
 // ── Session ───────────────────────────────────────────────────────────────────
 setEnv('SESSION_SECRET', 'masterstudent_session_secret_2025_render');
