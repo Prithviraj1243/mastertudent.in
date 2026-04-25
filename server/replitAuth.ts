@@ -1,12 +1,11 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
+import MemoryStore from "memorystore";
 import type { Express, RequestHandler } from "express";
-import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { sendWelcomeEmail } from "./sendgrid";
 import crypto from "crypto";
-import { getFixedDatabaseUrl } from "./supabase-url-fix";
 import { OAuth2Client } from "google-auth-library";
 
 // Extend express-session to include custom fields
@@ -107,12 +106,11 @@ function verifyPassword(password: string, hash: string): boolean {
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const isProduction = process.env.NODE_ENV === "production";
-  const sessionSecret = process.env.SESSION_SECRET || "dev_secret_change_me";
+  const sessionSecret = process.env.SESSION_SECRET || "masterstudent_session_secret_2025";
   const sessionSameSite =
     (process.env.SESSION_SAME_SITE as "lax" | "strict" | "none" | undefined) ||
     "lax";
-  const useSecureCookies =
-    isProduction && process.env.SESSION_SECURE !== "false";
+  const useSecureCookies = isProduction && process.env.SESSION_SECURE !== "false";
 
   const cookieOptions: session.CookieOptions = {
     httpOnly: true,
@@ -122,54 +120,23 @@ export function getSession() {
     path: "/",
   };
 
-  const makeMemorySession = () => session({
+  // Always use MemoryStore — connect-pg-simple (pg-pool) fails on Supabase pooler
+  // JWT tokens handle real auth; sessions are only used for admin panel state
+  const MemStore = MemoryStore(session);
+  const store = new MemStore({
+    checkPeriod: 86_400_000, // prune expired entries every 24h
+  });
+
+  console.log('✅ [session] Using MemoryStore (no pg connection needed)');
+
+  return session({
     secret: sessionSecret,
+    store,
     resave: false,
     saveUninitialized: false,
     proxy: isProduction,
     cookie: cookieOptions,
   });
-
-  // Use Postgres session store only when DATABASE_URL is available
-  const usePostgresSessionStore =
-    (isProduction || process.env.USE_PG_SESSION_STORE === "1") &&
-    !!process.env.DATABASE_URL;
-
-  if (!usePostgresSessionStore) {
-    console.warn("⚠️ Using in-memory session store");
-    return makeMemorySession();
-  }
-
-  // Try to use Postgres session store with auto-fixed (IPv4 pooler) URL
-  try {
-    // Import here to avoid circular dependency issues
-    const fixedUrl = getFixedDatabaseUrl();
-
-    const pgStore = connectPg(session);
-    const sessionStore = new pgStore({
-      conString: fixedUrl,
-      createTableIfMissing: true,
-      ttl: sessionTtl,
-      tableName: "sessions",
-    });
-
-    // Fall back gracefully on any connection error
-    sessionStore.on('error', (error) => {
-      console.warn('⚠️  Session store error (using memory fallback):', error.message);
-    });
-
-    return session({
-      secret: sessionSecret,
-      store: sessionStore,
-      resave: false,
-      saveUninitialized: false,
-      proxy: isProduction,
-      cookie: cookieOptions,
-    });
-  } catch (error: any) {
-    console.warn('⚠️  Failed to initialize Postgres session store — using memory store:', error.message);
-    return makeMemorySession();
-  }
 }
 
 async function createOrLoginUser(email: string, role?: string, firstName?: string, lastName?: string) {
