@@ -1,12 +1,9 @@
 /**
  * supabase-url-fix.ts
- * 
  * Converts any Supabase DATABASE_URL (direct/IPv6) to the transaction pooler
  * URL (IPv4) that works on Render, Railway, Fly.io, etc.
- * 
- * Direct URL:  postgresql://postgres:PWD@db.REF.supabase.co:5432/postgres
- * Pooler URL:  postgresql://postgres.REF:PWD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true
  */
+import { DATABASE_URL as CONFIG_DB_URL } from './config';
 
 export function getFixedDatabaseUrl(): string {
   const raw = process.env.DATABASE_URL || '';

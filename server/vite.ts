@@ -6,6 +6,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, GOOGLE_CLIENT_ID } from "./config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,11 +113,11 @@ export function serveStatic(app: Express) {
     try {
       let html = fs.readFileSync(indexPath, "utf-8");
 
-      // Build runtime config from server env vars (available at runtime)
+      // Build runtime config from config.ts (guaranteed to have values)
       const runtimeConfig = {
-        SUPABASE_URL:    process.env.SUPABASE_URL    || process.env.VITE_SUPABASE_URL    || "",
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "",
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
+        GOOGLE_CLIENT_ID,
       };
 
       // Inject as the very first script in <head>

@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import './config'; // Load config with fallbacks BEFORE anything else
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { checkAndSeedDatabase } from "./seed-data";

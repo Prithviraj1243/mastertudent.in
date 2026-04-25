@@ -2,14 +2,12 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from "@shared/schema";
 import { getFixedDatabaseUrl, isPoolerUrl } from './supabase-url-fix';
+import { DATABASE_URL as CONFIG_DB_URL } from './config';
 
 let db: any;
 
 if (process.env.USE_SQLITE === "1") {
   console.log('⚠️  Using mock in-memory database (USE_SQLITE=1)');
-  db = makeMockDb();
-} else if (!process.env.DATABASE_URL) {
-  console.warn('⚠️  DATABASE_URL not set — using mock DB. Set it in environment.');
   db = makeMockDb();
 } else {
   // Auto-fix IPv6 direct URL → IPv4 pooler URL
