@@ -38,10 +38,11 @@ export default function SubscriptionModal({
   const handleSubscribe = () => {
     if (selectedPlan === 'monthly') {
       // Redirect to Razorpay payment link for monthly plan
-      window.open('https://rzp.io/rzp/QvNCCVYQ', '_blank');
+      window.open('https://rzp.io/rzp/jtfXFz1', '_blank');
       onClose();
     } else if (selectedPlan === 'yearly') {
-      setShowPaymentGateway(true);
+      window.open('https://rzp.io/rzp/73206D6', '_blank');
+      onClose();
     }
   };
 
