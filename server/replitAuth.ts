@@ -5,9 +5,8 @@ import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { sendWelcomeEmail } from "./sendgrid";
-// Firebase sync disabled - module not found
-// import { syncUserToFirebase } from "./firebase-sync";
 import crypto from "crypto";
+import { getFixedDatabaseUrl } from "./supabase-url-fix";
 import { OAuth2Client } from "google-auth-library";
 
 // Extend express-session to include custom fields
@@ -108,7 +107,7 @@ function verifyPassword(password: string, hash: string): boolean {
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const isProduction = process.env.NODE_ENV === "production";
-  const sessionSecret = process.env.SESSION_SECRET || "dev_secret";
+  const sessionSecret = process.env.SESSION_SECRET || "dev_secret_change_me";
   const sessionSameSite =
     (process.env.SESSION_SAME_SITE as "lax" | "strict" | "none" | undefined) ||
     "lax";
@@ -123,38 +122,42 @@ export function getSession() {
     path: "/",
   };
 
-  // Dev: always use MemoryStore unless explicitly opted into Postgres sessions.
-  // This avoids noisy/crashy startup when DATABASE_URL points to an unreachable host.
+  const makeMemorySession = () => session({
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    proxy: isProduction,
+    cookie: cookieOptions,
+  });
+
+  // Use Postgres session store only when DATABASE_URL is available
   const usePostgresSessionStore =
     (isProduction || process.env.USE_PG_SESSION_STORE === "1") &&
     !!process.env.DATABASE_URL;
 
   if (!usePostgresSessionStore) {
     console.warn("⚠️ Using in-memory session store");
-    return session({
-      secret: sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      proxy: isProduction,
-      cookie: cookieOptions,
-    });
+    return makeMemorySession();
   }
-  
-  // Try to use Postgres session store, but handle connection errors gracefully
+
+  // Try to use Postgres session store with auto-fixed (IPv4 pooler) URL
   try {
+    // Import here to avoid circular dependency issues
+    const fixedUrl = getFixedDatabaseUrl();
+
     const pgStore = connectPg(session);
     const sessionStore = new pgStore({
-      conString: process.env.DATABASE_URL,
+      conString: fixedUrl,
       createTableIfMissing: true,
       ttl: sessionTtl,
       tableName: "sessions",
     });
-    
-    // Suppress connection errors for session store (prevents log spam if DB blips).
+
+    // Fall back gracefully on any connection error
     sessionStore.on('error', (error) => {
-      console.warn('⚠️  Session store error:', error.message);
+      console.warn('⚠️  Session store error (using memory fallback):', error.message);
     });
-    
+
     return session({
       secret: sessionSecret,
       store: sessionStore,
@@ -163,15 +166,9 @@ export function getSession() {
       proxy: isProduction,
       cookie: cookieOptions,
     });
-  } catch (error) {
-    console.warn('⚠️  Failed to initialize Postgres session store, using memory store');
-    return session({
-      secret: sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      proxy: isProduction,
-      cookie: cookieOptions,
-    });
+  } catch (error: any) {
+    console.warn('⚠️  Failed to initialize Postgres session store — using memory store:', error.message);
+    return makeMemorySession();
   }
 }
 
