@@ -1,87 +1,37 @@
 services:
   - type: web
-    name: masterstudent
-    env: node
-    plan: free
+    name: mastertudent-in
+    runtime: node
+    branch: fixing
     buildCommand: npm install && npm run build
     startCommand: npm start
+    healthCheckPath: /api/test
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-      - key: USE_SQLITE
-        value: 0
-      
-      # Database - REPLACE WITH YOUR VALUES
-      - key: DATABASE_URL
-        sync: false
-      
-      # Supabase - REPLACE WITH YOUR VALUES
       - key: SUPABASE_URL
-        sync: false
+        value: https://snzsilepbuglkrjcxdim.supabase.co
       - key: SUPABASE_ANON_KEY
-        sync: false
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NTc2MzAsImV4cCI6MjA4MjMzMzYzMH0.P8jg0dg17cMn3oS3xX0AcoR2rC9vNV6h8y64S-PM4Fg
       - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Njc1NzYzMCwiZXhwIjoyMDgyMzMzNjMwfQ.ViyUgUcMjyUWIpZD6nfhfdabYspxxUeSnrn1W7RFc_o
       - key: VITE_SUPABASE_URL
-        sync: false
+        value: https://snzsilepbuglkrjcxdim.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
-        sync: false
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NTc2MzAsImV4cCI6MjA4MjMzMzYzMH0.P8jg0dg17cMn3oS3xX0AcoR2rC9vNV6h8y64S-PM4Fg
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
-        sync: false
-      
-      # Frontend API URLs - REPLACE masterstudent-xxxx with your actual Render service name
-      # Example: https://masterstudent-abcd.onrender.com
-      - key: VITE_API_URL
-        sync: false
-      - key: VITE_ADMIN_API_URL
-        sync: false
-      
-      # Storage
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NTc2MzAsImV4cCI6MjA4MjMzMzYzMH0.P8jg0dg17cMn3oS3xX0AcoR2rC9vNV6h8y64S-PM4Fg
+      - key: DATABASE_URL
+        value: postgresql://postgres.snzsilepbuglkrjcxdim:prashant098675@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+      - key: SESSION_SECRET
+        value: masterstudent_session_secret_2025_render_secure
+      - key: GOOGLE_CLIENT_ID
+        value: 914859639485-t5pjjuir3bmauq2t51nb60v1l1gm4ud8.apps.googleusercontent.com
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: 914859639485-t5pjjuir3bmauq2t51nb60v1l1gm4ud8.apps.googleusercontent.com
+      - key: ADMIN_JWT_SECRET
+        value: admin_jwt_secret_masterstudent_2025
       - key: STORAGE_PROVIDER
         value: supabase
-      - key: SUPABASE_BUCKET_NAME
-        value: notes
-      
-      # Admin Credentials - CHANGE THESE IN PRODUCTION!
-      - key: ADMIN_USERNAME
-        value: admin
-      - key: ADMIN_PASSWORD
-        sync: false
-      - key: ADMIN_SECRET_KEY
-        sync: false
-      - key: ADMIN_JWT_SECRET
-        sync: false
-      - key: SESSION_SECRET
-        sync: false
-      - key: ADMIN_PROMOTION_ID
-        value: MASTER_ADMIN_2025
-      - key: ADMIN_PROMOTION_PASSWORD
-        sync: false
-      
-      # Google OAuth
-      - key: VITE_GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      
-      # Gemini API
-      - key: GEMINI_API_KEY
-        sync: false
-      
-      # Dodo Payments
-      - key: DODO_PROJECT_ID
-        value: pdt_CZikJJg7rTP13neCwBqng
-      - key: DODO_API_KEY
-        sync: false
-      - key: DODO_API_URL
-        value: https://api.dodopayments.com
-      - key: DODO_CHECKOUT_BASE_URL
-        value: https://checkout.dodopayments.com/buy
-      - key: DODO_CHECKOUT_URL
-        value: https://checkout.dodopayments.com/buy/pdt_CZikJJg7rTP13neCwBqng?quantity=1
-      
-      # Email (Optional)
-      - key: SENDGRID_API_KEY
-        sync: false
