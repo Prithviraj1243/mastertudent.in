@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Users, FileText, TrendingUp, DollarSign, Download, Upload,
   Eye, CheckCircle, Clock, AlertCircle, Activity, ArrowRight,
-  XCircle, UserPlus, RefreshCw, Shield, Zap
+  XCircle, UserPlus, RefreshCw, Shield, Zap, Crown
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -240,7 +240,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <button
             onClick={() => setLocation('/admin/notes')}
             className="flex items-center gap-3 p-3 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 rounded-xl transition-colors text-left"
@@ -279,6 +279,16 @@ export default function AdminDashboard() {
             <div>
               <p className="text-red-400 text-xs font-bold">Rejected</p>
               <p className="text-white text-lg font-black">{stats?.rejectedNotes || 0}</p>
+            </div>
+          </button>
+          <button
+            onClick={() => setLocation('/admin/toppers')}
+            className="flex items-center gap-3 p-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-colors text-left"
+          >
+            <Crown className="w-5 h-5 text-amber-400 flex-shrink-0" />
+            <div>
+              <p className="text-amber-400 text-xs font-bold">Verify Toppers</p>
+              <p className="text-white text-xs mt-0.5">Review docs →</p>
             </div>
           </button>
         </div>

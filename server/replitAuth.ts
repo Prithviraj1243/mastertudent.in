@@ -14,6 +14,7 @@ declare module 'express-session' {
     userId?: string;
     supabaseUserId?: string;
     adminAccountId?: string;
+    adminToken?: string;
     isAdmin?: boolean;
   }
 }

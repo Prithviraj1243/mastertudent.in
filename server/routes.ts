@@ -20,6 +20,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { uploadMultipleToSupabase } from "./supabase-storage";
+import { supabaseAdmin } from "./supabase";
 
 // Helper function to get user ID from request
 function getUserId(req: any): string {
@@ -72,6 +73,12 @@ const upload = multer({
       cb(new Error("Invalid file type"));
     }
   },
+});
+
+// Separate memory-storage multer for screenshot/image uploads (no disk write needed)
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
 export function registerRoutes(app: Express): Server {
@@ -250,11 +257,12 @@ export function registerRoutes(app: Express): Server {
         user = existingUser;
         console.log('✅ Existing user found:', user.id, user.email);
         // Update last_seen (best-effort)
-        supabaseAdmin
-          .from('users')
-          .update({ last_seen: new Date().toISOString(), is_online: true, updated_at: new Date().toISOString() })
-          .eq('id', user.id)
-          .then(() => { }).catch(() => { });
+        Promise.resolve(
+          supabaseAdmin
+            .from('users')
+            .update({ last_seen: new Date().toISOString(), is_online: true, updated_at: new Date().toISOString() })
+            .eq('id', user.id)
+        ).then(() => { }).catch(() => { });
       } else {
         // 2. Create new user via REST API
         const newId = crypto.randomUUID();
@@ -465,12 +473,14 @@ export function registerRoutes(app: Express): Server {
       }
 
       // ── Step 6: Create review task ────────────────────────────────────────
-      await supabaseAdmin.from('review_tasks').insert({
-        id: crypto.randomUUID(),
-        note_id: noteId,
-        status: 'open',
-        created_at: new Date().toISOString(),
-      }).then(() => { }).catch((e: any) => console.warn('Review task creation warning:', e.message));
+      await Promise.resolve(
+        supabaseAdmin.from('review_tasks').insert({
+          id: crypto.randomUUID(),
+          note_id: noteId,
+          status: 'open',
+          created_at: new Date().toISOString(),
+        })
+      ).then(() => { }).catch((e: any) => console.warn('Review task creation warning:', e.message));
 
       console.log('🎉 Upload complete! Note ID:', noteId);
 
@@ -737,8 +747,222 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // ─── Topper Verification Routes ────────────────────────────────────────────
+
+  // POST /api/verify-topper — student submits exam doc (uploads to Supabase bucket)
+  app.post("/api/verify-topper", upload.single("examResults"), async (req: any, res) => {
+    try {
+      const file = req.file;
+      if (!file) return res.status(400).json({ message: "No document uploaded" });
+
+      // 5 MB limit
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ message: "File too large. Maximum size is 5 MB." });
+      }
+
+      const allowed = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
+      if (!allowed.includes(file.mimetype)) {
+        return res.status(400).json({ message: "Only PDF, JPG, or PNG files are accepted." });
+      }
+
+      // Resolve uploader identity
+      let userId: string | null = null;
+      let userEmail: string | null = null;
+      try {
+        const authHeader = req.headers["authorization"] as string;
+        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+        const supaXToken = req.headers["x-supabase-token"] as string;
+        const jwt = await import("jsonwebtoken");
+        const t = token || supaXToken;
+        if (t) {
+          try {
+            const SECRET = process.env.SUPABASE_JWT_SECRET || process.env.SESSION_SECRET || "";
+            const payload = jwt.default.decode(t) as any;
+            userId = payload?.sub || null;
+            userEmail = payload?.email || null;
+          } catch { /* ignore */ }
+        }
+        if (!userId) userId = req.headers["x-user-id"] as string || null;
+        if (!userId && req.session?.userId) userId = req.session.userId;
+      } catch { /* ignore */ }
+
+      const url = process.env.SUPABASE_URL!;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const bucketName = "verify toppers document";
+
+      // Upload file to Supabase Storage
+      const ext = file.originalname.split(".").pop() || "pdf";
+      const fileName = `${userId || "anon"}_${Date.now()}.${ext}`;
+      const storagePath = `submissions/${fileName}`;
+
+      const uploadRes = await fetch(
+        `${url}/storage/v1/object/${encodeURIComponent(bucketName)}/${storagePath}`,
+        {
+          method: "POST",
+          headers: {
+            "apikey": key,
+            "Authorization": `Bearer ${key}`,
+            "Content-Type": file.mimetype,
+            "x-upsert": "true",
+          },
+          body: file.buffer,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        console.error("Supabase storage upload error:", errText);
+        return res.status(500).json({ message: "Failed to upload document to storage: " + errText });
+      }
+
+      // Public URL for the document
+      const docUrl = `${url}/storage/v1/object/public/${encodeURIComponent(bucketName)}/${storagePath}`;
+
+      // Save metadata to topper_verifications table (create if not exists via upsert)
+      const { subject, score, examName } = req.body;
+      const h = {
+        "apikey": key,
+        "Authorization": `Bearer ${key}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+      };
+
+      const dbRes = await fetch(`${url}/rest/v1/topper_verifications`, {
+        method: "POST",
+        headers: h,
+        body: JSON.stringify({
+          user_id: userId,
+          user_email: userEmail || req.body.email || "unknown",
+          exam_name: examName || "",
+          subject: subject || "",
+          score: score || "",
+          document_url: docUrl,
+          storage_path: storagePath,
+          status: "pending",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }),
+      });
+
+      if (!dbRes.ok) {
+        const errText = await dbRes.text();
+        console.error("DB insert error:", errText);
+        // Still return success — file is uploaded even if metadata save fails
+        return res.json({ success: true, message: "Document uploaded. Metadata save pending.", documentUrl: docUrl });
+      }
+
+      const [record] = await dbRes.json();
+      console.log(`✅ Topper verification submitted: ${userId} → ${docUrl}`);
+      res.json({ success: true, message: "Verification submitted! Admin will review shortly.", record });
+    } catch (err) {
+      console.error("verify-topper error:", err);
+      res.status(500).json({ message: "Failed to submit verification" });
+    }
+  });
+
+  // GET /api/admin/topper-verifications — list all (admin only)
+  app.get("/api/admin/topper-verifications", async (req: any, res) => {
+    try {
+      const authHeader = req.headers["authorization"] as string;
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (token) {
+        try {
+          const jwt = await import("jsonwebtoken");
+          const SECRET = process.env.ADMIN_JWT_SECRET || process.env.SESSION_SECRET || "admin-secret-key";
+          const p = jwt.default.verify(token, SECRET) as any;
+          if (p?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+        } catch { return res.status(403).json({ message: "Admin access required" }); }
+      } else if (!req.session?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const url = process.env.SUPABASE_URL!;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const r = await fetch(
+        `${url}/rest/v1/topper_verifications?select=*&order=created_at.desc`,
+        {
+          headers: { "apikey": key, "Authorization": `Bearer ${key}` },
+        }
+      );
+      const data = r.ok ? await r.json() : [];
+      res.json({ verifications: data, total: data.length });
+    } catch (err) {
+      console.error("list topper verifications error:", err);
+      res.status(500).json({ message: "Failed to fetch verifications" });
+    }
+  });
+
+  // PATCH /api/admin/topper-verifications/:id/status — approve or reject (admin only)
+  app.patch("/api/admin/topper-verifications/:id/status", async (req: any, res) => {
+    try {
+      const authHeader = req.headers["authorization"] as string;
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (token) {
+        try {
+          const jwt = await import("jsonwebtoken");
+          const SECRET = process.env.ADMIN_JWT_SECRET || process.env.SESSION_SECRET || "admin-secret-key";
+          const p = jwt.default.verify(token, SECRET) as any;
+          if (p?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+        } catch { return res.status(403).json({ message: "Admin access required" }); }
+      } else if (!req.session?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const { status } = req.body; // 'approved' | 'rejected'
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Status must be 'approved' or 'rejected'" });
+      }
+
+      const url = process.env.SUPABASE_URL!;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const h = { "apikey": key, "Authorization": `Bearer ${key}`, "Content-Type": "application/json", "Prefer": "return=representation" };
+
+      // Update verification status
+      const r = await fetch(`${url}/rest/v1/topper_verifications?id=eq.${id}`, {
+        method: "PATCH",
+        headers: h,
+        body: JSON.stringify({ status, updated_at: new Date().toISOString() }),
+      });
+
+      if (!r.ok) return res.status(500).json({ message: "Failed to update status" });
+      const [updated] = await r.json();
+
+      // If approved, update user role to 'topper' in users table
+      if (status === "approved" && updated?.user_id) {
+        await fetch(`${url}/rest/v1/users?id=eq.${updated.user_id}`, {
+          method: "PATCH",
+          headers: h,
+          body: JSON.stringify({ role: "topper", updated_at: new Date().toISOString() }),
+        }).catch(() => { });
+
+        // Notify the user
+        await fetch(`${url}/rest/v1/notifications`, {
+          method: "POST",
+          headers: { ...h, "Prefer": "return=minimal" },
+          body: JSON.stringify({
+            user_id: updated.user_id,
+            type: "topper_approved",
+            title: "You're now a Verified Topper! 🎉",
+            body: "Congratulations! Your verification was approved. You now have the Topper badge.",
+            link: "/home",
+            is_read: false,
+            created_at: new Date().toISOString(),
+          }),
+        }).catch(() => { });
+      }
+
+      console.log(`✅ Topper verification ${status}: ${id}`);
+      res.json({ success: true, status, verification: updated });
+    } catch (err) {
+      console.error("update topper verification error:", err);
+      res.status(500).json({ message: "Failed to update verification" });
+    }
+  });
+
   // Notes routes
   app.get("/api/notes", async (req, res) => {
+
     try {
       const {
         subject,
@@ -1811,7 +2035,7 @@ export function registerRoutes(app: Express): Server {
     // Resolve internal user ID — try email from JWT first (most reliable)
     const supaUrl2 = process.env.SUPABASE_URL!;
     const supaKey2 = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const hLookup  = { 'apikey': supaKey2, 'Authorization': `Bearer ${supaKey2}` };
+    const hLookup = { 'apikey': supaKey2, 'Authorization': `Bearer ${supaKey2}` };
 
     let userId = getUserId(req) || (req.headers['x-user-id'] as string) || '';
 
@@ -1879,7 +2103,7 @@ export function registerRoutes(app: Express): Server {
       const totalViews = viewRows.reduce((s: number, n: any) => s + (n.views_count || 0), 0);
 
       const notesUploaded = getCount(totalNotesRes);
-      const activeNotes   = getCount(approvedRes);
+      const activeNotes = getCount(approvedRes);
       const pendingReviews = getCount(pendingRes);
       const totalEarnings = user.total_earned || 0;
       const monthlyEarnings = Math.floor(totalEarnings * 0.3);
@@ -1930,20 +2154,20 @@ export function registerRoutes(app: Express): Server {
 
     // ── Step 1: Decode JWT to get email (most reliable identifier) ──────────
     let jwtEmail: string = '';
-    let jwtSub: string   = '';
-    const authHeader  = (req.headers['authorization']    as string) || '';
+    let jwtSub: string = '';
+    const authHeader = (req.headers['authorization'] as string) || '';
     const tokenHeader = (req.headers['x-supabase-token'] as string) || '';
-    const rawToken    = tokenHeader || (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '');
+    const rawToken = tokenHeader || (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '');
 
     if (rawToken) {
       try {
-        const parts   = rawToken.split('.');
+        const parts = rawToken.split('.');
         if (parts.length === 3) {
           const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-          const now     = Math.floor(Date.now() / 1000);
+          const now = Math.floor(Date.now() / 1000);
           if (payload.exp > now) {
             jwtEmail = payload.email || '';
-            jwtSub   = payload.sub   || '';
+            jwtSub = payload.sub || '';
           }
         }
       } catch { /* ignore */ }
@@ -2429,12 +2653,12 @@ export function registerRoutes(app: Express): Server {
         fetch(`${supaUrl}/rest/v1/downloads?select=id`, { method: 'HEAD', headers: base }),
       ]);
 
-      const totalUsers      = getCount(totalUsersRes);
-      const totalNotes      = getCount(totalNotesRes);
-      const approvedNotes   = getCount(approvedRes);
+      const totalUsers = getCount(totalUsersRes);
+      const totalNotes = getCount(totalNotesRes);
+      const approvedNotes = getCount(approvedRes);
       const pendingApprovals = getCount(pendingRes);
-      const rejectedNotes   = getCount(rejectedRes);
-      const totalDownloads  = getCount(totalDownloadsRes);
+      const rejectedNotes = getCount(rejectedRes);
+      const totalDownloads = getCount(totalDownloadsRes);
 
       // Revenue: fetch only total_earned column (light)
       const revenueRes = await fetch(
@@ -2562,7 +2786,7 @@ export function registerRoutes(app: Express): Server {
       })();
 
       // Fetch uploader info (topper_id → users table)
-      const uploaderIds = [...new Set(notes.map((n: any) => n.topper_id).filter(Boolean))] as string[];
+      const uploaderIds = Array.from(new Set<string>(notes.map((n: any) => n.topper_id).filter(Boolean))) as string[];
       let uploaderMap: Record<string, any> = {};
       if (uploaderIds.length > 0) {
         const uRes = await fetch(
@@ -2668,20 +2892,52 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Upload withdrawal screenshot — uses supabaseAdmin to bypass storage RLS
+  app.post("/api/earnings/upload-screenshot", isAuthenticated, memoryUpload.single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file provided" });
+      }
+
+      const { supabaseAdmin } = await import('./supabase');
+      const ext = (req.file.originalname.split('.').pop() || 'jpg').toLowerCase();
+      const fileName = `withdrawal_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+      console.log(`📸 Uploading screenshot: ${fileName} (${req.file.size} bytes) to 'withdrawl account' bucket`);
+
+      const { data, error } = await supabaseAdmin.storage
+        .from('withdrawl account')
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (error) {
+        console.error("Storage upload error:", error);
+        return res.status(500).json({ message: `Storage upload failed: ${error.message}` });
+      }
+
+      const { data: urlData } = supabaseAdmin.storage
+        .from('withdrawl account')
+        .getPublicUrl(data.path);
+
+      console.log(`✅ Screenshot uploaded: ${urlData.publicUrl}`);
+      res.json({ url: urlData.publicUrl, path: data.path });
+    } catch (error: any) {
+      console.error("Screenshot upload error:", error);
+      res.status(500).json({ message: error?.message || "Failed to upload screenshot" });
+    }
+  });
+
   // Request withdrawal
   app.post("/api/earnings/withdraw", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
-      const { coins, amount, upiId, bankDetails } = req.body;
+      const { coins, amount, upiId, bankDetails, screenshotUrl } = req.body;
 
-      // Validate minimum withdrawal
-      const COINS_PER_RUPEE = 20;
-      const MINIMUM_WITHDRAWAL_COINS = 200;
-      const MINIMUM_WITHDRAWAL_RUPEES = MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE;
-      if (coins < MINIMUM_WITHDRAWAL_COINS) {
-        return res.status(400).json({
-          message: `Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} coins (₹${MINIMUM_WITHDRAWAL_RUPEES})`
-        });
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Please enter a valid withdrawal amount" });
       }
 
       const user = await storage.getUser(userId);
@@ -2689,13 +2945,22 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check available balance (excluding pending withdrawals)
-      const pendingWithdrawals = await storage.getPendingWithdrawalsTotal(userId);
-      const availableBalance = (user.coinBalance || 0) - pendingWithdrawals;
+      // Read FRESH coin balance directly from Supabase (bypasses any Drizzle stale reads)
+      const { supabaseAdmin: supa } = await import('./supabase');
+      const { data: freshUser } = await supa
+        .from('users')
+        .select('coin_balance')
+        .eq('id', userId)
+        .maybeSingle();
 
-      if (coins > availableBalance) {
+      const coinsToDeduct = coins || Math.floor(Number(amount) * 20);
+      const freshBalance = freshUser?.coin_balance ?? 0;
+
+      console.log(`💰 Withdrawal check: userId=${userId} balance=${freshBalance} requested=${coinsToDeduct}`);
+
+      if (coinsToDeduct > freshBalance) {
         return res.status(400).json({
-          message: "Insufficient balance. You have pending withdrawal requests."
+          message: `Insufficient balance. You have ${freshBalance} coins, but requested ${coinsToDeduct} coins.`
         });
       }
 
@@ -2705,7 +2970,7 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Create withdrawal request
+      // Parse bank details
       let parsedBankDetails: any = undefined;
       if (bankDetails) {
         try {
@@ -2714,23 +2979,61 @@ export function registerRoutes(app: Express): Server {
           parsedBankDetails = { text: String(bankDetails) };
         }
       }
-      const withdrawal = await storage.createWithdrawalRequest({
-        topperId: userId,
-        amount,
-        coins,
-        upiId: upiId || undefined,
-        bankDetails: parsedBankDetails,
-        status: 'pending',
-      });
 
-      // Create notification
-      await storage.createNotification({
-        userId,
-        type: "withdrawal_requested",
-        title: "Withdrawal Request Submitted",
-        body: `Your request to withdraw ₹${amount} (${coins} coins) is being processed.`,
-        link: `/earnings`,
-      });
+      // ── Use supabaseAdmin (service role) to bypass RLS on withdrawal_requests ──
+      const { supabaseAdmin } = await import('./supabase');
+      const { data: withdrawal, error: insertError } = await supabaseAdmin
+        .from('withdrawal_requests')
+        .insert({
+          topper_id: userId,
+          amount: Number(amount),
+          coins: coinsToDeduct,
+          upi_id: upiId || null,
+          bank_details: parsedBankDetails || null,
+          screenshot_url: screenshotUrl || null,
+          status: 'pending',
+          requested_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        // If screenshot_url column doesn't exist yet, retry without it
+        if (insertError.message?.includes('screenshot_url')) {
+          const { data: w2, error: e2 } = await supabaseAdmin
+            .from('withdrawal_requests')
+            .insert({
+              topper_id: userId,
+              amount: Number(amount),
+              coins: coinsToDeduct,
+              upi_id: upiId || null,
+              bank_details: parsedBankDetails || null,
+              status: 'pending',
+              requested_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+          if (e2) {
+            console.error("Supabase withdrawal insert error (fallback):", e2);
+            return res.status(500).json({ message: `Failed to save withdrawal: ${e2.message}` });
+          }
+          (withdrawal as any) = w2;
+        } else {
+          console.error("Supabase withdrawal insert error:", insertError);
+          return res.status(500).json({ message: `Failed to save withdrawal: ${insertError.message}` });
+        }
+      }
+
+      // Create notification (best-effort)
+      try {
+        await storage.createNotification({
+          userId,
+          type: "withdrawal_requested",
+          title: "Withdrawal Request Submitted",
+          body: `Your request to withdraw ₹${amount} is being reviewed. It takes up to 24 hours to process.`,
+          link: `/earnings`,
+        });
+      } catch { /* non-critical */ }
 
       // Notify all admins so request is visible in admin workflows.
       try {
@@ -2754,11 +3057,11 @@ export function registerRoutes(app: Express): Server {
       res.json({
         success: true,
         withdrawal,
-        message: "Withdrawal request submitted successfully",
+        message: "Withdrawal request submitted. It takes up to 24 hours to process.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating withdrawal:", error);
-      res.status(500).json({ message: "Failed to create withdrawal request" });
+      res.status(500).json({ message: error?.message || "Failed to create withdrawal request" });
     }
   });
 
@@ -2790,37 +3093,43 @@ export function registerRoutes(app: Express): Server {
       const notes = noteRes.ok ? await noteRes.json() : [];
       const note = notes[0];
       if (!note) return res.status(404).json({ message: 'Note not found' });
-      if (note.status === 'approved') {
-        return res.status(400).json({ message: 'Note is already approved.' });
+      if (note.status === 'published' || note.status === 'approved') {
+        return res.status(400).json({ message: 'Note is already approved and published.' });
       }
 
-      // 2. Update note status → approved + set published_at
+      // 2. Update note status → published + set published_at
       await fetch(`${url}/rest/v1/notes?id=eq.${noteId}`, {
         method: 'PATCH', headers: h,
-        body: JSON.stringify({ status: 'approved', published_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ status: 'published', published_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
       });
 
       const uploaderId = note.topper_id || note.uploader_id;
 
       if (uploaderId) {
-        // 3. Fetch current user to get accurate balances
-        const userRes = await fetch(`${url}/rest/v1/users?id=eq.${uploaderId}&select=id,coin_balance,total_uploads,total_earned&limit=1`, { headers: h });
-        const users = userRes.ok ? await userRes.json() : [];
-        const user = users[0] || {};
+        // 3. Fetch FRESH balance from Supabase, then atomically add coins.
+        //    This avoids the stale-read bug where coin_balance resets to 20
+        //    because an earlier read returned NULL/0.
+        const { supabaseAdmin: supa } = await import('./supabase');
 
-        const currentCoins   = user.coin_balance   || 0;
-        const currentUploads = user.total_uploads  || 0;
-        const currentEarned  = user.total_earned   || 0;
+        const { data: freshUser } = await supa
+          .from('users')
+          .select('coin_balance, total_earned')
+          .eq('id', uploaderId)
+          .maybeSingle();
 
-        // 4. Update user: increment coin_balance and total_earned (no total_uploads column in DB)
-        await fetch(`${url}/rest/v1/users?id=eq.${uploaderId}`, {
-          method: 'PATCH', headers: h,
-          body: JSON.stringify({
-            coin_balance: currentCoins + coinsToAward,
-            total_earned: currentEarned + coinsToAward,
+        const freshCoins = (freshUser?.coin_balance ?? 0);
+        const freshEarned = (freshUser?.total_earned ?? 0);
+
+        console.log(`💰 Awarding coins to ${uploaderId}: current=${freshCoins}, adding=${coinsToAward}, new=${freshCoins + coinsToAward}`);
+
+        await supa
+          .from('users')
+          .update({
+            coin_balance: freshCoins + coinsToAward,
+            total_earned: freshEarned + coinsToAward,
             updated_at: new Date().toISOString(),
-          }),
-        });
+          })
+          .eq('id', uploaderId);
 
         // 5. Record a transaction
         fetch(`${url}/rest/v1/transactions`, {
@@ -2833,7 +3142,7 @@ export function registerRoutes(app: Express): Server {
             status: 'completed',
             created_at: new Date().toISOString(),
           }),
-        }).catch(() => {});
+        }).catch(() => { });
 
         // 6. Send notification (best-effort)
         fetch(`${url}/rest/v1/notifications`, {
@@ -2847,7 +3156,7 @@ export function registerRoutes(app: Express): Server {
             is_read: false,
             created_at: new Date().toISOString(),
           }),
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       console.log(`✅ Note approved: ${noteId} | uploader: ${uploaderId} | +${coinsToAward} coins`);
@@ -2909,7 +3218,7 @@ export function registerRoutes(app: Express): Server {
             is_read: false,
             created_at: new Date().toISOString(),
           }),
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       console.log(`❌ Note rejected: ${noteId} by admin`);
@@ -3210,7 +3519,7 @@ export function registerRoutes(app: Express): Server {
       req.session.adminAccountId = account.id;
       req.session.adminToken = crypto.randomUUID();
       req.session.isAdmin = true;
-      req.session.save(() => {});
+      req.session.save(() => { });
       res.json({
         success: true,
         token,

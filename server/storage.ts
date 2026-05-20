@@ -438,6 +438,13 @@ class InMemoryStorage implements IStorage {
     n.updatedAt = new Date() as any;
     return n;
   }
+  async updateNoteTeacherCredentials(noteId: string, teacherId: string, teacherPassword: string): Promise<Note> {
+    const n = this.notes.find(n => n.id === noteId)!;
+    (n as any).teacherId = teacherId;
+    (n as any).teacherPassword = teacherPassword;
+    n.updatedAt = new Date() as any;
+    return n;
+  }
 
   // Stubs and simplified implementations
   async createReviewTask(task: InsertReviewTask): Promise<ReviewTask> { return { id: crypto.randomUUID(), ...task, createdAt: new Date() } as any; }
@@ -948,66 +955,77 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ notes: Note[]; total: number }> {
-    const conditions = [eq(notes.status, 'published')];
-    
-    if (filters?.subject) {
-      conditions.push(eq(notes.subject, filters.subject as any));
-    }
-    
-    if (filters?.classGrade) {
-      conditions.push(eq(notes.classGrade, filters.classGrade));
-    }
-    
-    if (filters?.categoryId) {
-      conditions.push(eq(notes.categoryId, filters.categoryId));
-    }
-    
-    if (filters?.search) {
-      conditions.push(
-        or(
-          like(notes.title, `%${filters.search}%`),
-          like(notes.description, `%${filters.search}%`),
-          like(notes.topic, `%${filters.search}%`)
-        )!
-      );
-    }
+    // Use supabaseAdmin for flexible multi-status filtering
+    try {
+      let query = supabaseAdmin
+        .from('notes')
+        .select('id, title, subject, topic, description, status, type, topper_id, published_at, downloads_count, views_count, likes_count, price, category_id, class_grade, attachments, created_at, updated_at', { count: 'exact' })
+        .or('status.eq.published,status.eq.approved')
+        .order('published_at', { ascending: false });
 
-    const [notesResult, totalResult] = await Promise.all([
-      db
-        .select({
-          id: notes.id,
-          title: notes.title,
-          subject: notes.subject,
-          topic: notes.topic,
-          description: notes.description,
-          status: notes.status,
-          type: notes.type,
-          topperId: notes.topperId,
-          publishedAt: notes.publishedAt,
-          downloadsCount: notes.downloadsCount,
-          viewsCount: notes.viewsCount,
-          likesCount: notes.likesCount,
-          price: notes.price,
-          categoryId: notes.categoryId,
-          classGrade: notes.classGrade,
-          createdAt: notes.createdAt,
-          updatedAt: notes.updatedAt
-        })
+      if (filters?.subject) {
+        query = query.eq('subject', filters.subject);
+      }
+      if (filters?.classGrade) {
+        query = query.eq('class_grade', filters.classGrade);
+      }
+      if (filters?.categoryId) {
+        query = query.eq('category_id', filters.categoryId);
+      }
+      if (filters?.search) {
+        query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%,topic.ilike.%${filters.search}%`);
+      }
+
+      const limit = filters?.limit || 20;
+      const offset = filters?.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, count, error } = await query;
+      if (error) throw error;
+
+      // Map snake_case DB columns to camelCase Note type
+      const mapped = (data || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        subject: n.subject,
+        topic: n.topic,
+        description: n.description,
+        status: n.status,
+        type: n.type,
+        topperId: n.topper_id,
+        publishedAt: n.published_at,
+        downloadsCount: n.downloads_count,
+        viewsCount: n.views_count,
+        likesCount: n.likes_count,
+        price: n.price,
+        categoryId: n.category_id,
+        classGrade: n.class_grade,
+        attachments: n.attachments,
+        createdAt: n.created_at,
+        updatedAt: n.updated_at,
+      }));
+
+      return { notes: mapped as Note[], total: count || 0 };
+    } catch (err) {
+      console.error('getPublishedNotes Supabase error, falling back to drizzle:', err);
+      // Fallback: drizzle query
+      const conditions = [eq(notes.status, 'published' as any)];
+      if (filters?.subject) conditions.push(eq(notes.subject, filters.subject as any));
+      if (filters?.classGrade) conditions.push(eq(notes.classGrade, filters.classGrade));
+      if (filters?.categoryId) conditions.push(eq(notes.categoryId, filters.categoryId));
+      if (filters?.search) {
+        conditions.push(or(like(notes.title, `%${filters.search}%`), like(notes.description, `%${filters.search}%`), like(notes.topic, `%${filters.search}%`))!);
+      }
+      const notesResult = await db
+        .select()
         .from(notes)
         .where(and(...conditions))
         .orderBy(desc(notes.publishedAt))
         .limit(filters?.limit || 20)
-        .offset(filters?.offset || 0),
-      db
-        .select({ count: count() })
-        .from(notes)
-        .where(and(...conditions))
-    ]);
-
-    return {
-      notes: notesResult as Note[],
-      total: totalResult[0].count
-    };
+        .offset(filters?.offset || 0);
+      const [totalResult] = await db.select({ count: count() }).from(notes).where(and(...conditions));
+      return { notes: notesResult as Note[], total: totalResult.count };
+    }
   }
 
   async getAllNotesForAdmin(filters?: {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle, Sparkles, Crown, Upload, AlertCircle, Zap, Star, Trophy, Flame, ArrowRight, Target, TrendingUp, Award, Coins, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/lib/supabase';
 
 export default function BecomeTopper() {
   const [step, setStep] = useState<'intro' | 'form' | 'uploading' | 'verifying' | 'success'>('intro');
@@ -11,8 +12,8 @@ export default function BecomeTopper() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setErrors({ ...errors, examResults: 'File size must be less than 10MB' });
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors({ ...errors, examResults: 'File size must be less than 5 MB' });
         return;
       }
       setFormData({ ...formData, examResults: file });
@@ -47,7 +48,7 @@ export default function BecomeTopper() {
     }
 
     setStep('verifying');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     try {
       const formDataToSend = new FormData();
@@ -56,22 +57,39 @@ export default function BecomeTopper() {
       formDataToSend.append('score', formData.score);
       formDataToSend.append('examName', formData.examName);
 
+      // Send Supabase auth token so server can identify the user
+      const authHeaders: Record<string, string> = {};
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+          authHeaders['x-supabase-token'] = session.access_token;
+        }
+        if (session?.user?.email) formDataToSend.append('email', session.user.email);
+      } catch { /* non-fatal */ }
+      try {
+        const stored = sessionStorage.getItem('authUser');
+        const uid = stored ? JSON.parse(stored)?.id : null;
+        if (uid) authHeaders['x-user-id'] = uid;
+      } catch { /* non-fatal */ }
+
       const response = await fetch('/api/verify-topper', {
         method: 'POST',
         body: formDataToSend,
-        credentials: 'include'
+        credentials: 'include',
+        headers: authHeaders,
       });
 
       if (response.ok) {
         setStep('success');
-        setTimeout(() => window.location.reload(), 3000);
       } else {
+        const err = await response.json().catch(() => ({}));
         setStep('form');
-        setErrors({ submit: 'Verification failed. Please try again.' });
+        setErrors({ submit: err.message || 'Verification failed. Please try again.' });
       }
     } catch (error) {
       setStep('form');
-      setErrors({ submit: 'Error submitting verification. Please try again.' });
+      setErrors({ submit: 'Error submitting verification. Please check your connection.' });
     }
   };
 

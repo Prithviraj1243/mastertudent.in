@@ -10,9 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Upload, Wallet, FileText, TrendingUp, IndianRupee, Clock, CheckCircle, X, ArrowLeft, BookOpen, Star, Crown, Zap, Sparkles } from "lucide-react";
+import { Wallet, IndianRupee, Clock, CheckCircle, ArrowLeft, Zap, Sparkles, Coins } from "lucide-react";
 import { Link } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useState } from "react";
@@ -57,30 +56,15 @@ export default function UploaderProfile() {
       setWithdrawalDialogOpen(false);
       setWithdrawalAmount("");
       setUpiId("");
-      setBankDetails({
-        accountNumber: "",
-        ifscCode: "",
-        bankName: "",
-        accountHolderName: "",
-      });
+      setBankDetails({ accountNumber: "", ifscCode: "", bankName: "", accountHolderName: "" });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
         return;
       }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to submit withdrawal request",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to submit withdrawal request", variant: "destructive" });
     },
   });
 
@@ -88,47 +72,27 @@ export default function UploaderProfile() {
     const amount = parseFloat(withdrawalAmount);
     const availableCoins = stats.totalEarnings || 0;
     const requestedCoins = Math.floor(amount * COINS_PER_RUPEE);
-    
+
     if (!amount || amount < MIN_WITHDRAWAL_RUPEES) {
-      toast({
-        title: "Error",
-        description: `Minimum withdrawal amount is ₹${MIN_WITHDRAWAL_RUPEES}`,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: `Minimum withdrawal amount is ₹${MIN_WITHDRAWAL_RUPEES}`, variant: "destructive" });
       return;
     }
-
     if (requestedCoins > availableCoins) {
-      toast({
-        title: "Error",
-        description: "Insufficient coin balance",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Insufficient coin balance", variant: "destructive" });
       return;
     }
 
-    const withdrawalData: any = {
-      amount,
-      coins: requestedCoins,
-    };
+    const withdrawalData: any = { amount, coins: requestedCoins };
 
     if (paymentMethod === "upi") {
       if (!upiId.trim()) {
-        toast({
-          title: "Error",
-          description: "Please provide UPI ID",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Please provide UPI ID", variant: "destructive" });
         return;
       }
       withdrawalData.upiId = upiId.trim();
     } else {
       if (!bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.bankName || !bankDetails.accountHolderName) {
-        toast({
-          title: "Error",
-          description: "Please fill all bank details",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Please fill all bank details", variant: "destructive" });
         return;
       }
       withdrawalData.bankDetails = JSON.stringify(bankDetails);
@@ -139,219 +103,103 @@ export default function UploaderProfile() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case 'approved':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Approved</Badge>;
-      case 'settled':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Settled</Badge>;
-      case 'rejected':
-        return <Badge variant="destructive">Rejected</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+      case 'pending':   return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+      case 'approved':  return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Approved</Badge>;
+      case 'settled':   return <Badge variant="secondary" className="bg-green-100 text-green-800">Settled</Badge>;
+      case 'rejected':  return <Badge variant="destructive">Rejected</Badge>;
+      default:          return <Badge variant="outline">{status}</Badge>;
     }
   };
 
+  const coinBalance = stats.coinBalance ?? stats.totalEarnings ?? 0;
+  const notesApproved = stats.activeNotes ?? stats.notesUploaded ?? 0;
+  const totalEarningsRupees = Math.floor(coinBalance / COINS_PER_RUPEE);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 relative overflow-hidden">
-      {/* Advanced Background Effects */}
-      <div className="absolute inset-0">
-        {/* Floating Particles */}
-        <div className="absolute inset-0">
-          {[...Array(30)].map((_, i) => (
-            <motion.div
-              key={i}
-              className={`absolute rounded-full ${
-                i % 4 === 0 ? 'w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500' :
-                i % 4 === 1 ? 'w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-500' :
-                i % 4 === 2 ? 'w-1 h-1 bg-gradient-to-r from-cyan-400 to-blue-500' :
-                'w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500'
-              }`}
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -20, 0],
-                opacity: [0.3, 1, 0.3],
-                scale: [1, 1.2, 1],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 2,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Glowing Orbs */}
-        <div className="absolute top-1/4 left-1/6 w-32 h-32 bg-gradient-to-r from-orange-400/20 to-red-500/20 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/6 w-40 h-40 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-xl animate-pulse" style={{animationDelay: '2s'}}></div>
-        
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
-        </div>
-      </div>
+      {/* Background glow orbs */}
+      <div className="absolute top-1/4 left-1/6 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/6 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
       <Header />
       <div className="flex relative z-10">
         <Sidebar />
-        <main className="flex-1 p-6">
-          <motion.div 
-            className="mb-8"
+        <main className="flex-1 p-6 max-w-4xl mx-auto">
+
+          {/* Back + Title */}
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
           >
-            <div className="flex items-center gap-4 mb-6">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button variant="outline" size="sm" asChild className="bg-black/20 backdrop-blur-md border-orange-400/30 text-white hover:bg-orange-500/20">
-                  <Link href="/">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Home
-                  </Link>
-                </Button>
-              </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button variant="outline" size="sm" asChild className="bg-black/20 backdrop-blur-md border-purple-400/30 text-white hover:bg-purple-500/20">
-                  <Link href="/">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Browse Notes
-                  </Link>
-                </Button>
-              </motion.div>
-            </div>
-            
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-center mb-8"
-            >
-              <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-400/30 rounded-full mb-6">
-                <Crown className="w-4 h-4 text-orange-400 mr-2" />
-                <span className="text-orange-400 text-sm font-medium">Topper Dashboard</span>
-              </div>
-              
-              <h1 className="text-5xl font-bold text-white mb-4 leading-tight" data-testid="text-profile-title">
-                💰 My Profile & 
-                <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent animate-pulse">
-                  Earnings
-                </span>
-              </h1>
-              <p className="text-xl text-gray-300 max-w-2xl mx-auto" data-testid="text-profile-description">
-                Track your uploads, earnings, and manage withdrawals in your 
-                <span className="text-orange-400 font-semibold"> premium dashboard</span>
-              </p>
-            </motion.div>
+            <Button variant="outline" size="sm" asChild className="mb-6 bg-black/20 backdrop-blur-md border-orange-400/30 text-white hover:bg-orange-500/20">
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Link>
+            </Button>
+
+            <h1 className="text-4xl font-bold text-white mb-1" data-testid="text-profile-title">
+              My Earnings Dashboard
+            </h1>
+            <p className="text-gray-400 text-sm">Track your coins, approved notes &amp; withdraw earnings</p>
           </motion.div>
 
-          {/* Enhanced Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              whileHover={{ scale: 1.05 }}
-              className="group"
-            >
-              <Card data-testid="card-total-uploads" className="bg-black/40 backdrop-blur-md border border-orange-400/30 hover:border-orange-400/50 transition-all duration-300 hover:scale-105 shadow-2xl">
+          {/* ── 3 Key Stats ─────────────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+            {/* Coin Balance */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} whileHover={{ scale: 1.03 }}>
+              <Card data-testid="card-coin-balance" className="bg-black/40 backdrop-blur-md border border-yellow-400/30 hover:border-yellow-400/60 transition-all duration-300 shadow-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-300">Total Uploads</p>
-                      <p className="text-3xl font-bold text-orange-400 font-mono">
-                        {stats.notesUploaded.toLocaleString()}
-                      </p>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Coin Balance</p>
+                      <p className="text-3xl font-bold text-yellow-400 font-mono">{coinBalance.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500 mt-1">= ₹{totalEarningsRupees}</p>
                     </div>
-                    <div className="relative">
-                      <Upload className="h-8 w-8 text-orange-400 group-hover:animate-bounce" />
-                      <Sparkles className="h-4 w-4 text-orange-300 absolute -top-1 -right-1 animate-pulse" />
+                    <div className="w-12 h-12 rounded-full bg-yellow-400/10 flex items-center justify-center">
+                      <span className="text-2xl">🪙</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              whileHover={{ scale: 1.05 }}
-              className="group"
-            >
-              <Card data-testid="card-published-notes" className="bg-black/40 backdrop-blur-md border border-green-400/30 hover:border-green-400/50 transition-all duration-300 hover:scale-105 shadow-2xl">
+            {/* Notes Approved */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} whileHover={{ scale: 1.03 }}>
+              <Card data-testid="card-notes-approved" className="bg-black/40 backdrop-blur-md border border-green-400/30 hover:border-green-400/60 transition-all duration-300 shadow-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-300">Published Notes</p>
-                      <p className="text-3xl font-bold text-green-400 font-mono">
-                        {stats.notesUploaded.toLocaleString()}
-                      </p>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Notes Approved</p>
+                      <p className="text-3xl font-bold text-green-400 font-mono">{notesApproved.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500 mt-1">published &amp; live</p>
                     </div>
-                    <div className="relative">
-                      <FileText className="h-8 w-8 text-green-400 group-hover:animate-pulse" />
-                      <Star className="h-4 w-4 text-green-300 absolute -top-1 -right-1 animate-spin" />
+                    <div className="w-12 h-12 rounded-full bg-green-400/10 flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 text-green-400" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              whileHover={{ scale: 1.05 }}
-              className="group"
-            >
-              <Card data-testid="card-total-downloads" className="bg-black/40 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 transition-all duration-300 hover:scale-105 shadow-2xl">
+            {/* Total Earnings */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} whileHover={{ scale: 1.03 }}>
+              <Card data-testid="card-total-earnings" className="bg-black/40 backdrop-blur-md border border-emerald-400/30 hover:border-emerald-400/60 transition-all duration-300 shadow-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-300">Total Downloads</p>
-                      <p className="text-3xl font-bold text-blue-400 font-mono">
-                        {stats?.totalDownloads || 0}
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Earnings</p>
+                      <p className="text-3xl font-bold text-emerald-400 font-mono flex items-center">
+                        <IndianRupee className="h-6 w-6 mr-1" />{totalEarningsRupees}
                       </p>
+                      <p className="text-xs text-gray-500 mt-1">available to withdraw</p>
                     </div>
-                    <div className="relative">
-                      <TrendingUp className="h-8 w-8 text-blue-400 group-hover:animate-bounce" />
-                      <Zap className="h-4 w-4 text-blue-300 absolute -top-1 -right-1 animate-ping" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              whileHover={{ scale: 1.05 }}
-              className="group"
-            >
-              <Card data-testid="card-wallet-balance" className="bg-black/40 backdrop-blur-md border border-emerald-400/30 hover:border-emerald-400/50 transition-all duration-300 hover:scale-105 shadow-2xl relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/5 to-green-400/5"></div>
-                <CardContent className="p-6 relative">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-300">Wallet Balance</p>
-                      <p className="text-3xl font-bold text-emerald-400 flex items-center font-mono">
-                        {stats.totalEarnings.toLocaleString()}
-                        <span className="ml-2 text-base font-semibold">coins</span>
-                      </p>
-                    </div>
-                    <div className="relative">
-                      <Wallet className="h-8 w-8 text-emerald-400 group-hover:animate-pulse" />
-                      <Crown className="h-4 w-4 text-yellow-400 absolute -top-1 -right-1 animate-bounce" />
+                    <div className="w-12 h-12 rounded-full bg-emerald-400/10 flex items-center justify-center">
+                      <Wallet className="h-6 w-6 text-emerald-400" />
                     </div>
                   </div>
                 </CardContent>
@@ -359,368 +207,197 @@ export default function UploaderProfile() {
             </motion.div>
           </div>
 
-          {/* Enhanced Wallet Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* ── Withdraw + History ───────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
             {/* Withdrawal Request */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-            >
-              <Card className="bg-black/40 backdrop-blur-md border border-emerald-400/30 hover:border-emerald-400/50 transition-all duration-300 shadow-2xl">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
+              <Card className="bg-black/40 backdrop-blur-md border border-emerald-400/30 hover:border-emerald-400/50 transition-all duration-300 shadow-xl h-full">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-white">
-                    <motion.div
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      <Wallet className="h-6 w-6 mr-3 text-emerald-400" />
-                    </motion.div>
+                  <CardTitle className="flex items-center text-white text-lg">
+                    <Wallet className="h-5 w-5 mr-2 text-emerald-400" />
                     Request Withdrawal
-                    <Sparkles className="h-4 w-4 ml-2 text-emerald-300 animate-pulse" />
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-300 mb-6">
-                    Minimum withdrawal: ₹{MIN_WITHDRAWAL_RUPEES} | Current balance: {stats.totalEarnings.toLocaleString()} coins
-                  </p>
-                  
+                <CardContent className="space-y-4">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-sm text-gray-300 space-y-1">
+                    <p>💰 Balance: <span className="text-yellow-400 font-bold">{coinBalance.toLocaleString()} coins</span></p>
+                    <p>💵 Withdrawable: <span className="text-emerald-400 font-bold">₹{totalEarningsRupees}</span></p>
+                    <p className="text-gray-500 text-xs">Min. withdrawal: ₹{MIN_WITHDRAWAL_RUPEES}</p>
+                  </div>
+
                   <Dialog open={withdrawalDialogOpen} onOpenChange={setWithdrawalDialogOpen}>
                     <DialogTrigger asChild>
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                      <Button
+                        className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold py-3 shadow-lg hover:shadow-emerald-500/40"
+                        disabled={coinBalance <= 0}
+                        data-testid="button-request-withdrawal"
                       >
-                        <Button 
-                          className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold py-3 shadow-lg hover:shadow-emerald-500/50"
-                          disabled={stats.totalEarnings < MIN_WITHDRAWAL_RUPEES * COINS_PER_RUPEE}
-                          data-testid="button-request-withdrawal"
-                        >
-                          <IndianRupee className="h-5 w-5 mr-2" />
-                          Request Withdrawal
-                          <Zap className="h-4 w-4 ml-2 animate-pulse" />
-                        </Button>
-                      </motion.div>
+                        <IndianRupee className="h-4 w-4 mr-2" />
+                        Withdraw Earnings
+                        <Zap className="h-4 w-4 ml-2" />
+                      </Button>
                     </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg bg-black/20 backdrop-blur-2xl border-2 border-white/20 shadow-2xl shadow-emerald-500/20 rounded-2xl overflow-hidden relative">
-                    {/* Glass effect background */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 pointer-events-none"></div>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-transparent to-purple-500/10 pointer-events-none"></div>
-                    
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="relative z-10"
-                    >
-                      <DialogHeader className="text-center pb-6">
-                        <motion.div
-                          initial={{ y: -20 }}
-                          animate={{ y: 0 }}
-                          className="flex items-center justify-center mb-4"
-                        >
-                          <div className="bg-gradient-to-r from-emerald-500 to-green-500 p-4 rounded-full shadow-lg shadow-emerald-500/50">
-                            <Wallet className="h-8 w-8 text-white" />
+
+                    <DialogContent className="sm:max-w-lg bg-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-2xl">
+                      <DialogHeader>
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="bg-gradient-to-r from-emerald-500 to-green-500 p-3 rounded-full shadow-lg shadow-emerald-500/40">
+                            <Wallet className="h-6 w-6 text-white" />
                           </div>
-                        </motion.div>
-                        <DialogTitle className="text-3xl font-bold text-white mb-2">
-                          💰 Request Withdrawal
-                        </DialogTitle>
-                        <p className="text-white/80 text-base">Withdraw your earnings securely</p>
+                        </div>
+                        <DialogTitle className="text-2xl font-bold text-white text-center">💰 Request Withdrawal</DialogTitle>
+                        <p className="text-gray-400 text-sm text-center">Withdraw your earned coins securely</p>
                       </DialogHeader>
-                      
-                      <div className="space-y-6">
-                        {/* Amount Input */}
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 }}
-                          className="space-y-3"
-                        >
-                          <label className="text-lg font-bold text-white flex items-center">
-                            <IndianRupee className="h-5 w-5 mr-2 text-emerald-400" />
-                            Amount (Minimum ₹200)
+
+                      <div className="space-y-5 mt-2">
+                        {/* Amount */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-white flex items-center">
+                            <IndianRupee className="h-4 w-4 mr-1 text-emerald-400" />
+                            Amount (Min ₹{MIN_WITHDRAWAL_RUPEES})
                           </label>
                           <div className="relative">
                             <Input
                               type="number"
                               value={withdrawalAmount}
                               onChange={(e) => setWithdrawalAmount(e.target.value)}
-                              placeholder="Enter amount"
-                              className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg placeholder-white/60 focus:border-emerald-400 focus:ring-emerald-400/30 focus:bg-white/20 pl-12 py-4 rounded-xl shadow-lg"
+                              placeholder="Enter amount in ₹"
+                              className="bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-emerald-400 pl-10 py-3 rounded-xl"
                               min="200"
-                                  max={Math.floor((stats.totalEarnings || 0) / COINS_PER_RUPEE)}
+                              max={totalEarningsRupees}
                               data-testid="input-withdrawal-amount"
                             />
-                            <IndianRupee className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-emerald-400" />
+                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400" />
                           </div>
-                          <p className="text-sm text-white/70 bg-emerald-500/20 px-3 py-2 rounded-lg backdrop-blur-sm">
-                            💰 Available Balance: {stats.totalEarnings.toLocaleString()} coins (₹{Math.floor((stats.totalEarnings || 0) / COINS_PER_RUPEE)})
+                          <p className="text-xs text-gray-500">
+                            This will deduct {withdrawalAmount ? Math.floor(parseFloat(withdrawalAmount) * COINS_PER_RUPEE).toLocaleString() : "–"} coins
                           </p>
-                        </motion.div>
-                        
+                        </div>
+
                         {/* Payment Method */}
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.2 }}
-                          className="space-y-3"
-                        >
-                          <label className="text-lg font-bold text-white flex items-center">
-                            <Sparkles className="h-5 w-5 mr-2 text-purple-400" />
-                            Payment Method
-                          </label>
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-white">Payment Method</label>
                           <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                            <SelectTrigger className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg focus:border-purple-400 focus:ring-purple-400/30 focus:bg-white/20 py-4 rounded-xl shadow-lg">
-                              <SelectValue className="text-white" />
+                            <SelectTrigger className="bg-white/5 border border-white/20 text-white focus:border-purple-400 py-3 rounded-xl">
+                              <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-black/80 backdrop-blur-xl border-2 border-white/20 rounded-xl shadow-2xl">
-                              <SelectItem value="upi" className="text-white hover:bg-orange-500/30 focus:bg-orange-500/30 rounded-lg m-1">
-                                <div className="flex items-center py-2">
-                                  <Zap className="h-5 w-5 mr-3 text-orange-400" />
-                                  <div>
-                                    <div className="font-semibold">UPI Payment</div>
-                                    <div className="text-sm text-white/70">Instant Transfer</div>
-                                  </div>
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="bank" className="text-white hover:bg-blue-500/30 focus:bg-blue-500/30 rounded-lg m-1">
-                                <div className="flex items-center py-2">
-                                  <Wallet className="h-5 w-5 mr-3 text-blue-400" />
-                                  <div>
-                                    <div className="font-semibold">Bank Transfer</div>
-                                    <div className="text-sm text-white/70">Secure Transfer</div>
-                                  </div>
-                                </div>
-                              </SelectItem>
+                            <SelectContent className="bg-slate-900 border border-white/10 rounded-xl">
+                              <SelectItem value="upi" className="text-white focus:bg-orange-500/20">⚡ UPI (Instant)</SelectItem>
+                              <SelectItem value="bank" className="text-white focus:bg-blue-500/20">🏦 Bank Transfer</SelectItem>
                             </SelectContent>
                           </Select>
-                        </motion.div>
+                        </div>
 
-                        {/* UPI Details */}
+                        {/* UPI / Bank fields */}
                         {paymentMethod === "upi" ? (
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="bg-white/10 backdrop-blur-xl border-2 border-orange-400/40 rounded-2xl p-6 space-y-4 shadow-2xl shadow-orange-500/20"
-                          >
-                            <div className="flex items-center mb-4">
-                              <div className="bg-gradient-to-r from-orange-500 to-red-500 p-3 rounded-xl mr-4 shadow-lg shadow-orange-500/50">
-                                <Zap className="h-6 w-6 text-white" />
-                              </div>
-                              <div>
-                                <h4 className="text-white text-xl font-bold">⚡ UPI Payment</h4>
-                                <p className="text-white/70 text-sm">Instant & Secure Transfer</p>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-3">
-                              <label className="text-lg font-bold text-white">UPI ID:</label>
-                              <div className="relative">
-                                <Input
-                                  value={upiId}
-                                  onChange={(e) => setUpiId(e.target.value)}
-                                  placeholder="yourname@paytm / yourname@gpay"
-                                  className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg placeholder-white/60 focus:border-orange-400 focus:ring-orange-400/30 focus:bg-white/20 pl-14 py-4 rounded-xl shadow-lg"
-                                  data-testid="input-upi-id"
-                                />
-                                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                                  <div className="w-6 h-6 bg-gradient-to-r from-orange-400 to-red-400 rounded-full flex items-center justify-center shadow-lg">
-                                    <span className="text-sm text-white font-bold">@</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-3 mt-4">
-                                <span className="text-sm bg-orange-500/30 text-white px-4 py-2 rounded-full backdrop-blur-sm font-semibold">📱 GPay</span>
-                                <span className="text-sm bg-blue-500/30 text-white px-4 py-2 rounded-full backdrop-blur-sm font-semibold">📱 PhonePe</span>
-                                <span className="text-sm bg-purple-500/30 text-white px-4 py-2 rounded-full backdrop-blur-sm font-semibold">📱 Paytm</span>
-                              </div>
-                            </div>
-                          </motion.div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-white">UPI ID</label>
+                            <Input
+                              value={upiId}
+                              onChange={(e) => setUpiId(e.target.value)}
+                              placeholder="yourname@gpay / @paytm"
+                              className="bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-orange-400 py-3 rounded-xl"
+                              data-testid="input-upi-id"
+                            />
+                          </div>
                         ) : (
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="bg-white/10 backdrop-blur-xl border-2 border-blue-400/40 rounded-2xl p-6 space-y-5 shadow-2xl shadow-blue-500/20"
-                          >
-                            <div className="flex items-center mb-4">
-                              <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-3 rounded-xl mr-4 shadow-lg shadow-blue-500/50">
-                                <Wallet className="h-6 w-6 text-white" />
-                              </div>
-                              <div>
-                                <h4 className="text-white text-xl font-bold">🏦 Bank Transfer</h4>
-                                <p className="text-white/70 text-sm">Secure Bank Transfer</p>
-                              </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 gap-5">
-                              <div className="space-y-2">
-                                <label className="text-lg font-bold text-white">Account Holder Name:</label>
+                          <div className="space-y-3">
+                            {[
+                              { label: "Account Holder Name", key: "accountHolderName", placeholder: "Full name as per bank" },
+                              { label: "Account Number", key: "accountNumber", placeholder: "Bank account number" },
+                              { label: "IFSC Code", key: "ifscCode", placeholder: "e.g. SBIN0001234" },
+                              { label: "Bank Name", key: "bankName", placeholder: "Bank name" },
+                            ].map(({ label, key, placeholder }) => (
+                              <div key={key} className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-300">{label}</label>
                                 <Input
-                                  value={bankDetails.accountHolderName}
-                                  onChange={(e) => setBankDetails({...bankDetails, accountHolderName: e.target.value})}
-                                  placeholder="Full name as per bank"
-                                  className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg placeholder-white/60 focus:border-blue-400 focus:ring-blue-400/30 focus:bg-white/20 py-4 rounded-xl shadow-lg"
+                                  value={(bankDetails as any)[key]}
+                                  onChange={(e) => setBankDetails({ ...bankDetails, [key]: e.target.value })}
+                                  placeholder={placeholder}
+                                  className="bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-blue-400 py-2 rounded-xl text-sm"
                                 />
                               </div>
-                              <div className="space-y-2">
-                                <label className="text-lg font-bold text-white">Account Number:</label>
-                                <Input
-                                  value={bankDetails.accountNumber}
-                                  onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
-                                  placeholder="Bank account number"
-                                  className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg placeholder-white/60 focus:border-blue-400 focus:ring-blue-400/30 focus:bg-white/20 py-4 rounded-xl shadow-lg"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-lg font-bold text-white">IFSC Code:</label>
-                                <Input
-                                  value={bankDetails.ifscCode}
-                                  onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value})}
-                                  placeholder="IFSC code"
-                                  className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg placeholder-white/60 focus:border-blue-400 focus:ring-blue-400/30 focus:bg-white/20 py-4 rounded-xl shadow-lg"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-lg font-bold text-white">Bank Name:</label>
-                                <Input
-                                  value={bankDetails.bankName}
-                                  onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
-                                  placeholder="Bank name"
-                                  className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-lg placeholder-white/60 focus:border-blue-400 focus:ring-blue-400/30 focus:bg-white/20 py-4 rounded-xl shadow-lg"
-                                />
-                              </div>
-                            </div>
-                          </motion.div>
+                            ))}
+                          </div>
                         )}
 
-                        {/* Action Buttons */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.4 }}
-                          className="flex justify-center space-x-4 pt-6"
-                        >
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button
-                              variant="outline"
-                              onClick={() => setWithdrawalDialogOpen(false)}
-                              className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white hover:bg-white/20 hover:border-white/50 px-8 py-3 text-lg font-semibold rounded-xl shadow-lg"
-                            >
-                              ❌ Cancel
-                            </Button>
-                          </motion.div>
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button
-                              onClick={handleWithdrawalSubmit}
-                              disabled={withdrawalMutation.isPending || !withdrawalAmount}
-                              className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white font-bold px-10 py-3 text-lg rounded-xl shadow-2xl shadow-emerald-500/50 border-2 border-emerald-400/30"
-                              data-testid="button-submit-withdrawal"
-                            >
-                              {withdrawalMutation.isPending ? (
-                                <div className="flex items-center">
-                                  <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                    className="mr-3"
-                                  >
-                                    <Sparkles className="h-5 w-5" />
-                                  </motion.div>
-                                  Processing...
-                                </div>
-                              ) : (
-                                <div className="flex items-center">
-                                  <Zap className="h-5 w-5 mr-3" />
-                                  💰 Submit Request
-                                </div>
-                              )}
-                            </Button>
-                          </motion.div>
-                        </motion.div>
+                        {/* Actions */}
+                        <div className="flex gap-3 pt-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setWithdrawalDialogOpen(false)}
+                            className="flex-1 bg-white/5 border border-white/20 text-white hover:bg-white/10 rounded-xl"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleWithdrawalSubmit}
+                            disabled={withdrawalMutation.isPending || !withdrawalAmount}
+                            className="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30"
+                            data-testid="button-submit-withdrawal"
+                          >
+                            {withdrawalMutation.isPending ? (
+                              <span className="flex items-center"><Sparkles className="h-4 w-4 mr-2 animate-spin" />Processing…</span>
+                            ) : (
+                              <span className="flex items-center"><Zap className="h-4 w-4 mr-2" />Submit</span>
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                    </motion.div>
-                  </DialogContent>
+                    </DialogContent>
                   </Dialog>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Recent Withdrawal Requests */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              <Card className="bg-black/40 backdrop-blur-md border border-purple-400/30 hover:border-purple-400/50 transition-all duration-300 shadow-2xl">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}>
+              <Card className="bg-black/40 backdrop-blur-md border border-purple-400/30 hover:border-purple-400/50 transition-all duration-300 shadow-xl h-full">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-white">
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      <Clock className="h-6 w-6 mr-3 text-purple-400" />
-                    </motion.div>
-                    Recent Withdrawal Requests
-                    <Star className="h-4 w-4 ml-2 text-purple-300 animate-spin" />
+                  <CardTitle className="flex items-center text-white text-lg">
+                    <Clock className="h-5 w-5 mr-2 text-purple-400" />
+                    Recent Withdrawals
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {withdrawalRequests?.length > 0 ? (
+                  {(withdrawalRequests as any[])?.length > 0 ? (
                     <div className="divide-y divide-slate-700/50">
-                      {withdrawalRequests.slice(0, 5).map((request: any) => (
-                        <motion.div 
-                          key={request.id} 
-                          className="p-4 hover:bg-purple-500/10 transition-colors"
+                      {(withdrawalRequests as any[]).slice(0, 6).map((request: any) => (
+                        <motion.div
+                          key={request.id}
+                          className="px-6 py-4 hover:bg-purple-500/10 transition-colors"
                           data-testid={`withdrawal-request-${request.id}`}
-                          whileHover={{ scale: 1.02 }}
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium flex items-center text-white">
-                              <IndianRupee className="h-4 w-4 mr-1 text-emerald-400" />
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-semibold text-white flex items-center text-sm">
+                              <IndianRupee className="h-3.5 w-3.5 mr-1 text-emerald-400" />
                               ₹{request.amount}
                             </span>
                             {getStatusBadge(request.status)}
                           </div>
-                          <div className="text-sm text-gray-400">
-                            {new Date(request.requestedAt).toLocaleDateString()}
-                          </div>
+                          <p className="text-xs text-gray-500">{new Date(request.requestedAt).toLocaleDateString()}</p>
                           {request.adminComments && (
-                            <div className="text-sm text-blue-400 mt-1">
-                              Admin: {request.adminComments}
-                            </div>
+                            <p className="text-xs text-blue-400 mt-1">Admin: {request.adminComments}</p>
                           )}
                           {request.rejectionReason && (
-                            <div className="text-sm text-red-400 mt-1">
-                              Rejected: {request.rejectionReason}
-                            </div>
+                            <p className="text-xs text-red-400 mt-1">Reason: {request.rejectionReason}</p>
                           )}
                         </motion.div>
                       ))}
                     </div>
                   ) : (
-                    <motion.div 
-                      className="text-center py-12" 
-                      data-testid="empty-withdrawal-requests"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.8 }}
-                    >
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                      >
-                        <Clock className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-                      </motion.div>
-                      <p className="text-gray-300 font-medium">No withdrawal requests yet</p>
-                      <p className="text-sm text-gray-500 mt-1">Your requests will appear here</p>
-                    </motion.div>
+                    <div className="text-center py-12" data-testid="empty-withdrawal-requests">
+                      <Clock className="h-10 w-10 text-purple-400 mx-auto mb-3 opacity-50" />
+                      <p className="text-gray-400 text-sm font-medium">No withdrawal requests yet</p>
+                      <p className="text-gray-600 text-xs mt-1">Your requests will appear here</p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             </motion.div>
           </div>
+
         </main>
       </div>
     </div>

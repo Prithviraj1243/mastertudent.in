@@ -1,504 +1,484 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { 
-  Coins, 
-  IndianRupee,
-  Wallet,
-  TrendingUp,
-  ArrowRight,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Download,
-  Eye,
-  Star,
-  Gift,
-  CreditCard,
-  Banknote,
-  AlertCircle
-} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { IndianRupee, Wallet, Clock, CheckCircle, XCircle, Zap, Sparkles, Upload, ImagePlus, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useUserStats } from "@/hooks/useUserStats";
 
-import { supabase } from "@/lib/supabase";
-
-// Conversion rate: 20 coins = 1 rupee
 const COINS_PER_RUPEE = 20;
-const MINIMUM_WITHDRAWAL_COINS = 100; // Minimum 100 coins (₹5)
-
-interface EarningsStats {
-  coinBalance: number;
-  totalEarned: number;
-  pendingWithdrawals: number;
-  totalWithdrawn: number;
-  availableForWithdrawal: number;
-}
 
 interface WithdrawalRequest {
   id: string;
-  amount: number; // Rupees
+  amount: number;
   coins: number;
-  status: 'pending' | 'approved' | 'rejected' | 'settled';
+  status: "pending" | "approved" | "rejected" | "settled";
   upiId?: string;
-  bankDetails?: any;
   requestedAt: string;
   processedAt?: string;
   adminComments?: string;
   rejectionReason?: string;
 }
 
-interface Transaction {
-  id: string;
-  type: string;
-  amount: number;
-  coinChange: number;
-  description: string;
-  createdAt: string;
-}
-
 export default function EarningsPage() {
-  const [redeemDialogOpen, setRedeemDialogOpen] = useState(false);
-  const [coinsToRedeem, setCoinsToRedeem] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [amount, setAmount] = useState("");
   const [upiId, setUpiId] = useState("");
-  const [bankDetails, setBankDetails] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"upi" | "bank">("upi");
+  const [bankDetails, setBankDetails] = useState({
+    accountHolderName: "",
+    accountNumber: "",
+    ifscCode: "",
+    bankName: "",
+  });
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { stats } = useUserStats();
 
-  // Fetch earnings stats — direct Supabase via backend (same as /api/user/stats)
-  const { data: stats, isLoading: statsLoading } = useQuery<EarningsStats>({
-    queryKey: ['/api/earnings/stats'],
-    queryFn: async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers: Record<string, string> = {};
-        if (session?.access_token) {
-          headers['x-supabase-token'] = session.access_token;
-          headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
-        try {
-          const raw = sessionStorage.getItem('authUser');
-          const uid = raw ? JSON.parse(raw)?.id : null;
-          if (uid) headers['x-user-id'] = uid;
-        } catch { /* ignore */ }
+  const coinBalance = stats?.coinBalance ?? stats?.totalEarnings ?? 0;
+  const availableRupees = Math.floor(coinBalance / COINS_PER_RUPEE);
 
-        const res = await fetch('/api/user/stats', { credentials: 'include', headers });
-        if (!res.ok) throw new Error('Failed');
-        const s = await res.json();
-        // Map /api/user/stats fields to EarningsStats shape
-        return {
-          coinBalance: s.coinBalance ?? s.totalEarnings ?? 0,
-          totalEarned: s.totalEarnings ?? 0,
-          pendingWithdrawals: 0,
-          totalWithdrawn: 0,
-          availableForWithdrawal: s.coinBalance ?? s.totalEarnings ?? 0,
-        } as EarningsStats;
-      } catch {
-        return { coinBalance: 0, totalEarned: 0, pendingWithdrawals: 0, totalWithdrawn: 0, availableForWithdrawal: 0 };
-      }
-    },
-    refetchInterval: 20000,
-    staleTime: 10000,
-  });
-
-  // Fetch withdrawal requests
   const { data: withdrawals = [], isLoading: withdrawalsLoading } = useQuery<WithdrawalRequest[]>({
-    queryKey: ['/api/earnings/withdrawals'],
+    queryKey: ["/api/earnings/withdrawals"],
+    refetchInterval: 15000,
   });
 
-  // Fetch earning transactions
-  const { data: transactions = [] } = useQuery<Transaction[]>({
-    queryKey: ['/api/earnings/transactions'],
-  });
-
-  // Request withdrawal mutation
-  const withdrawalMutation = useMutation({
-    mutationFn: async (data: { coins: number; amount: number; upiId?: string; bankDetails?: string }) => {
-      return apiRequest('POST', '/api/earnings/withdraw', data);
-    },
+  const withdrawMutation = useMutation({
+    mutationFn: async (data: any) => apiRequest("POST", "/api/earnings/withdraw", data),
     onSuccess: () => {
       toast({
-        title: "✅ Withdrawal Request Submitted!",
-        description: "Your request is being processed. You'll be notified once approved.",
+        title: "✅ Request Submitted!",
+        description: "Your withdrawal request is being reviewed. It takes up to 24 hours to process your money.",
+        duration: 6000,
       });
-      setRedeemDialogOpen(false);
-      setCoinsToRedeem("");
-      setUpiId("");
-      setBankDetails("");
-      queryClient.invalidateQueries({ queryKey: ['/api/earnings/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/earnings/withdrawals'] });
+      setDialogOpen(false);
+      resetForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/earnings/withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
     },
     onError: (error: Error) => {
-      toast({
-        title: "❌ Withdrawal Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "❌ Failed", description: error.message, variant: "destructive" });
     },
   });
 
-  const handleRedeem = () => {
-    const coins = parseInt(coinsToRedeem);
-    
-    if (!coins || coins < MINIMUM_WITHDRAWAL_COINS) {
-      toast({
-        title: "Invalid Amount",
-        description: `Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} coins (₹${MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE})`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (coins > (stats?.availableForWithdrawal || 0)) {
-      toast({
-        title: "Insufficient Balance",
-        description: "You don't have enough coins available for withdrawal",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!upiId && !bankDetails) {
-      toast({
-        title: "Payment Details Required",
-        description: "Please provide either UPI ID or bank details",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const amount = coins / COINS_PER_RUPEE;
-    withdrawalMutation.mutate({
-      coins,
-      amount,
-      upiId: upiId || undefined,
-      bankDetails: bankDetails || undefined,
-    });
+  const resetForm = () => {
+    setAmount("");
+    setUpiId("");
+    setBankDetails({ accountHolderName: "", accountNumber: "", ifscCode: "", bankName: "" });
+    setScreenshot(null);
+    setScreenshotPreview(null);
+    setPaymentMethod("upi");
   };
 
-  const coinsToRupees = (coins: number) => {
-    return coins / COINS_PER_RUPEE;
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 5MB allowed", variant: "destructive" });
+      return;
+    }
+    setScreenshot(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setScreenshotPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const uploadScreenshot = async (): Promise<string | null> => {
+    if (!screenshot) return null;
+    const formData = new FormData();
+    formData.append("file", screenshot);
+    const response = await fetch("/api/earnings/upload-screenshot", {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: "Upload failed" }));
+      throw new Error(err.message || "Screenshot upload failed");
+    }
+    const { url } = await response.json();
+    return url;
+  };
+
+  const handleSubmit = async () => {
+    const rupees = parseFloat(amount);
+    if (!rupees || rupees <= 0) {
+      toast({ title: "Error", description: "Please enter a valid amount", variant: "destructive" });
+      return;
+    }
+    if (rupees > availableRupees) {
+      toast({ title: "Insufficient Balance", description: "Not enough coins to withdraw this amount.", variant: "destructive" });
+      return;
+    }
+    if (!screenshot) {
+      toast({ title: "Screenshot Required", description: "Please upload a screenshot or QR code of your payment details.", variant: "destructive" });
+      return;
+    }
+    if (paymentMethod === "upi" && !upiId.trim()) {
+      toast({ title: "Error", description: "Please enter your UPI ID", variant: "destructive" });
+      return;
+    }
+    if (paymentMethod === "bank" && (!bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.bankName || !bankDetails.accountHolderName)) {
+      toast({ title: "Error", description: "Please fill all bank details", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const screenshotUrl = await uploadScreenshot();
+      const coins = Math.floor(rupees * COINS_PER_RUPEE);
+      const payload: any = {
+        amount: rupees,
+        coins,
+        screenshotUrl,
+      };
+      if (paymentMethod === "upi") {
+        payload.upiId = upiId.trim();
+      } else {
+        payload.bankDetails = JSON.stringify(bankDetails);
+      }
+      withdrawMutation.mutate(payload);
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err.message || "Could not upload screenshot", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
-    const config = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Pending' },
-      approved: { color: 'bg-blue-100 text-blue-800', icon: CheckCircle, label: 'Approved' },
-      settled: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Settled' },
-      rejected: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Rejected' },
-    };
-    const { color, icon: Icon, label } = config[status as keyof typeof config] || config.pending;
-    return (
-      <Badge className={color}>
-        <Icon className="w-3 h-3 mr-1" />
-        {label}
-      </Badge>
-    );
+    switch (status) {
+      case "pending":  return <Badge className="bg-yellow-100 text-yellow-800 text-xs"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+      case "approved": return <Badge className="bg-blue-100 text-blue-800 text-xs"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
+      case "settled":  return <Badge className="bg-green-100 text-green-800 text-xs"><CheckCircle className="w-3 h-3 mr-1" />Settled</Badge>;
+      case "rejected": return <Badge className="bg-red-100 text-red-800 text-xs"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
+      default:         return <Badge variant="outline" className="text-xs">{status}</Badge>;
+    }
   };
 
-  const rupeesAmount = coinsToRedeem ? coinsToRupees(parseInt(coinsToRedeem) || 0) : 0;
+  const isSubmitting = uploading || withdrawMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute top-1/4 left-1/6 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/6 w-56 h-56 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+
       <Header />
-      <div className="flex">
+      <div className="flex relative z-10">
         <Sidebar />
-        <main className="flex-1 p-6">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              💰 My Earnings
-            </h1>
-            <p className="text-lg text-gray-600">
-              Track your coin earnings and redeem them for real money
-            </p>
+        <main className="flex-1 p-6 max-w-4xl mx-auto">
+
+          {/* Title */}
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-white mb-1">My Earnings</h1>
+            <p className="text-gray-400 text-sm">20 coins = ₹1 · Withdrawals processed within 24 hours</p>
           </div>
 
-          {/* Conversion Rate Info */}
-          <Alert className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
-            <Coins className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800">
-              <strong>Conversion Rate:</strong> 20 Coins = ₹1 Rupee | Minimum withdrawal: {MINIMUM_WITHDRAWAL_COINS} coins (₹{(MINIMUM_WITHDRAWAL_COINS / COINS_PER_RUPEE).toFixed(2)})
-            </AlertDescription>
-          </Alert>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-200">
+          {/* 3 Key Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <Card data-testid="card-coin-balance" className="bg-black/40 backdrop-blur-md border border-yellow-400/30 hover:border-yellow-400/60 transition-all duration-300 shadow-xl hover:scale-[1.02]">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-yellow-600">Coin Balance</p>
-                  <Coins className="h-8 w-8 text-yellow-500" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Coin Balance</p>
+                    <p className="text-3xl font-bold text-yellow-400 font-mono">{coinBalance.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 mt-1">= ₹{availableRupees}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-yellow-400/10 flex items-center justify-center text-2xl">🪙</div>
                 </div>
-                <p className="text-3xl font-bold text-yellow-700">
-                  {statsLoading ? '...' : stats?.coinBalance?.toLocaleString() || '0'}
-                </p>
-                <p className="text-sm text-yellow-600 mt-1">
-                  ≈ ₹{statsLoading ? '...' : coinsToRupees(stats?.coinBalance || 0).toFixed(2)}
-                </p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-200">
+            <Card data-testid="card-available" className="bg-black/40 backdrop-blur-md border border-emerald-400/30 hover:border-emerald-400/60 transition-all duration-300 shadow-xl hover:scale-[1.02]">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-green-600">Total Earned</p>
-                  <TrendingUp className="h-8 w-8 text-green-500" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Available</p>
+                    <p className="text-3xl font-bold text-emerald-400 font-mono flex items-center">
+                      <IndianRupee className="h-6 w-6 mr-0.5" />{availableRupees}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">ready to withdraw</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-emerald-400/10 flex items-center justify-center">
+                    <Wallet className="h-6 w-6 text-emerald-400" />
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-green-700">
-                  {statsLoading ? '...' : stats?.totalEarned?.toLocaleString() || '0'}
-                </p>
-                <p className="text-sm text-green-600 mt-1">
-                  ≈ ₹{statsLoading ? '...' : coinsToRupees(stats?.totalEarned || 0).toFixed(2)}
-                </p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-200">
+            <Card data-testid="card-withdrawals" className="bg-black/40 backdrop-blur-md border border-purple-400/30 hover:border-purple-400/60 transition-all duration-300 shadow-xl hover:scale-[1.02]">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-blue-600">Available to Withdraw</p>
-                  <Wallet className="h-8 w-8 text-blue-500" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Withdrawals</p>
+                    <p className="text-3xl font-bold text-purple-400 font-mono">{withdrawals.length}</p>
+                    <p className="text-xs text-gray-500 mt-1">total requests</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-purple-400/10 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-purple-400" />
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-blue-700">
-                  {statsLoading ? '...' : stats?.availableForWithdrawal?.toLocaleString() || '0'}
-                </p>
-                <p className="text-sm text-blue-600 mt-1">
-                  ≈ ₹{statsLoading ? '...' : coinsToRupees(stats?.availableForWithdrawal || 0).toFixed(2)}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-purple-600">Total Withdrawn</p>
-                  <IndianRupee className="h-8 w-8 text-purple-500" />
-                </div>
-                <p className="text-3xl font-bold text-purple-700">
-                  ₹{statsLoading ? '...' : coinsToRupees(stats?.totalWithdrawn || 0).toFixed(2)}
-                </p>
-                <p className="text-sm text-purple-600 mt-1">
-                  {stats?.totalWithdrawn || 0} coins redeemed
-                </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Redeem Button */}
-          <Card className="mb-8 bg-gradient-to-r from-emerald-500 to-teal-500 border-0 text-white">
-            <CardContent className="p-8 text-center">
-              <Banknote className="h-16 w-16 mx-auto mb-4 animate-bounce" />
-              <h2 className="text-2xl font-bold mb-2">Ready to Redeem Your Coins?</h2>
-              <p className="mb-6 text-emerald-50">
-                Convert your coins to rupees and withdraw to your UPI or bank account
-              </p>
-              <Button
-                size="lg"
-                onClick={() => setRedeemDialogOpen(true)}
-                disabled={(stats?.availableForWithdrawal || 0) < MINIMUM_WITHDRAWAL_COINS}
-                className="bg-white text-emerald-600 hover:bg-emerald-50 font-bold"
-              >
-                <Wallet className="mr-2 h-5 w-5" />
-                Redeem Coins for Cash
-              </Button>
-              {(stats?.availableForWithdrawal || 0) < MINIMUM_WITHDRAWAL_COINS && (
-                <p className="text-sm text-emerald-100 mt-3">
-                  Earn {MINIMUM_WITHDRAWAL_COINS - (stats?.availableForWithdrawal || 0)} more coins to withdraw
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Withdrawal History */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Withdrawal History</CardTitle>
-              <CardDescription>Track your redemption requests and their status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {withdrawalsLoading ? (
-                <div className="text-center py-8">Loading...</div>
-              ) : withdrawals.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <IndianRupee className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p>No withdrawal requests yet</p>
-                  <p className="text-sm">Start earning coins to make your first withdrawal!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {withdrawals.map((withdrawal) => (
-                    <div key={withdrawal.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <p className="font-semibold text-lg">₹{withdrawal.amount.toFixed(2)}</p>
-                          <Badge variant="outline" className="text-xs">
-                            {withdrawal.coins} coins
-                          </Badge>
-                          {getStatusBadge(withdrawal.status)}
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Requested {formatDistanceToNow(new Date(withdrawal.requestedAt), { addSuffix: true })}
-                        </p>
-                        {withdrawal.upiId && (
-                          <p className="text-xs text-gray-500 mt-1">UPI: {withdrawal.upiId}</p>
-                        )}
-                        {withdrawal.status === 'rejected' && withdrawal.rejectionReason && (
-                          <p className="text-xs text-red-600 mt-1">Reason: {withdrawal.rejectionReason}</p>
-                        )}
-                        {withdrawal.status === 'settled' && withdrawal.processedAt && (
-                          <p className="text-xs text-green-600 mt-1">
-                            Settled {formatDistanceToNow(new Date(withdrawal.processedAt), { addSuffix: true })}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Earnings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Earnings</CardTitle>
-              <CardDescription>Your latest coin transactions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {transactions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Star className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p>No transactions yet</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {transactions.slice(0, 10).map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        {tx.type === 'coin_earned' ? (
-                          <div className="p-2 bg-green-100 rounded-full">
-                            <TrendingUp className="h-4 w-4 text-green-600" />
-                          </div>
-                        ) : (
-                          <div className="p-2 bg-blue-100 rounded-full">
-                            <Download className="h-4 w-4 text-blue-600" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-medium">{tx.description}</p>
-                          <p className="text-xs text-gray-500">
-                            {formatDistanceToNow(new Date(tx.createdAt), { addSuffix: true })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-semibold ${tx.coinChange > 0 ? 'text-green-600' : 'text-gray-600'}`}>
-                          {tx.coinChange > 0 ? '+' : ''}{tx.coinChange} coins
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          ≈ ₹{coinsToRupees(Math.abs(tx.coinChange)).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Redemption Dialog */}
-          <Dialog open={redeemDialogOpen} onOpenChange={setRedeemDialogOpen}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Redeem Coins for Cash</DialogTitle>
-                <DialogDescription>
-                  Convert your coins to rupees and withdraw to your account
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="coins">Coins to Redeem</Label>
-                  <Input
-                    id="coins"
-                    type="number"
-                    placeholder={`Min. ${MINIMUM_WITHDRAWAL_COINS} coins`}
-                    value={coinsToRedeem}
-                    onChange={(e) => setCoinsToRedeem(e.target.value)}
-                    min={MINIMUM_WITHDRAWAL_COINS}
-                    max={stats?.availableForWithdrawal}
-                  />
-                  {coinsToRedeem && (
-                    <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">You will receive:</span>
-                        <span className="text-xl font-bold text-emerald-600">
-                          ₹{rupeesAmount.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+          {/* Withdraw + History */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Withdraw Card */}
+            <Card className="bg-black/40 backdrop-blur-md border border-emerald-400/30 hover:border-emerald-400/50 transition-all duration-300 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center text-white text-lg">
+                  <Wallet className="h-5 w-5 mr-2 text-emerald-400" />
+                  Request Withdrawal
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-sm text-gray-300 space-y-1">
+                  <p>🪙 Coins: <span className="text-yellow-400 font-bold">{coinBalance.toLocaleString()}</span></p>
+                  <p>💵 Withdrawable: <span className="text-emerald-400 font-bold">₹{availableRupees}</span></p>
+                  <p className="text-gray-500 text-xs">Processed within 24 hours</p>
                 </div>
 
-                <div>
-                  <Label htmlFor="upi">UPI ID (Recommended)</Label>
-                  <Input
-                    id="upi"
-                    placeholder="yourname@upi"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                  />
-                </div>
-
-                <div className="text-center text-sm text-gray-500">OR</div>
-
-                <div>
-                  <Label htmlFor="bank">Bank Details (Optional)</Label>
-                  <Textarea
-                    id="bank"
-                    placeholder="Account holder name, Account number, IFSC code, Bank name"
-                    value={bankDetails}
-                    onChange={(e) => setBankDetails(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    Withdrawals are processed within 2-3 business days. You'll receive a notification once approved.
-                  </AlertDescription>
-                </Alert>
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setRedeemDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleRedeem}
-                  disabled={withdrawalMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                <Button
+                  className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold py-3 shadow-lg hover:shadow-emerald-500/40"
+                  disabled={coinBalance <= 0}
+                  onClick={() => setDialogOpen(true)}
+                  data-testid="button-request-withdrawal"
                 >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Submit Request
+                  <IndianRupee className="h-4 w-4 mr-2" />
+                  Withdraw Earnings
+                  <Zap className="h-4 w-4 ml-2" />
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+
+                {coinBalance <= 0 && (
+                  <p className="text-xs text-center text-gray-500">Earn coins by uploading notes to withdraw</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Withdrawal History */}
+            <Card className="bg-black/40 backdrop-blur-md border border-purple-400/30 hover:border-purple-400/50 transition-all duration-300 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center text-white text-lg">
+                  <Clock className="h-5 w-5 mr-2 text-purple-400" />
+                  Withdrawal History
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {withdrawalsLoading ? (
+                  <div className="text-center py-10 text-gray-500 text-sm">Loading…</div>
+                ) : withdrawals.length === 0 ? (
+                  <div className="text-center py-12" data-testid="empty-withdrawal-requests">
+                    <Clock className="h-10 w-10 text-purple-400 mx-auto mb-3 opacity-40" />
+                    <p className="text-gray-400 text-sm">No requests yet</p>
+                    <p className="text-gray-600 text-xs mt-1">Your withdrawals will appear here</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-700/50">
+                    {withdrawals.slice(0, 6).map((w) => (
+                      <div key={w.id} className="px-6 py-4 hover:bg-purple-500/10 transition-colors" data-testid={`withdrawal-${w.id}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-white text-sm flex items-center">
+                            <IndianRupee className="h-3.5 w-3.5 mr-0.5 text-emerald-400" />₹{w.amount}
+                          </span>
+                          {getStatusBadge(w.status)}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {formatDistanceToNow(new Date(w.requestedAt), { addSuffix: true })}
+                        </p>
+                        {w.upiId && <p className="text-xs text-gray-600 mt-0.5">UPI: {w.upiId}</p>}
+                        {w.adminComments && <p className="text-xs text-blue-400 mt-0.5">Admin: {w.adminComments}</p>}
+                        {w.rejectionReason && <p className="text-xs text-red-400 mt-0.5">Reason: {w.rejectionReason}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </main>
       </div>
+
+      {/* ── Withdrawal Dialog ───────────────────────────── */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!isSubmitting) { setDialogOpen(open); if (!open) resetForm(); } }}>
+        <DialogContent className="sm:max-w-md bg-slate-900/98 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-2">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-500 p-3 rounded-full shadow-lg shadow-emerald-500/40">
+                <Wallet className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <DialogTitle className="text-2xl font-bold text-white text-center">💰 Withdraw Earnings</DialogTitle>
+            <p className="text-gray-400 text-sm text-center">Balance: ₹{availableRupees} · Processed in 24 hrs</p>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-1">
+
+            {/* Amount */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-white">Amount (₹)</label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  min={1}
+                  max={availableRupees}
+                  className="bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-emerald-400 pl-9 py-3 rounded-xl"
+                  data-testid="input-withdrawal-amount"
+                />
+                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400" />
+              </div>
+              {amount && parseFloat(amount) > 0 && (
+                <p className="text-xs text-gray-500">
+                  Deducts {Math.floor(parseFloat(amount) * COINS_PER_RUPEE).toLocaleString()} coins
+                </p>
+              )}
+            </div>
+
+            {/* Payment Method Toggle */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-white">Payment Method</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("upi")}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border ${paymentMethod === "upi" ? "bg-orange-500/20 border-orange-400/60 text-orange-300" : "border-white/10 text-gray-400 hover:border-white/20"}`}
+                >
+                  ⚡ UPI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("bank")}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border ${paymentMethod === "bank" ? "bg-blue-500/20 border-blue-400/60 text-blue-300" : "border-white/10 text-gray-400 hover:border-white/20"}`}
+                >
+                  🏦 Bank Transfer
+                </button>
+              </div>
+            </div>
+
+            {/* UPI Fields */}
+            {paymentMethod === "upi" ? (
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-white">UPI ID</label>
+                <Input
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  placeholder="yourname@gpay / @paytm / @phonepe"
+                  className="bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-orange-400 py-3 rounded-xl"
+                  data-testid="input-upi-id"
+                />
+              </div>
+            ) : (
+              /* Bank Fields */
+              <div className="space-y-3">
+                {[
+                  { label: "Account Holder Name", key: "accountHolderName", placeholder: "Full name as per bank" },
+                  { label: "Account Number", key: "accountNumber", placeholder: "Bank account number" },
+                  { label: "IFSC Code", key: "ifscCode", placeholder: "e.g. SBIN0001234" },
+                  { label: "Bank Name", key: "bankName", placeholder: "e.g. State Bank of India" },
+                ].map(({ label, key, placeholder }) => (
+                  <div key={key} className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-300">{label}</label>
+                    <Input
+                      value={(bankDetails as any)[key]}
+                      onChange={(e) => setBankDetails({ ...bankDetails, [key]: e.target.value })}
+                      placeholder={placeholder}
+                      className="bg-white/5 border border-white/20 text-white placeholder-white/40 focus:border-blue-400 py-2 rounded-xl text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Screenshot Upload — Mandatory */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-white flex items-center gap-1.5">
+                <ImagePlus className="h-4 w-4 text-pink-400" />
+                Screenshot / QR Code
+                <span className="text-red-400 text-xs font-normal ml-1">* required</span>
+              </label>
+              <p className="text-xs text-gray-500">Upload a screenshot of your UPI QR or bank passbook (max 5MB)</p>
+
+              {/* Upload area */}
+              {!screenshotPreview ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-white/20 hover:border-pink-400/60 rounded-xl p-6 flex flex-col items-center justify-center gap-2 transition-all hover:bg-pink-500/5 cursor-pointer"
+                >
+                  <Upload className="h-8 w-8 text-gray-500" />
+                  <span className="text-sm text-gray-400">Click to upload screenshot or QR</span>
+                  <span className="text-xs text-gray-600">PNG, JPG, WEBP · Max 5MB</span>
+                </button>
+              ) : (
+                <div className="relative rounded-xl overflow-hidden border border-white/10">
+                  <img src={screenshotPreview} alt="Screenshot preview" className="w-full max-h-40 object-contain bg-black/40" />
+                  <button
+                    type="button"
+                    onClick={() => { setScreenshot(null); setScreenshotPreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="absolute top-2 right-2 bg-black/60 hover:bg-red-500/80 rounded-full p-1 transition-colors"
+                  >
+                    <X className="h-4 w-4 text-white" />
+                  </button>
+                  <div className="absolute bottom-2 left-2 bg-black/60 rounded-lg px-2 py-1">
+                    <span className="text-xs text-emerald-400 flex items-center gap-1"><CheckCircle className="h-3 w-3" />{screenshot?.name}</span>
+                  </div>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleScreenshotChange}
+                className="hidden"
+                data-testid="input-screenshot"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setDialogOpen(false); resetForm(); }}
+                disabled={isSubmitting}
+                className="flex-1 bg-white/5 border border-white/20 text-white hover:bg-white/10 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting || !amount}
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30"
+                data-testid="button-submit-withdrawal"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center"><Sparkles className="h-4 w-4 mr-2 animate-spin" />{uploading ? "Uploading…" : "Submitting…"}</span>
+                ) : (
+                  <span className="flex items-center"><Zap className="h-4 w-4 mr-2" />Submit Request</span>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,541 +1,528 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { 
-  BookOpen, 
-  Search, 
-  Filter,
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  BookOpen,
+  Search,
   Download,
-  Star,
-  User,
-  ArrowLeft,
   Eye,
-  Heart,
   Calendar,
   Crown,
   Zap,
-  Award,
-  Upload,
-  CheckCircle,
-  AlertCircle,
-  X,
-  Sparkles
+  GraduationCap,
+  FileText,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { Link, useLocation } from "wouter";
-import { motion } from 'framer-motion';
 import SubscriptionModal from "@/components/subscription-modal";
 import DodoPaymentGateway from "@/components/dodo-payment-gateway";
 import { useToast } from "@/hooks/use-toast";
 import PageWrapper from "@/components/layout/page-wrapper";
 import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut } from 'lucide-react';
+import { useRealtimeNotes } from "@/hooks/useRealtimeNotes";
 
+/* ─── Types ─────────────────────────────────────────────────────────────── */
 interface Note {
-  id: number;
+  id: string;
   title: string;
   subject: string;
-  author: string;
-  rating: number;
-  downloads: number;
-  price: number;
-  preview: string;
-  date: string;
-  tags: string[];
-  exam?: string;
-  class?: string;
-  isTopperNote?: boolean;
-}
-
-interface FirebaseNote {
-  id: string;
-  title?: string;
-  subject?: string;
-  userEmail?: string;
-  rating?: number;
-  downloads?: number;
-  price?: number;
+  topic?: string;
   description?: string;
-  createdAt?: string;
-  tags?: string[];
-  isApproved?: boolean;
-  approvalStatus?: string;
+  downloads: number;
+  views: number;
+  price: number;
+  classGrade?: string;
+  attachments?: string[];
+  createdAt: string;
+  isDemo?: boolean;
 }
 
-// Competitive exams list
-const COMPETITIVE_EXAMS = [
-  'All Exams',
-  'JEE Main',
-  'JEE Advanced',
-  'NEET',
-  'GATE',
-  'CAT',
-  'UPSC',
-  'Bank PO',
-  'SSC'
-];
+/* ─── Demo note shown when DB is empty ──────────────────────────────────── */
+const DEMO_NOTE: Note = {
+  id: 'demo-bio-1',
+  title: 'Biology – Chapter 1: The Living World',
+  subject: 'Biology',
+  topic: 'Chapter 1',
+  description:
+    'Complete notes on what defines a living organism, taxonomy, nomenclature, and classification. Includes NCERT diagrams, key terms, and MCQ practice questions for NEET.',
+  downloads: 128,
+  views: 340,
+  price: 0,
+  classGrade: 'Class 11',
+  attachments: [],
+  createdAt: new Date().toISOString(),
+  isDemo: true,
+};
 
-// Classes list
+/* ─── Constants ─────────────────────────────────────────────────────────── */
 const CLASSES = [
-  'All Classes',
-  'Class 5',
-  'Class 6',
-  'Class 7',
-  'Class 8',
-  'Class 9',
-  'Class 10',
-  'Class 11',
-  'Class 12'
+  'All Classes', 'Class 5', 'Class 6', 'Class 7', 'Class 8',
+  'Class 9', 'Class 10', 'Class 11', 'Class 12',
+  'Undergraduate', 'Postgraduate',
 ];
 
+const SUBJECTS = [
+  { name: 'All', icon: '🔍' },
+  { name: 'Mathematics', icon: '📐' },
+  { name: 'Physics', icon: '⚛️' },
+  { name: 'Chemistry', icon: '🧪' },
+  { name: 'Biology', icon: '🧬' },
+  { name: 'Computer Science', icon: '💻' },
+  { name: 'English', icon: '📚' },
+  { name: 'History', icon: '📜' },
+  { name: 'Geography', icon: '🗺️' },
+];
+
+/* ─── Component ──────────────────────────────────────────────────────────── */
 export default function DownloadNotesEnhanced() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedExam, setSelectedExam] = useState('All Exams');
   const [selectedClass, setSelectedClass] = useState('All Classes');
   const [selectedSubject, setSelectedSubject] = useState('All');
-  const [sortBy, setSortBy] = useState('popular');
+
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
   const [dodoPaymentOpen, setDodoPaymentOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  const [showTopperModal, setShowTopperModal] = useState(false);
-  const [isTopper, setIsTopper] = useState(false);
-  const [topperDocuments, setTopperDocuments] = useState<File[]>([]);
-  const [verifyingTopper, setVerifyingTopper] = useState(false);
-  const [userStatus, setUserStatus] = useState<'free' | 'trial' | 'premium'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('userStatus') as 'free' | 'trial' | 'premium') || 'free';
-    }
-    return 'free';
-  });
-  const [trialDownloads, setTrialDownloads] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('trialDownloads') || '0', 10);
-    }
-    return 0;
-  });
+  const [viewNote, setViewNote] = useState<Note | null>(null);
+
+  // Check subscription from localStorage (set after payment success)
+  const [isPremium, setIsPremium] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('userStatus') === 'premium'
+  );
+
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const subjects = ['All', 'Chemistry', 'Computer Science', 'Mathematics', 'Biology', 'Physics', 'English'];
+  // Realtime hook — triggers refetch on note changes
+  const { isConnected, newNoteNotification } = useRealtimeNotes();
 
-  // Fetch notes
-  const fetchNotes = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/notes', {
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && data.notes) {
-        const approvedNotes = data.notes
-          .filter((note: FirebaseNote) => note.isApproved || note.approvalStatus === 'approved')
-          .map((note: FirebaseNote, index: number) => ({
-            id: index,
-            title: note.title || 'Untitled',
-            subject: note.subject || 'General',
-            author: note.userEmail?.split('@')[0] || 'Anonymous',
-            rating: note.rating || 4.5,
-            downloads: note.downloads || 0,
-            price: note.price || 0,
-            preview: note.description || 'No preview available',
-            date: note.createdAt || new Date().toISOString(),
-            tags: note.tags || [],
-            exam: 'JEE Main',
-            class: 'Class 12',
-            isTopperNote: false
-          }));
-        
-        setNotes(approvedNotes);
-      }
-    } catch (error) {
-      console.error('Error fetching notes:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load notes",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  /* ── Handle payment return ────────────────────────────────────────── */
   useEffect(() => {
-    fetchNotes();
+    const returnUrl = localStorage.getItem('payment_return_url');
+    const paymentPlan = localStorage.getItem('payment_plan');
+    if (returnUrl && window.location.href.includes('/download-notes')) {
+      localStorage.removeItem('payment_return_url');
+      localStorage.removeItem('payment_plan');
+      localStorage.setItem('userStatus', 'premium');
+      setIsPremium(true);
+      toast({
+        title: '🎉 Subscription Active!',
+        description: `Your ${paymentPlan || 'premium'} plan is now active. Download all notes for free!`,
+        duration: 6000,
+      });
+    }
   }, []);
 
-  // Filter notes based on search and filters
-  const filteredNotes = notes.filter(note => {
-    const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         note.subject.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesExam = selectedExam === 'All Exams' || note.exam === selectedExam;
-    const matchesClass = selectedClass === 'All Classes' || note.class === selectedClass;
-    const matchesSubject = selectedSubject === 'All' || note.subject === selectedSubject;
-    
-    return matchesSearch && matchesExam && matchesClass && matchesSubject;
-  });
+  /* ── Fetch notes from API ─────────────────────────────────────────── */
+  const fetchNotes = useCallback(async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) setRefreshing(true);
+      else setLoading(true);
 
-  // Sort notes
-  const sortedNotes = [...filteredNotes].sort((a, b) => {
-    switch (sortBy) {
-      case 'popular':
-        return b.downloads - a.downloads;
-      case 'rating':
-        return b.rating - a.rating;
-      case 'recent':
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      default:
-        return 0;
+      const params = new URLSearchParams();
+      if (selectedSubject !== 'All') params.set('subject', selectedSubject.replace(/ /g, '_'));
+      if (selectedClass !== 'All Classes') params.set('classGrade', selectedClass);
+      if (searchTerm.trim()) params.set('search', searchTerm.trim());
+      params.set('limit', '60');
+
+      const res = await fetch(`/api/notes?${params.toString()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+
+      const mapped: Note[] = (data.notes || []).map((n: any) => ({
+        id: n.id,
+        title: n.title || 'Untitled',
+        subject: (n.subject || 'General').replace(/_/g, ' '),
+        topic: n.topic || undefined,
+        description: n.description || undefined,
+        downloads: n.downloadsCount || 0,
+        views: n.viewsCount || 0,
+        price: n.price || 0,
+        classGrade: n.classGrade || undefined,
+        attachments: n.attachments || [],
+        createdAt: n.createdAt || new Date().toISOString(),
+      }));
+
+      setNotes(mapped);
+      setTotal(data.total || mapped.length);
+    } catch (err) {
+      console.error('fetchNotes error:', err);
+      toast({ title: 'Error', description: 'Could not load notes. Please refresh.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  });
+  }, [selectedSubject, selectedClass, searchTerm]);
 
-  const handleDownloadClick = (note: Note) => {
-    setSelectedNote(note);
-    if (note.price > 0) {
-      setDodoPaymentOpen(true);
-    } else {
-      if (userStatus === 'free' && trialDownloads >= 3) {
-        setSubscriptionModalOpen(true);
-      } else {
-        toast({
-          title: "Download Started",
-          description: `Downloading: ${note.title}`,
-          variant: "default"
-        });
-      }
-    }
-  };
+  // Initial + filter-change fetch
+  useEffect(() => { fetchNotes(); }, [fetchNotes]);
 
-  const handleTopperVerification = async () => {
-    if (topperDocuments.length === 0) {
+  // Realtime: re-fetch when a note is updated/approved
+  useEffect(() => {
+    if (newNoteNotification) {
+      fetchNotes(true);
       toast({
-        title: "Error",
-        description: "Please upload at least one document",
-        variant: "destructive"
+        title: '📡 New Note Available!',
+        description: `"${newNoteNotification.title}" just got published.`,
       });
+    }
+  }, [newNoteNotification]);
+
+  /* ── Decide which notes to show ───────────────────────────────────── */
+  const displayNotes: Note[] =
+    notes.length > 0
+      ? notes
+      : !loading
+        ? [DEMO_NOTE]  // show demo if DB is empty
+        : [];
+
+  /* ── Download handler ─────────────────────────────────────────────── */
+  const handleDownload = (note: Note) => {
+    if (note.isDemo) {
+      toast({ title: 'Demo Note', description: 'Upload real notes via the admin panel to enable downloads.' });
       return;
     }
 
-    setVerifyingTopper(true);
-    try {
-      // Simulate verification
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setIsTopper(true);
-      localStorage.setItem('isTopper', 'true');
-      
-      toast({
-        title: "Success!",
-        description: "You've been verified as a Topper! 🎉",
-        variant: "default"
-      });
-      
-      setShowTopperModal(false);
-      setTopperDocuments([]);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to verify topper status",
-        variant: "destructive"
-      });
-    } finally {
-      setVerifyingTopper(false);
+    // Any logged-in user OR premium → direct free download
+    // (price is only charged to completely anonymous visitors)
+    const canDownloadFree = isPremium || !!user || note.price === 0;
+
+    if (canDownloadFree) {
+      if (note.attachments && note.attachments.length > 0) {
+        window.open(note.attachments[0], '_blank');
+        toast({ title: '✅ Download Started', description: `Opening "${note.title}"` });
+      } else {
+        toast({ title: 'No File Attached', description: 'The admin hasn\'t attached a PDF yet.', variant: 'destructive' });
+      }
+      return;
+    }
+
+    // Anonymous visitor with paid note → subscription prompt
+    setSelectedNote(note);
+    setSubscriptionModalOpen(true);
+  };
+
+  /* ── View handler ─────────────────────────────────────────────────── */
+  const handleView = (note: Note) => {
+    if (note.isDemo) {
+      toast({ title: 'Demo Note', description: 'This is a sample note. Upload real content from the admin panel.' });
+      return;
+    }
+    if (note.attachments && note.attachments.length > 0) {
+      window.open(note.attachments[0], '_blank');
+    } else {
+      setViewNote(note);
     }
   };
 
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setTopperDocuments([...topperDocuments, ...Array.from(e.target.files)]);
-    }
+  const getSubjectCount = (sub: string) => {
+    if (sub === 'All') return displayNotes.length;
+    return displayNotes.filter(n => n.subject === sub || n.subject.replace(/ /g, '_') === sub.replace(/ /g, '_')).length;
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-    
-    sessionStorage.clear();
-    localStorage.clear();
-    
-    if (window.google && window.google.accounts) {
-      window.google.accounts.id.disableAutoSelect();
-    }
-    
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-      variant: "default"
-    });
-    
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 500);
-  };
-
+  /* ── Render ───────────────────────────────────────────────────────── */
   return (
     <PageWrapper
       title="Download Notes"
-      subtitle="Access premium study materials"
+      subtitle="Browse approved study materials"
       icon={<BookOpen className="h-6 w-6 text-white" />}
     >
-      <div className="space-y-8">
-        {/* Profile Section */}
-        {user && (
-          <div className="bg-gradient-to-r from-slate-800/90 to-slate-900/90 backdrop-blur-md border border-blue-500/30 rounded-xl p-4 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-12 w-12 border-2 border-blue-400/50">
-                  <AvatarImage src={user.profileImageUrl} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold">
-                    {user.firstName?.[0]}{user.lastName?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">
-                    {user.firstName} {user.lastName}
-                  </h3>
-                  <p className="text-blue-300 text-sm">{user.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link href="/download-analytics">
-                  <Button
-                    variant="outline"
-                    className="bg-blue-600/20 border-blue-400/50 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    My Downloads
-                  </Button>
-                </Link>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  className="bg-red-600/20 border-red-400/50 text-red-300 hover:bg-red-600/30 hover:text-white transition-all duration-300"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
+      <div className="space-y-6">
+
+        {/* ── Top Bar: status + realtime indicator ───────────────── */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          {/* Premium badge */}
+          {isPremium ? (
+            <div className="flex items-center gap-2 bg-purple-500/20 border border-purple-500/40 rounded-xl px-4 py-2">
+              <Crown className="h-4 w-4 text-purple-400" />
+              <span className="text-purple-300 text-sm font-semibold">Premium — Unlimited Free Downloads</span>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-2 bg-slate-800/60 border border-slate-600/40 rounded-xl px-4 py-2">
+              <Lock className="h-4 w-4 text-gray-400" />
+              <span className="text-gray-400 text-sm">
+                Free account — <button onClick={() => setSubscriptionModalOpen(true)} className="text-purple-400 underline underline-offset-2">Upgrade for unlimited downloads</button>
+              </span>
+            </div>
+          )}
 
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-4 top-3.5 h-5 w-5 text-blue-400" />
-            <Input
-              placeholder="Search notes by title or subject..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 bg-slate-800 border-blue-500/30 text-white placeholder:text-blue-300/50 focus:border-blue-400 focus:ring-blue-400/20"
-            />
+          <div className="flex items-center gap-3">
+            {/* Realtime indicator */}
+            <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${isConnected ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-slate-700/50 border-slate-600/30 text-gray-500'}`}>
+              {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+              {isConnected ? 'Live' : 'Offline'}
+            </div>
+            {/* Refresh */}
+            <button
+              onClick={() => fetchNotes(true)}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
         </div>
 
-        {/* Filters Section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          {/* Exam Filter */}
-          <div className="bg-slate-800/50 backdrop-blur border border-blue-500/20 rounded-lg p-4">
-            <label className="text-blue-300 text-sm font-semibold mb-2 block">Competitive Exam</label>
-            <select 
-              value={selectedExam}
-              onChange={(e) => setSelectedExam(e.target.value)}
-              className="w-full bg-slate-700 border border-blue-500/30 text-white rounded px-3 py-2 focus:border-blue-400 focus:ring-blue-400/20"
-            >
-              {COMPETITIVE_EXAMS.map(exam => (
-                <option key={exam} value={exam}>{exam}</option>
-              ))}
-            </select>
-          </div>
+        {/* ── Search ────────────────────────────────────────────────── */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400/70" />
+          <Input
+            id="notes-search"
+            placeholder="Search notes by title, subject or topic..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-11 bg-slate-800/70 border-blue-500/20 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:ring-blue-400/10"
+          />
+        </div>
 
-          {/* Class Filter */}
-          <div className="bg-slate-800/50 backdrop-blur border border-blue-500/20 rounded-lg p-4">
-            <label className="text-blue-300 text-sm font-semibold mb-2 block">Class</label>
-            <select 
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full bg-slate-700 border border-blue-500/30 text-white rounded px-3 py-2 focus:border-blue-400 focus:ring-blue-400/20"
-            >
-              {CLASSES.map(cls => (
-                <option key={cls} value={cls}>{cls}</option>
-              ))}
-            </select>
+        {/* ── Class filter pills ────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <GraduationCap className="h-4 w-4 text-cyan-400" />
+            <span className="text-sm font-semibold text-slate-300">Filter by Class</span>
           </div>
-
-          {/* Subject Filter */}
-          <div className="bg-slate-800/50 backdrop-blur border border-blue-500/20 rounded-lg p-4">
-            <label className="text-blue-300 text-sm font-semibold mb-2 block">Subject</label>
-            <select 
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full bg-slate-700 border border-blue-500/30 text-white rounded px-3 py-2 focus:border-blue-400 focus:ring-blue-400/20"
-            >
-              {subjects.map(subject => (
-                <option key={subject} value={subject}>{subject}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sort Filter */}
-          <div className="bg-slate-800/50 backdrop-blur border border-blue-500/20 rounded-lg p-4">
-            <label className="text-blue-300 text-sm font-semibold mb-2 block">Sort By</label>
-            <select 
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full bg-slate-700 border border-blue-500/30 text-white rounded px-3 py-2 focus:border-blue-400 focus:ring-blue-400/20"
-            >
-              <option value="popular">Most Popular</option>
-              <option value="rating">Highest Rated</option>
-              <option value="recent">Most Recent</option>
-            </select>
+          <div className="flex flex-wrap gap-2">
+            {CLASSES.map((cls) => (
+              <button
+                key={cls}
+                id={`class-filter-${cls.replace(/\s+/g, '-').toLowerCase()}`}
+                onClick={() => setSelectedClass(cls)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 ${
+                  selectedClass === cls
+                    ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-300'
+                    : 'bg-slate-800/50 border-slate-600/40 text-slate-400 hover:border-cyan-500/30 hover:text-slate-200'
+                }`}
+              >
+                {cls}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Results Count */}
-        <div className="mb-6 text-blue-300">
-          <p className="text-sm">Found <span className="font-bold text-blue-400">{sortedNotes.length}</span> notes</p>
+        {/* ── Subject chips ─────────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <BookOpen className="h-4 w-4 text-purple-400" />
+            <span className="text-sm font-semibold text-slate-300">Filter by Subject</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {SUBJECTS.map((s) => (
+              <button
+                key={s.name}
+                id={`subject-filter-${s.name.toLowerCase().replace(/ /g, '-')}`}
+                onClick={() => setSelectedSubject(s.name)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 ${
+                  selectedSubject === s.name
+                    ? 'bg-purple-500/20 border-purple-400/60 text-purple-300'
+                    : 'bg-slate-800/50 border-slate-600/40 text-slate-400 hover:border-purple-500/30 hover:text-slate-200'
+                }`}
+              >
+                <span>{s.icon}</span>
+                <span>{s.name}</span>
+                <span className="opacity-60">({getSubjectCount(s.name)})</span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Notes Grid */}
+        {/* ── Results count ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-between text-sm text-slate-400">
+          <span>
+            Showing <span className="text-white font-semibold">{displayNotes.length}</span> notes
+            {notes.length === 0 && !loading && <span className="text-amber-400 ml-2">(Demo — upload real notes via admin panel)</span>}
+          </span>
+          {(selectedClass !== 'All Classes' || selectedSubject !== 'All') && (
+            <button
+              onClick={() => { setSelectedClass('All Classes'); setSelectedSubject('All'); setSearchTerm(''); }}
+              className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        {/* ── Notes grid ────────────────────────────────────────────── */}
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin">
-              <Sparkles className="h-8 w-8 text-blue-400" />
+          <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500" />
+              <p className="text-slate-400 text-sm">Loading notes...</p>
             </div>
-          </div>
-        ) : sortedNotes.length === 0 ? (
-          <div className="text-center py-12">
-            <BookOpen className="h-12 w-12 text-blue-400/50 mx-auto mb-4" />
-            <p className="text-blue-300">No notes found matching your criteria</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedNotes.map((note) => (
-              <div key={note.id} className="group">
-                <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-blue-500/20 hover:border-blue-400/50 transition-all duration-300 h-full overflow-hidden">
-                  {/* Card Header with Gradient */}
-                  <div className="h-32 bg-gradient-to-br from-blue-600/30 to-purple-600/30 border-b border-blue-500/20 p-4 flex flex-col justify-between">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-white font-bold text-lg line-clamp-2 group-hover:text-blue-300 transition-colors">
-                          {note.title}
-                        </h3>
-                      </div>
-                      {note.isTopperNote && (
-                        <Award className="h-5 w-5 text-amber-400 flex-shrink-0 ml-2" />
-                      )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {displayNotes.map((note) => (
+              <Card
+                key={note.id}
+                className={`bg-gradient-to-br from-slate-800 to-slate-900 border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl group ${
+                  note.isDemo
+                    ? 'border-amber-500/30 hover:border-amber-400/50'
+                    : 'border-blue-500/20 hover:border-blue-400/40'
+                }`}
+              >
+                <CardContent className="p-5">
+                  {/* Demo badge */}
+                  {note.isDemo && (
+                    <div className="flex items-center gap-1.5 mb-3 text-xs text-amber-400 font-medium">
+                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                      Sample Note — Upload real notes to replace this
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-400/30">
-                        {note.exam}
+                  )}
+
+                  {/* Class + Subject badges */}
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {note.classGrade && (
+                      <Badge className="bg-cyan-500/15 text-cyan-300 border-cyan-500/25 text-xs px-2 py-0.5">
+                        🎓 {note.classGrade}
                       </Badge>
-                      <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-400/30">
-                        {note.class}
-                      </Badge>
-                    </div>
+                    )}
+                    <Badge className="bg-purple-500/15 text-purple-300 border-purple-500/25 text-xs px-2 py-0.5">
+                      {note.subject}
+                    </Badge>
+                    <Badge className="bg-green-500/15 text-green-300 border-green-500/25 text-xs px-2 py-0.5">
+                      FREE
+                    </Badge>
                   </div>
 
-                  <CardContent className="p-4 space-y-4">
-                    {/* Subject and Author */}
-                    <div>
-                      <p className="text-blue-300 text-sm font-semibold">{note.subject}</p>
-                      <p className="text-blue-400/70 text-xs flex items-center gap-1 mt-1">
-                        <User className="h-3 w-3" />
-                        {note.author}
-                      </p>
-                    </div>
+                  {/* Title */}
+                  <h3 className="text-white font-semibold text-base mb-1 line-clamp-2 group-hover:text-blue-300 transition-colors">
+                    {note.title}
+                  </h3>
 
-                    {/* Preview */}
-                    <p className="text-blue-300/70 text-sm line-clamp-2">
-                      {note.preview}
-                    </p>
+                  {/* Topic */}
+                  {note.topic && (
+                    <p className="text-slate-500 text-xs mb-2 font-medium">📌 {note.topic}</p>
+                  )}
 
-                    {/* Stats */}
-                    <div className="flex items-center justify-between text-xs text-blue-400/70">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        <span>{note.rating}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Download className="h-3 w-3" />
-                        <span>{note.downloads} downloads</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>{new Date(note.date).toLocaleDateString()}</span>
-                      </div>
-                    </div>
+                  {/* Description */}
+                  {note.description && (
+                    <p className="text-slate-400 text-sm mb-4 line-clamp-2">{note.description}</p>
+                  )}
 
-                    {/* Price and Download Button */}
-                    <div className="flex items-center justify-between pt-2 border-t border-blue-500/20">
-                      <div>
-                        {note.price > 0 ? (
-                          <p className="text-blue-300 font-bold">₹{note.price}</p>
-                        ) : (
-                          <p className="text-green-400 font-bold">FREE</p>
-                        )}
-                      </div>
-                      <Button
-                        onClick={() => handleDownloadClick(note)}
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white gap-2 text-sm"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
+                    <span className="flex items-center gap-1">
+                      <Download className="h-3 w-3 text-blue-400" />
+                      <span className="text-slate-300">{note.downloads}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-3 w-3 text-green-400" />
+                      <span className="text-slate-300">{note.views}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(note.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      id={`download-${note.id}`}
+                      size="sm"
+                      onClick={() => handleDownload(note)}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-xs font-semibold shadow-md"
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Download
+                    </Button>
+                    <Button
+                      id={`view-${note.id}`}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleView(note)}
+                      className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 hover:text-white text-xs"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      View
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
 
-      {/* Subscription Modal */}
+        {/* ── Upload CTA ────────────────────────────────────────────── */}
+        {!loading && notes.length === 0 && (
+          <div className="mt-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-6 text-center">
+            <h4 className="text-purple-300 font-semibold mb-1">Want to contribute?</h4>
+            <p className="text-slate-400 text-sm mb-4">Upload study notes and earn coins after admin approval!</p>
+            <Link href="/upload-notes">
+              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm">
+                Upload Notes → Earn 20 Coins
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── Subscription Modal ──────────────────────────────────────── */}
       <SubscriptionModal
         isOpen={subscriptionModalOpen}
         onClose={() => setSubscriptionModalOpen(false)}
         onSubscribe={(plan) => {
-          setUserStatus('premium');
           localStorage.setItem('userStatus', 'premium');
+          localStorage.setItem('payment_plan', plan);
+          localStorage.setItem('payment_return_url', window.location.href);
+          setIsPremium(true);
+          setSubscriptionModalOpen(false);
+          toast({ title: '🎉 Premium Activated!', description: 'You can now download all notes for free.' });
         }}
         onStartTrial={() => {
-          setUserStatus('trial');
           localStorage.setItem('userStatus', 'trial');
-          localStorage.setItem('trialDownloads', '0');
+          setSubscriptionModalOpen(false);
+          toast({ title: 'Trial Started!', description: 'You have 3 free downloads.' });
         }}
         noteTitle={selectedNote?.title || ''}
       />
 
-      {/* Dodo Payment Gateway */}
+      {/* ── Dodo Payment Modal ──────────────────────────────────────── */}
       {selectedNote && (
         <Dialog open={dodoPaymentOpen} onOpenChange={setDodoPaymentOpen}>
-          <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-white p-0 m-0 relative border-0 rounded-2xl shadow-2xl">
+          <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-white p-0 border-0 rounded-2xl shadow-2xl">
             <DodoPaymentGateway
-              noteId={`note-${selectedNote.id}`}
+              noteId={selectedNote.id}
               noteTitle={selectedNote.title}
               notePrice={selectedNote.price}
               onBack={() => setDodoPaymentOpen(false)}
               onSuccess={() => {
                 setDodoPaymentOpen(false);
-                toast({
-                  title: "Success!",
-                  description: "Note downloaded successfully",
-                  variant: "default"
-                });
+                handleDownload(selectedNote);
               }}
             />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── View Note Modal (when no PDF) ───────────────────────────── */}
+      {viewNote && (
+        <Dialog open={!!viewNote} onOpenChange={() => setViewNote(null)}>
+          <DialogContent className="max-w-lg bg-slate-900 border border-slate-700 text-white rounded-2xl">
+            <div className="p-2">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {viewNote.classGrade && (
+                  <Badge className="bg-cyan-500/15 text-cyan-300 border-cyan-500/25 text-xs">🎓 {viewNote.classGrade}</Badge>
+                )}
+                <Badge className="bg-purple-500/15 text-purple-300 border-purple-500/25 text-xs">{viewNote.subject}</Badge>
+              </div>
+              <h2 className="text-xl font-bold mb-2">{viewNote.title}</h2>
+              {viewNote.topic && <p className="text-slate-400 text-sm mb-3">📌 {viewNote.topic}</p>}
+              {viewNote.description && <p className="text-slate-300 text-sm mb-4">{viewNote.description}</p>}
+              <p className="text-slate-500 text-xs">No PDF is attached yet. Once the admin attaches a file, you can download it.</p>
+            </div>
           </DialogContent>
         </Dialog>
       )}

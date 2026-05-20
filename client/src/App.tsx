@@ -55,6 +55,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminNotesManagement from "@/pages/admin/notes-management-enhanced";
 import AdminUsersManagement from "@/pages/admin/users-management";
 import AdminCoinManagement from "@/pages/admin/coin-management";
+import AdminTopperVerifications from "@/pages/admin/topper-verifications";
 
 // Custom hook for browser-based routing (no hash)
 import { useBrowserLocation } from "wouter/use-browser-location";
@@ -98,6 +99,7 @@ function AppRouter() {
           <Route path="/admin/notes" component={AdminNotesManagement} />
           <Route path="/admin/users" component={AdminUsersManagement} />
           <Route path="/admin/coins" component={AdminCoinManagement} />
+          <Route path="/admin/toppers" component={AdminTopperVerifications} />
           <Route path="/admin/analytics" component={AdminAnalytics} />
           <Route component={AdminDashboard} />
         </Switch>

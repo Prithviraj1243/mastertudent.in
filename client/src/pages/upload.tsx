@@ -28,6 +28,7 @@ const uploadSchema = z.object({
   unit: z.string().min(1, "Unit is required"),
   topic: z.string().min(1, "Topic is required"),
   classGrade: z.string().min(1, "Class/Grade is required"),
+  examType: z.string().optional(),
   description: z.string().min(10, "Description must be at least 10 characters").max(1000, "Description too long"),
   categoryId: z.string().optional(),
 });
@@ -254,12 +255,30 @@ export default function Upload() {
   };
 
   const subjects = [
-    "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", 
-    "English", "History", "Geography", "Economics", "Political Science"
+    "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science",
+    "English", "Hindi", "Sanskrit", "History", "Geography",
+    "Economics", "Political Science", "Physical Education", "Business Studies",
+    "Accountancy", "Psychology", "Sociology", "Environmental Science"
   ];
 
   const classes = [
-    "Class 9", "Class 10", "Class 11", "Class 12", "Undergraduate", "Postgraduate"
+    "Class 5", "Class 6", "Class 7", "Class 8",
+    "Class 9", "Class 10", "Class 11", "Class 12",
+    "Undergraduate", "Postgraduate"
+  ];
+
+  const competitiveExams = [
+    "None / School Syllabus",
+    "JEE Main", "JEE Advanced",
+    "NEET UG", "NEET PG",
+    "CUET", "BITSAT", "MHT-CET", "COMEDK", "KVPY",
+    "GATE", "CAT", "MAT", "GMAT",
+    "UPSC Civil Services", "UPSC CDS", "NDA",
+    "SSC CGL", "SSC CHSL", "SSC MTS",
+    "Bank PO (IBPS)", "Bank Clerk", "SBI PO",
+    "CLAT", "AILET",
+    "CA Foundation", "CA Intermediate", "CA Final",
+    "Defence (AFCAT)"
   ];
 
   return (
@@ -532,6 +551,35 @@ export default function Upload() {
                         )}
                       />
                     </div>
+
+                    {/* Competitive Exam (new optional field — no existing logic changed) */}
+                    <FormField
+                      control={form.control}
+                      name="examType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Competitive Exam / Board (Optional)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-exam-type">
+                                <SelectValue placeholder="Select exam or leave blank for general notes" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="max-h-60">
+                              {competitiveExams.map((exam) => (
+                                <SelectItem key={exam} value={exam}>
+                                  {exam}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                          <p className="text-xs text-muted-foreground">
+                            Tag your notes to a specific exam so students can find them faster
+                          </p>
+                        </FormItem>
+                      )}
+                    />
 
                     {/* Educational Category Selection */}
                     <FormField
