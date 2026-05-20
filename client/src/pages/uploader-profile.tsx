@@ -144,7 +144,7 @@ export default function UploaderProfile() {
             <h1 className="text-4xl font-bold text-white mb-1" data-testid="text-profile-title">
               My Earnings Dashboard
             </h1>
-            <p className="text-gray-400 text-sm">Track your coins, approved notes &amp; withdraw earnings</p>
+            <p className="text-gray-400 text-sm">Track your coins, approved notes and   &amp; withdraw earnings</p>
           </motion.div>
 
           {/* ── 3 Key Stats ─────────────────────────────────────── */}
