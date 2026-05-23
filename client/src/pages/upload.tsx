@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { useUserStats, useSubjectContent } from "@/hooks/useUserStats";
+import { CLASS_GRADES, getSubjectsForClass } from "@/data/schoolCurriculum";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,8 +39,8 @@ type UploadFormData = z.infer<typeof uploadSchema>;
 export default function Upload() {
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState("Physics");
-  const [selectedChapter, setSelectedChapter] = useState("Chapter 5");
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedChapter, setSelectedChapter] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -64,19 +65,23 @@ export default function Upload() {
   const form = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
-      title: "Physics Chapter 5 - Laws of Motion Notes",
-      subject: "Physics",
-      chapter: "Chapter 5",
-      unit: "Unit 2",
-      topic: "Newton's Laws of Motion",
-      classGrade: "Class 11",
-      description: "Comprehensive notes on Newton's three laws of motion with solved examples, diagrams, and practice problems. Covers inertia, force, momentum, and action-reaction pairs.",
+      title: "",
+      subject: "",
+      chapter: "",
+      unit: "",
+      topic: "",
+      classGrade: "",
+      examType: "",
+      description: "",
       categoryId: "",
     },
   });
 
-  // Get subject content (chapters and units)
-  const subjectContent = useSubjectContent(selectedSubject);
+  const selectedClassGrade = form.watch("classGrade");
+  const availableSubjects = selectedClassGrade ? getSubjectsForClass(selectedClassGrade) : [];
+
+  // Get subject content (chapters and units) based on class + subject
+  const subjectContent = useSubjectContent(selectedClassGrade, selectedSubject);
 
 
   const uploadMutation = useMutation({
@@ -254,18 +259,7 @@ export default function Upload() {
     uploadMutation.mutate(data);
   };
 
-  const subjects = [
-    "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science",
-    "English", "Hindi", "Sanskrit", "History", "Geography",
-    "Economics", "Political Science", "Physical Education", "Business Studies",
-    "Accountancy", "Psychology", "Sociology", "Environmental Science"
-  ];
-
-  const classes = [
-    "Class 5", "Class 6", "Class 7", "Class 8",
-    "Class 9", "Class 10", "Class 11", "Class 12",
-    "Undergraduate", "Postgraduate"
-  ];
+  const classes = [...CLASS_GRADES];
 
   const competitiveExams = [
     "None / School Syllabus",
@@ -400,29 +394,30 @@ export default function Upload() {
 
                       <FormField
                         control={form.control}
-                        name="subject"
+                        name="classGrade"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Subject</FormLabel>
-                            <Select 
+                            <FormLabel>Class/Grade</FormLabel>
+                            <Select
                               onValueChange={(value) => {
                                 field.onChange(value);
-                                setSelectedSubject(value);
+                                setSelectedSubject("");
                                 setSelectedChapter("");
-                                form.setValue('chapter', '');
-                                form.setValue('unit', '');
-                              }} 
+                                form.setValue("subject", "");
+                                form.setValue("chapter", "");
+                                form.setValue("unit", "");
+                              }}
                               value={field.value}
                             >
                               <FormControl>
-                                <SelectTrigger data-testid="select-subject">
-                                  <SelectValue placeholder="Select Subject" />
+                                <SelectTrigger data-testid="select-class">
+                                  <SelectValue placeholder="Select Class" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {subjects.map((subject) => (
-                                  <SelectItem key={subject} value={subject}>
-                                    {subject}
+                                {classes.map((cls) => (
+                                  <SelectItem key={cls} value={cls}>
+                                    {cls}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -528,20 +523,30 @@ export default function Upload() {
 
                       <FormField
                         control={form.control}
-                        name="classGrade"
+                        name="subject"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Class/Grade</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <FormLabel>Subject</FormLabel>
+                            <Select 
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedSubject(value);
+                                setSelectedChapter("");
+                                form.setValue('chapter', '');
+                                form.setValue('unit', '');
+                              }} 
+                              value={field.value}
+                              disabled={!selectedClassGrade}
+                            >
                               <FormControl>
-                                <SelectTrigger data-testid="select-class">
-                                  <SelectValue placeholder="Select Class" />
+                                <SelectTrigger data-testid="select-subject">
+                                  <SelectValue placeholder={selectedClassGrade ? "Select Subject" : "Select class first"} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {classes.map((cls) => (
-                                  <SelectItem key={cls} value={cls}>
-                                    {cls}
+                                {availableSubjects.map((subject) => (
+                                  <SelectItem key={subject} value={subject}>
+                                    {subject}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

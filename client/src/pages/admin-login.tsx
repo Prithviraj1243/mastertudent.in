@@ -8,8 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, Lock, User, Loader2 } from "lucide-react";
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("Admin@123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -35,7 +35,7 @@ export default function AdminLogin() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
 
       const data = await response.json();

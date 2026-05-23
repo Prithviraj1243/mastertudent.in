@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useAuth } from "./useAuth";
 import { supabase } from "@/lib/supabase";
+import { getSubjectContent } from "@/data/schoolCurriculum";
 
 interface UserStats {
   notesUploaded: number;
@@ -201,89 +202,10 @@ export function useUserStats() {
   };
 }
 
-// Hook for getting subject-specific chapters and units
-export function useSubjectContent(subject: string) {
-  const subjectChapters: Record<string, { chapters: string[], units: Record<string, string[]> }> = {
-    "Mathematics": {
-      chapters: [
-        "Algebra", "Geometry", "Trigonometry", "Calculus", "Statistics", 
-        "Probability", "Number Theory", "Linear Algebra", "Discrete Mathematics"
-      ],
-      units: {
-        "Algebra": ["Linear Equations", "Quadratic Equations", "Polynomials", "Matrices", "Determinants"],
-        "Geometry": ["Coordinate Geometry", "Solid Geometry", "Plane Geometry", "Vectors", "3D Geometry"],
-        "Trigonometry": ["Basic Ratios", "Identities", "Equations", "Inverse Functions", "Applications"],
-        "Calculus": ["Limits", "Derivatives", "Integration", "Applications", "Differential Equations"],
-        "Statistics": ["Data Analysis", "Measures of Central Tendency", "Probability Distributions", "Hypothesis Testing"],
-        "Probability": ["Basic Probability", "Conditional Probability", "Random Variables", "Distributions"],
-      }
-    },
-    "Physics": {
-      chapters: [
-        "Mechanics", "Thermodynamics", "Waves", "Optics", "Electricity", 
-        "Magnetism", "Modern Physics", "Atomic Physics", "Nuclear Physics"
-      ],
-      units: {
-        "Mechanics": ["Kinematics", "Dynamics", "Work & Energy", "Momentum", "Rotational Motion"],
-        "Thermodynamics": ["Heat Transfer", "Laws of Thermodynamics", "Kinetic Theory", "Entropy"],
-        "Waves": ["Wave Motion", "Sound Waves", "Wave Interference", "Standing Waves"],
-        "Optics": ["Reflection", "Refraction", "Lenses", "Wave Optics", "Optical Instruments"],
-        "Electricity": ["Electric Field", "Electric Potential", "Current", "Resistance", "Circuits"],
-        "Magnetism": ["Magnetic Field", "Electromagnetic Induction", "AC Circuits", "Electromagnetic Waves"],
-      }
-    },
-    "Chemistry": {
-      chapters: [
-        "Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry", 
-        "Analytical Chemistry", "Biochemistry", "Environmental Chemistry"
-      ],
-      units: {
-        "Organic Chemistry": ["Hydrocarbons", "Functional Groups", "Reactions", "Mechanisms", "Stereochemistry"],
-        "Inorganic Chemistry": ["Periodic Table", "Chemical Bonding", "Coordination Compounds", "Metallurgy"],
-        "Physical Chemistry": ["Thermodynamics", "Kinetics", "Equilibrium", "Electrochemistry", "Surface Chemistry"],
-        "Analytical Chemistry": ["Qualitative Analysis", "Quantitative Analysis", "Instrumental Methods"],
-      }
-    },
-    "Biology": {
-      chapters: [
-        "Cell Biology", "Genetics", "Evolution", "Ecology", "Human Physiology", 
-        "Plant Biology", "Molecular Biology", "Biotechnology"
-      ],
-      units: {
-        "Cell Biology": ["Cell Structure", "Cell Division", "Cell Metabolism", "Cell Transport"],
-        "Genetics": ["Mendelian Genetics", "Molecular Genetics", "Population Genetics", "Genetic Engineering"],
-        "Evolution": ["Natural Selection", "Speciation", "Phylogeny", "Evidence of Evolution"],
-        "Ecology": ["Ecosystems", "Population Dynamics", "Conservation", "Environmental Issues"],
-        "Human Physiology": ["Circulatory System", "Respiratory System", "Nervous System", "Digestive System"],
-      }
-    },
-    "Computer Science": {
-      chapters: [
-        "Programming", "Data Structures", "Algorithms", "Database Systems", 
-        "Computer Networks", "Operating Systems", "Software Engineering", "AI & ML"
-      ],
-      units: {
-        "Programming": ["Variables & Data Types", "Control Structures", "Functions", "OOP", "Error Handling"],
-        "Data Structures": ["Arrays", "Linked Lists", "Stacks", "Queues", "Trees", "Graphs", "Hash Tables"],
-        "Algorithms": ["Sorting", "Searching", "Dynamic Programming", "Greedy Algorithms", "Graph Algorithms"],
-        "Database Systems": ["SQL", "Database Design", "Normalization", "Transactions", "NoSQL"],
-        "Computer Networks": ["Network Protocols", "OSI Model", "TCP/IP", "Network Security", "Wireless Networks"],
-      }
-    },
-    "English": {
-      chapters: [
-        "Grammar", "Literature", "Writing", "Reading Comprehension", 
-        "Poetry", "Drama", "Prose", "Language Skills"
-      ],
-      units: {
-        "Grammar": ["Parts of Speech", "Tenses", "Voice", "Narration", "Sentence Structure"],
-        "Literature": ["Fiction", "Non-fiction", "Literary Devices", "Critical Analysis"],
-        "Writing": ["Essay Writing", "Letter Writing", "Report Writing", "Creative Writing"],
-        "Poetry": ["Poetic Devices", "Forms of Poetry", "Analysis", "Interpretation"],
-        "Drama": ["Elements of Drama", "Character Analysis", "Theme Analysis", "Dramatic Techniques"],
-      }
-    }
-  };
-
-  return subjectChapters[subject] || { chapters: [], units: {} };
+// Hook for getting class + subject specific chapters and units
+export function useSubjectContent(classGrade: string, subject: string) {
+  if (!classGrade || !subject) {
+    return { chapters: [], units: {} };
+  }
+  return getSubjectContent(classGrade, subject);
 }

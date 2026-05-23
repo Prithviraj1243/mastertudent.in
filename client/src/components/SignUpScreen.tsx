@@ -6,18 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   GraduationCap, 
   User, 
-  Mail,
-  Phone,
-  Lock,
-  Eye,
-  EyeOff,
   CheckCircle,
-  ArrowRight,
-  Sparkles,
-  Trophy,
-  Users,
-  BookOpen,
-  TrendingUp,
   Star,
   Shield,
   Zap,
@@ -28,127 +17,10 @@ interface SignUpScreenProps {
   selectedGoals?: string[];
 }
 
-export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpScreenProps) {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showOtpFields, setShowOtpFields] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '']);
-  const [generatedOtp, setGeneratedOtp] = useState('');
+export default function SignUpScreen({ onComplete: _onComplete }: SignUpScreenProps) {
+  const [currentStep] = useState(0);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Generate random 4-digit OTP
-  const generateOtp = () => {
-    const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(newOtp);
-    return newOtp;
-  };
-
-  // Handle phone number submission
-  const handlePhoneSubmit = () => {
-    if (!formData.phone || formData.phone.length < 10) {
-      alert('Please enter a valid 10-digit phone number');
-      return;
-    }
-    
-    const newOtp = generateOtp();
-    // Show OTP in JS popup
-    alert(`Your OTP is: ${newOtp}\n\nPlease enter this code in the fields below.`);
-    setShowOtpFields(true); // Show OTP fields on same page
-  };
-
-  // Handle OTP input change
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow single digit
-    
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    
-    // Auto-focus next input
-    if (value && index < 3) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  // Handle OTP verification
-  const handleOtpVerify = async () => {
-    const enteredOtp = otp.join('');
-    if (enteredOtp.length !== 4) {
-      alert('Please enter complete 4-digit OTP');
-      return;
-    }
-    
-    if (enteredOtp === generatedOtp) {
-      alert('OTP verified successfully! Creating your account...');
-      
-      try {
-        // Create user account via API to authenticate them
-        const response = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            firstName: 'User', // Default name
-            lastName: 'Student',
-            email: `${formData.phone}@masterstudent.com`, // Generate email from phone
-            phone: `+91${formData.phone}`,
-            password: 'defaultpassword123', // Default password
-            selectedGoals: selectedGoals,
-            onboardingCompleted: true // Skip onboarding, go directly to home
-          }),
-        });
-
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-          alert('Account verified successfully! Welcome to Master Student!');
-          // Set direct authentication flag and redirect
-          sessionStorage.setItem('directAuth', 'true');
-          sessionStorage.setItem('userPhone', `+91${formData.phone}`);
-          setTimeout(() => {
-            window.location.href = "/";
-          }, 1000);
-        } else {
-          // If registration fails, still set auth and redirect
-          alert('Welcome to Master Student!');
-          sessionStorage.setItem('directAuth', 'true');
-          sessionStorage.setItem('userPhone', `+91${formData.phone}`);
-          setTimeout(() => {
-            window.location.href = "/";
-          }, 1000);
-        }
-      } catch (error) {
-        console.error('Registration error:', error);
-        alert('Welcome to Master Student!');
-        // Set auth and redirect even if API fails
-        sessionStorage.setItem('directAuth', 'true');
-        sessionStorage.setItem('userPhone', `+91${formData.phone}`);
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 1000);
-      }
-    } else {
-      alert('Invalid OTP. Please try again.');
-      setOtp(['', '', '', '']); // Clear OTP fields
-    }
-  };
-
-  // Handle Supabase Google Login (Direct - No Google Client ID needed!)
+  // Handle Supabase Google Login
   const handleSupabaseGoogleLogin = async () => {
     try {
       // Import Supabase client
@@ -174,85 +46,6 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
     } catch (error) {
       console.error('Google login error:', error);
       alert('Google Sign-In Error: Something went wrong');
-    }
-  };
-
-  // Old Google OAuth handlers removed - now using handleSupabaseGoogleLogin
-
-
-  const handleSubmit = async () => {
-    // Basic form validation
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-      alert('Please fill in all required fields');
-      return;
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      alert('Password must be at least 6 characters long');
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      console.log('Attempting registration with:', {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        selectedGoals: selectedGoals
-      });
-
-      // Test API connection first with debug endpoint
-      console.log('Testing API connection...');
-      const debugResponse = await fetch('/api/debug');
-      console.log('Debug response status:', debugResponse.status);
-      
-      if (!debugResponse.ok) {
-        throw new Error('API server not responding');
-      }
-      
-      const debugData = await debugResponse.json();
-      console.log('Debug response:', debugData);
-      
-      // Create account via API
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          selectedGoals: selectedGoals
-        }),
-      });
-
-      console.log('Registration response status:', response.status);
-      
-      const data = await response.json();
-      console.log('Registration response data:', data);
-
-      if (response.ok && data.success) {
-        // Immediately redirect to main page after successful registration
-        onComplete();
-      } else {
-        // Handle error
-        alert(data.message || 'Registration failed');
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      alert('Network error: ' + (error instanceof Error ? error.message : 'Please try again.'));
-      setIsLoading(false);
     }
   };
 
@@ -377,132 +170,28 @@ export default function SignUpScreen({ onComplete, selectedGoals = [] }: SignUpS
                         <CardContent className="p-8">
                           <div className="text-center mb-8">
                             <h2 className="text-3xl font-bold text-white mb-2">
-                              Register with your Email ID / phone number
+                              Welcome to Master Student
                             </h2>
                             <p className="text-slate-300">
-                              Enter your phone number to get started
+                              Sign in to access your study materials
                             </p>
                           </div>
 
                           <div className="space-y-6">
-                            {/* Phone Number Input */}
-                            <div className="space-y-2">
-                              <label className="text-slate-300 text-sm">Phone Number</label>
-                              <div className="flex space-x-2">
-                                {/* Country Code Box */}
-                                <div className="relative w-20">
-                                  <input
-                                    type="text"
-                                    value="+91"
-                                    readOnly
-                                    className="w-full px-3 py-4 bg-slate-600/50 border border-slate-500 rounded-lg text-white text-center text-lg font-medium cursor-not-allowed"
-                                  />
-                                </div>
-                                
-                                {/* Phone Number Box */}
-                                <div className="relative flex-1">
-                                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                                  <input
-                                    type="tel"
-                                    placeholder="Enter 10 digit number"
-                                    value={formData.phone}
-                                    onChange={(e) => {
-                                      // Only allow digits and limit to 10
-                                      const value = e.target.value.replace(/\D/g, '');
-                                      if (value.length <= 10) {
-                                        handleInputChange('phone', value);
-                                      }
-                                    }}
-                                    className="w-full pl-10 pr-4 py-4 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
-                                    maxLength={10}
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Send OTP Button */}
-                            <Button 
-                              onClick={handlePhoneSubmit}
-                              className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white font-semibold py-4 text-lg"
+                            {/* Google Sign In */}
+                            <Button
+                              type="button"
+                              onClick={handleSupabaseGoogleLogin}
+                              className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 flex items-center justify-center gap-3 h-12 text-base font-medium shadow-sm"
                             >
-                              Send OTP <ArrowRight className="ml-2 w-5 h-5" />
+                              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              </svg>
+                              Continue with Google
                             </Button>
-
-                            {/* OTP Fields - Show after phone submission */}
-                            {showOtpFields && (
-                              <div className="space-y-4 pt-4 border-t border-slate-600">
-                                <div className="text-center">
-                                  <p className="text-slate-300 mb-4">
-                                    Enter the 4-digit OTP sent to +91 {formData.phone}
-                                  </p>
-                                </div>
-                                
-                                {/* OTP Input Fields */}
-                                <div className="flex justify-center space-x-3">
-                                  {otp.map((digit, index) => (
-                                    <input
-                                      key={index}
-                                      id={`otp-${index}`}
-                                      type="text"
-                                      value={digit}
-                                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                                      className="w-14 h-14 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                      maxLength={1}
-                                      inputMode="numeric"
-                                      pattern="[0-9]*"
-                                    />
-                                  ))}
-                                </div>
-
-                                {/* Verify OTP Button */}
-                                <Button 
-                                  onClick={handleOtpVerify}
-                                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-semibold py-3"
-                                >
-                                  Verify OTP <CheckCircle className="ml-2 w-4 h-4" />
-                                </Button>
-
-                                {/* Resend OTP */}
-                                <div className="text-center">
-                                  <button
-                                    onClick={handlePhoneSubmit}
-                                    className="text-orange-400 hover:text-orange-300 text-sm"
-                                  >
-                                    Didn't receive code? Resend OTP
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* OR Divider */}
-                            <div className="relative">
-                              <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-slate-600"></div>
-                              </div>
-                              <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-slate-800 text-slate-400">OR</span>
-                              </div>
-                            </div>
-
-                            {/* Google Sign In Button - Using Supabase Auth */}
-                            <div className="w-full flex justify-center">
-                              <Button
-                                type="button"
-                                onClick={handleSupabaseGoogleLogin}
-                                className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 flex items-center justify-center gap-3 h-11"
-                              >
-                                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                </svg>
-                                Continue with Google
-                              </Button>
-                            </div>
-
 
                             {/* OR Divider */}
                             <div className="relative">

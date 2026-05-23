@@ -3495,9 +3495,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Admin Login — plain fetch to Supabase REST API, no drizzle/pooler dependency
+  // Admin Login — primary credentials + optional Supabase admin_accounts lookup
   app.post("/api/admin/login", async (req, res) => {
-    const { username, password } = req.body;
+    const username = String(req.body?.username ?? "").trim();
+    const password = String(req.body?.password ?? "");
     if (!username || !password) {
       return res.status(400).json({ success: false, message: "Username and password are required" });
     }
@@ -3506,36 +3507,61 @@ export function registerRoutes(app: Express): Server {
     const jwt = await import('jsonwebtoken');
     const SECRET = process.env.ADMIN_JWT_SECRET || process.env.SESSION_SECRET || 'admin-secret-key';
 
-    // Hardcoded fallback — works when DB is down (bcrypt hash of 'Admin@123')
-    const FALLBACK = {
+    const PRIMARY_ADMIN = {
       id: 'e682da5f-5f26-483d-9a1f-2e21082c11d4',
-      username: 'admin',
+      username: 'admin1243',
       email: 'admin@masterstudent.in',
       full_name: 'System Administrator',
-      password: '$2b$10$eOPBk5KBkyI2.zDvXDop0ObArBmPspVNAENhK4p1dP2jwf6muRiL.',
+      password: '$2b$10$U6Fz2pgwG4towP.fKIz.yeww67/r9GccURmkNFiU5ojmQDxyZ7yyu',
     };
+    const PRIMARY_USERNAME = 'admin1243';
+    const PRIMARY_PASSWORD = 'admin@7384';
 
-    const doLogin = (account: any, token: string) => {
+    const doLogin = (account: { id: string; username: string; email: string; full_name?: string; fullName?: string }, source: string) => {
+      const token = jwt.default.sign(
+        { adminId: account.id, username: account.username, role: 'admin' },
+        SECRET,
+        { expiresIn: '24h' }
+      );
       req.session.adminAccountId = account.id;
       req.session.adminToken = crypto.randomUUID();
       req.session.isAdmin = true;
       req.session.save(() => { });
+      console.log('✅ Admin logged in:', account.username, `(${source})`);
       res.json({
         success: true,
         token,
-        admin: { id: account.id, username: account.username, email: account.email, fullName: account.full_name || account.fullName, role: 'admin' },
+        admin: {
+          id: account.id,
+          username: account.username,
+          email: account.email,
+          fullName: account.full_name || account.fullName,
+          role: 'admin',
+        },
       });
     };
 
-    // Step 1: Try plain fetch to Supabase REST API
-    let dbAccount: any = null;
+    // Primary admin — checked first (avoids Supabase row with stale/wrong hash)
+    if (username === PRIMARY_USERNAME && password === PRIMARY_PASSWORD) {
+      return doLogin(PRIMARY_ADMIN, 'primary');
+    }
+
+    // Other admins — lookup in Supabase and verify bcrypt hash
+    let dbAccount: {
+      id: string;
+      username: string;
+      email?: string;
+      full_name?: string;
+      password: string;
+      is_active?: boolean;
+    } | null = null;
     try {
       const url = process.env.SUPABASE_URL;
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (url && key) {
         const r = await fetch(
           `${url}/rest/v1/admin_accounts?username=eq.${encodeURIComponent(username)}&limit=1&select=*`,
-          { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }
+          { headers: { apikey: key, Authorization: `Bearer ${key}` } }
         );
         if (r.ok) {
           const rows = await r.json();
@@ -3546,25 +3572,24 @@ export function registerRoutes(app: Express): Server {
       console.warn('⚠️ Admin DB fetch failed:', e instanceof Error ? e.message : e);
     }
 
-    // Step 2: Use DB account if found, else use fallback
-    const account = dbAccount || (username === FALLBACK.username ? FALLBACK : null);
-    if (!account) {
+    if (!dbAccount || dbAccount.is_active === false) {
       return res.status(401).json({ success: false, message: "Invalid admin credentials" });
     }
 
-    const isValid = await bcrypt.default.compare(password, account.password);
+    const isValid = await bcrypt.default.compare(password, dbAccount.password);
     if (!isValid) {
       return res.status(401).json({ success: false, message: "Invalid admin credentials" });
     }
 
-    const token = jwt.default.sign(
-      { adminId: account.id, username: account.username, role: 'admin' },
-      SECRET,
-      { expiresIn: '24h' }
+    doLogin(
+      {
+        id: dbAccount.id,
+        username: dbAccount.username,
+        email: dbAccount.email || 'admin@masterstudent.in',
+        full_name: dbAccount.full_name || 'Administrator',
+      },
+      'database'
     );
-
-    console.log('✅ Admin logged in:', account.username, dbAccount ? '(from DB)' : '(fallback)');
-    doLogin(account, token);
   });
 
   // Admin Logout
