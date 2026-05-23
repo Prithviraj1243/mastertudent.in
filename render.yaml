@@ -2,7 +2,7 @@ services:
   - type: web
     name: mastertudent-in
     runtime: node
-    branch: fixing
+    branch: final
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /api/test
