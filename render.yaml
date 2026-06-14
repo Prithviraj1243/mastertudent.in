@@ -3,10 +3,12 @@ services:
     name: mastertudent-in
     runtime: node
     branch: final
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/test
     envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -17,6 +19,8 @@ services:
         value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3NTc2MzAsImV4cCI6MjA4MjMzMzYzMH0.P8jg0dg17cMn3oS3xX0AcoR2rC9vNV6h8y64S-PM4Fg
       - key: SUPABASE_SERVICE_ROLE_KEY
         value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuenNpbGVwYnVnbGtyamN4ZGltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Njc1NzYzMCwiZXhwIjoyMDgyMzMzNjMwfQ.ViyUgUcMjyUWIpZD6nfhfdabYspxxUeSnrn1W7RFc_o
+      - key: SUPABASE_BUCKET_NAME
+        value: notes
       - key: VITE_SUPABASE_URL
         value: https://snzsilepbuglkrjcxdim.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
